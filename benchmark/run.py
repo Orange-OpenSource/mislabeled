@@ -1,5 +1,5 @@
 # %%
-from sklearn.datasets import make_moons
+from moons import make_moons
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.kernel_approximation import RBFSampler
@@ -21,15 +21,15 @@ param_grid_consensus = {
     'detector__n_cvs': [4, 5, 6]
 }
 
-cc_detect_aum = AUMDetector(classifier=AdaBoostClassifier())
-clf_aum = FilterClassifier(detector=cc_detect_aum, classifier=KNeighborsClassifier(n_neighbors=3))
+aum_detect = AUMDetector(classifier=AdaBoostClassifier())
+clf_aum = FilterClassifier(detector=aum_detect, classifier=KNeighborsClassifier(n_neighbors=3))
 
 param_grid_aum = {
     'trust_proportion': [.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.],
 }
 
-cc_detect_influence = InfluenceDetector(transform=RBFSampler(gamma='scale'))
-clf_influence = FilterClassifier(detector=cc_detect_influence, classifier=KNeighborsClassifier(n_neighbors=3))
+influence_detect = InfluenceDetector(transform=RBFSampler(gamma='scale'))
+clf_influence = FilterClassifier(detector=influence_detect, classifier=KNeighborsClassifier(n_neighbors=3))
 
 param_grid_influence = {
     'trust_proportion': [.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.],
@@ -64,18 +64,22 @@ for k, d in benchmark.items():
 
 # %%
 
+noise_level = .4
+add_dims = 10
+
 test_scores = {k: [] for k in benchmark.keys()}
+best_params = {k: [] for k in benchmark.keys()}
 
 for i in range(21):
 
-    X, y = make_moons(noise=.2)
-    X_test, y_test = make_moons(noise=.2, n_samples=1000)
+    X, y = make_moons(noise=.2, augment=add_dims)
+    X_test, y_test = make_moons(noise=noise_level, n_samples=1000, augment=add_dims)
 
     y_corr = make_label_noise(y, noise_matrix="uniform", noise_ratio=0.2)
 
     for k, d in benchmark.items():
         test_scores[k].append(d['grid_search'].fit(X, y_corr).score(X_test, y_test))
-
+        best_params[k].append(d['grid_search'].best_params_)
     print(i, [d[-1] for d in test_scores.values()])
 
 # %%
@@ -84,11 +88,13 @@ for k, d in test_scores.items():
     print(k, np.mean(d), np.std(d))
 # %%
 
-plt.violinplot(test_scores.values(), showmedians=True)
-plt.xticks([1, 2, 3], test_scores.keys())
+plt.violinplot(test_scores.values(), showmeans=True)
+plt.xticks(np.arange(len(test_scores))+1, test_scores.keys())
 plt.ylabel('test accuracy')
+plt.title(f'noise level = {noise_level}')
 plt.grid()
 plt.show()
+
 # %%
 
 # %%
