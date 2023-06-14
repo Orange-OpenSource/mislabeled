@@ -3,11 +3,11 @@
 Plotting Template Estimator
 ===========================
 
-An example plot of :class:`skltemplate.template.TemplateEstimator`
+An example plot of :class:`mislabeled.template.TemplateEstimator`
 """
 import numpy as np
 from matplotlib import pyplot as plt
-from skltemplate import TemplateEstimator
+from mislabeled import TemplateEstimator
 
 X = np.arange(100).reshape(100, 1)
 y = np.zeros((100, ))

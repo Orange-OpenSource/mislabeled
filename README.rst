@@ -14,8 +14,8 @@
 .. |CircleCI| image:: https://circleci.com/gh/scikit-learn-contrib/project-template.svg?style=shield&circle-token=:circle-token
 .. _CircleCI: https://circleci.com/gh/scikit-learn-contrib/project-template/tree/master
 
-.. |ReadTheDocs| image:: https://readthedocs.org/projects/sklearn-template/badge/?version=latest
-.. _ReadTheDocs: https://sklearn-template.readthedocs.io/en/latest/?badge=latest
+.. |ReadTheDocs| image:: https://readthedocs.org/projects/mislabeled/badge/?version=latest
+.. _ReadTheDocs: https://mislabeled.readthedocs.io/en/latest/?badge=latest
 
 project-template - A template for scikit-learn contributions
 ============================================================
@@ -30,7 +30,7 @@ and (hyper)parameter search, while facilitating testing (including some API
 compliance), documentation, open source development, packaging, and continuous
 integration.
 
-.. _documentation: https://sklearn-template.readthedocs.io/en/latest/quick_start.html
+.. _documentation: https://mislabeled.readthedocs.io/en/latest/quick_start.html
 
 Refer to the documentation_ to modify the template for your own scikit-learn
 contribution.
