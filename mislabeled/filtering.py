@@ -1,10 +1,11 @@
+import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.multiclass import unique_labels
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-import numpy as np
+from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+
 
 class FilterClassifier(ClassifierMixin, BaseEstimator):
-    """ An example classifier which implements a 1-NN algorithm.
+    """An example classifier which implements a 1-NN algorithm.
 
     For more information regarding how to build your own classifier, read more
     in the :ref:`User Guide <user_guide>`.
@@ -23,7 +24,8 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
     classes_ : ndarray, shape (n_classes,)
         The classes seen at :meth:`fit`.
     """
-    def __init__(self, detector=None, classifier=None, trust_proportion=.5):
+
+    def __init__(self, detector=None, classifier=None, trust_proportion=0.5):
         self.detector = detector
         self.classifier = classifier
         self.trust_proportion = trust_proportion
@@ -51,7 +53,7 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
 
         trust_scores = self.detector.trust_score(X, y)
         indices_rank = np.argsort(trust_scores)[::-1]
-        trusted = indices_rank[:int(n*self.trust_proportion)]
+        trusted = indices_rank[: int(n * self.trust_proportion)]
 
         self.classifier.fit(X[trusted], y[trusted])
 
@@ -59,7 +61,7 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
         return self
 
     def predict(self, X):
-        """ A reference implementation of a prediction for a classifier.
+        """A reference implementation of a prediction for a classifier.
 
         Parameters
         ----------
@@ -79,3 +81,11 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
         X = check_array(X)
 
         return self.classifier.predict(X)
+
+    def predict_proba(self, X):
+        check_is_fitted(self.classifier)
+
+        # Input validation
+        X = check_array(X)
+
+        return self.classifier.predict_proba(X)

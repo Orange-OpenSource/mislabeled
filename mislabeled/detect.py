@@ -1,11 +1,11 @@
+import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import KFold
 from sklearn.utils.validation import check_X_y
-import numpy as np
 
 
 class ConsensusDetector(BaseEstimator):
-    """ A template estimator to be used as a reference implementation.
+    """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
     in the :ref:`User Guide <user_guide>`.
@@ -25,6 +25,7 @@ class ConsensusDetector(BaseEstimator):
     >>> estimator.fit(X, y)
     TemplateEstimator()
     """
+
     def __init__(self, classifier=None, n_splits=4, n_cvs=4):
         self.classifier = classifier
         self.n_cvs = n_cvs
@@ -51,10 +52,9 @@ class ConsensusDetector(BaseEstimator):
         n_by_split = int(n / self.n_splits)
         consistent_label = np.zeros(n)
 
-        kf = KFold(n_splits=self.n_splits, shuffle=True) # TODO rng
+        kf = KFold(n_splits=self.n_splits, shuffle=True)  # TODO rng
 
         for i in range(self.n_cvs):
-
             for i_train, i_val in kf.split(X):
                 self.classifier.fit(X[i_train, :], y[i_train])
 
@@ -62,10 +62,10 @@ class ConsensusDetector(BaseEstimator):
                 consistent_label[i_val] += (y[i_val] == y_pred).astype(int)
 
         return consistent_label / self.n_cvs
-    
+
 
 class AUMDetector(BaseEstimator):
-    """ A template estimator to be used as a reference implementation.
+    """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
     in the :ref:`User Guide <user_guide>`.
@@ -85,6 +85,7 @@ class AUMDetector(BaseEstimator):
     >>> estimator.fit(X, y)
     TemplateEstimator()
     """
+
     def __init__(self, classifier=None):
         self.classifier = classifier
 
@@ -110,16 +111,25 @@ class AUMDetector(BaseEstimator):
         clf = self.classifier
 
         clf.fit(X, y)
-        preds = np.zeros((clf.n_estimators, n))
+        margins = np.zeros((clf.n_estimators, n))
 
-        for i, y_pred in enumerate(clf.staged_decision_function(X)):
-            preds[i] = y_pred * (y - .5) # TODO multiclass
+        for i, logits in enumerate(clf.staged_decision_function(X)):
+            if logits.shape[1] == 1:
+                logits = np.hstack([-logits, logits])
+            y_pred = np.argmax(logits, axis=1)
+            part = np.partition(-logits, 1, axis=1)
+            assigned_logit = np.take_along_axis(logits, y.reshape(-1, 1), axis=1)
+            largest_other_logit = np.take_along_axis(
+                part, (y == y_pred).astype(int).reshape(-1, 1), axis=1
+            )
+            margin = assigned_logit - largest_other_logit
+            margins[i] = margin.ravel()
 
-        return preds.sum(axis=0)
-    
+        return margins.sum(axis=0)
+
 
 class InfluenceDetector(BaseEstimator):
-    """ A template estimator to be used as a reference implementation.
+    """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
     in the :ref:`User Guide <user_guide>`.
@@ -139,7 +149,8 @@ class InfluenceDetector(BaseEstimator):
     >>> estimator.fit(X, y)
     TemplateEstimator()
     """
-    def __init__(self, alpha=1., transform=None):
+
+    def __init__(self, alpha=1.0, transform=None):
         self.alpha = alpha
         self.transform = transform
 
@@ -164,13 +175,14 @@ class InfluenceDetector(BaseEstimator):
             X_t = X
         else:
             X_t = self.transform.fit_transform(X)
-            
-        n = X_t.shape[0]; d = X_t.shape[1]
+
+        n = X_t.shape[0]
+        d = X_t.shape[1]
 
         inv = np.linalg.inv(X_t.T @ X_t + np.identity(d) * self.alpha)
         H = X_t @ inv @ X_t.T
-        y_cent = y - .5 # TODO multiclass
-        
+        y_cent = y - 0.5  # TODO multiclass
+
         J = y_cent.reshape(-1, 1) * H * y_cent.reshape(1, -1)
         m = (J * (y.reshape(-1, 1) == y.reshape(1, -1))).sum(axis=1)
         return m
