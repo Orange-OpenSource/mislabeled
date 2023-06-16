@@ -51,6 +51,8 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
 
         trust_scores = self.detector.trust_score(X, y)
         indices_rank = np.argsort(trust_scores)[::-1]
+
+        # only keep most trusted examples
         trusted = indices_rank[:int(n*self.trust_proportion)]
 
         self.classifier.fit(X[trusted], y[trusted])
