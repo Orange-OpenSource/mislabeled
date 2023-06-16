@@ -1,10 +1,9 @@
 import random
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from sklearn.datasets import make_blobs, make_classification
-from sklearn.ensemble import AdaBoostClassifier, GradientBoostingClassifier
+from sklearn.datasets import make_blobs
+from sklearn.ensemble import GradientBoostingClassifier
 
 from mislabeled.detect import AUMDetector
 
