@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.base import BaseEstimator
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import KFold
 from sklearn.utils.validation import check_X_y
 
@@ -88,6 +89,8 @@ class AUMDetector(BaseEstimator):
 
     def __init__(self, classifier=None):
         self.classifier = classifier
+
+        # TODO duck-verify that classifier has a staged_decision_function method 
 
     def trust_score(self, X, y):
         """A reference implementation of a fitting function.
@@ -185,4 +188,121 @@ class InfluenceDetector(BaseEstimator):
 
         J = y_cent.reshape(-1, 1) * H * y_cent.reshape(1, -1)
         m = (J * (y.reshape(-1, 1) == y.reshape(1, -1))).sum(axis=1)
+
         return m
+
+
+class ClassifierDetector(BaseEstimator):
+    """ A template estimator to be used as a reference implementation.
+
+    For more information regarding how to build your own estimator, read more
+    in the :ref:`User Guide <user_guide>`.
+
+    Parameters
+    ----------
+    demo_param : str, default='demo_param'
+        A parameter used for demonstation of how to pass and store paramters.
+
+    Examples
+    --------
+    >>> from mislabeled import AUMDetector
+    >>> import numpy as np
+    >>> X = np.arange(100).reshape(100, 1)
+    >>> y = np.zeros((100, ))
+    >>> estimator = TemplateEstimator()
+    >>> estimator.fit(X, y)
+    TemplateEstimator()
+    """
+    def __init__(self, classifier=None):
+        self.classifier = classifier
+
+    def trust_score(self, X, y):
+        """A reference implementation of a fitting function.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape (n_samples, n_features)
+            The training input samples.
+        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
+            The target values (class labels in classification, real numbers in
+            regression).
+
+        Returns
+        -------
+        self : object
+            Returns self.
+        """
+        X, y = check_X_y(X, y, accept_sparse=True)
+        n = X.shape[0]
+
+        clf = self.classifier
+
+        clf.fit(X, y)
+        return clf.decision_function(X) * (y - .5)
+    
+
+class VoGDetector(BaseEstimator):
+    """ A template estimator to be used as a reference implementation.
+
+    For more information regarding how to build your own estimator, read more
+    in the :ref:`User Guide <user_guide>`.
+
+    Parameters
+    ----------
+    demo_param : str, default='demo_param'
+        A parameter used for demonstation of how to pass and store paramters.
+
+    Examples
+    --------
+    >>> from mislabeled import AUMDetector
+    >>> import numpy as np
+    >>> X = np.arange(100).reshape(100, 1)
+    >>> y = np.zeros((100, ))
+    >>> estimator = TemplateEstimator()
+    >>> estimator.fit(X, y)
+    TemplateEstimator()
+    """
+    def __init__(self, epsilon=.5, classifier=None):
+        self.epsilon = epsilon
+        self.classifier = classifier
+
+    def trust_score(self, X, y):
+        """A reference implementation of a fitting function.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape (n_samples, n_features)
+            The training input samples.
+        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
+            The target values (class labels in classification, real numbers in
+            regression).
+
+        Returns
+        -------
+        self : object
+            Returns self.
+        """
+        X, y = check_X_y(X, y, accept_sparse=True)
+        n = X.shape[0]; d = X.shape[1]
+
+        neigh = KNeighborsClassifier(n_neighbors=d+1)
+        neigh.fit(X, y)
+        neigh_dist, neigh_ind = neigh.kneighbors(X, return_distance=True)
+
+        self.classifier.fit(X, y)
+
+        diffs = []
+        for i in range(d):
+            # prepare vectors for finite differences
+            vecs_end = X + self.epsilon * (X[neigh_ind[:, i+1]] - X)
+            vecs_start = X # - self.epsilon * (X[neigh_ind, i+1]] - X)
+            lengths = np.sqrt(((vecs_end - vecs_start)**2).sum(axis=1))
+
+            # compute finite differences
+            diffs.append((self.classifier.decision_function(vecs_end) -
+                         self.classifier.decision_function(vecs_start)) / lengths)
+        diffs = np.array(diffs).T
+
+        m = np.abs(diffs).sum(axis=1)
+
+        return m.max() - m
