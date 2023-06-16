@@ -117,16 +117,19 @@ class AUMDetector(BaseEstimator):
         margins = np.zeros((clf.n_estimators, n))
 
         for i, logits in enumerate(clf.staged_decision_function(X)):
-            if logits.shape[1] == 1:
+            if logits.ndim == 1:
+                logits = np.stack([-logits, logits], axis=1)
+            # ???
+            elif logits.shape[1] == 1:
                 logits = np.hstack([-logits, logits])
             y_pred = np.argmax(logits, axis=1)
-            part = np.partition(-logits, 1, axis=1)
-            assigned_logit = np.take_along_axis(logits, y.reshape(-1, 1), axis=1)
-            largest_other_logit = np.take_along_axis(
-                part, (y == y_pred).astype(int).reshape(-1, 1), axis=1
-            )
+            assigned_logit = np.take_along_axis(
+                logits, y.reshape(-1, 1), axis=1
+            ).flatten()
+            logits.sort(axis=1)
+            largest_other_logit = np.where(y == y_pred, logits[:, -2], logits[:, -1])
             margin = assigned_logit - largest_other_logit
-            margins[i] = margin.ravel()
+            margins[i] = margin
 
         return margins.sum(axis=0)
 
