@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import KFold
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.utils.validation import check_X_y
 
 
@@ -90,7 +90,7 @@ class AUMDetector(BaseEstimator):
     def __init__(self, classifier=None):
         self.classifier = classifier
 
-        # TODO duck-verify that classifier has a staged_decision_function method 
+        # TODO duck-verify that classifier has a staged_decision_function method
 
     def trust_score(self, X, y):
         """A reference implementation of a fitting function.
@@ -126,6 +126,7 @@ class AUMDetector(BaseEstimator):
             assigned_logit = np.take_along_axis(
                 logits, y.reshape(-1, 1), axis=1
             ).flatten()
+            # Maybe partition is better ?
             logits.sort(axis=1)
             largest_other_logit = np.where(y == y_pred, logits[:, -2], logits[:, -1])
             margin = assigned_logit - largest_other_logit
@@ -196,7 +197,7 @@ class InfluenceDetector(BaseEstimator):
 
 
 class ClassifierDetector(BaseEstimator):
-    """ A template estimator to be used as a reference implementation.
+    """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
     in the :ref:`User Guide <user_guide>`.
@@ -216,6 +217,7 @@ class ClassifierDetector(BaseEstimator):
     >>> estimator.fit(X, y)
     TemplateEstimator()
     """
+
     def __init__(self, classifier=None):
         self.classifier = classifier
 
@@ -241,11 +243,11 @@ class ClassifierDetector(BaseEstimator):
         clf = self.classifier
 
         clf.fit(X, y)
-        return clf.decision_function(X) * (y - .5)
-    
+        return clf.decision_function(X) * (y - 0.5)
+
 
 class VoGDetector(BaseEstimator):
-    """ A template estimator to be used as a reference implementation.
+    """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
     in the :ref:`User Guide <user_guide>`.
@@ -265,7 +267,8 @@ class VoGDetector(BaseEstimator):
     >>> estimator.fit(X, y)
     TemplateEstimator()
     """
-    def __init__(self, epsilon=.5, classifier=None):
+
+    def __init__(self, epsilon=0.5, classifier=None):
         self.epsilon = epsilon
         self.classifier = classifier
 
@@ -286,9 +289,10 @@ class VoGDetector(BaseEstimator):
             Returns self.
         """
         X, y = check_X_y(X, y, accept_sparse=True)
-        n = X.shape[0]; d = X.shape[1]
+        n = X.shape[0]
+        d = X.shape[1]
 
-        neigh = KNeighborsClassifier(n_neighbors=d+1)
+        neigh = KNeighborsClassifier(n_neighbors=d + 1)
         neigh.fit(X, y)
         neigh_dist, neigh_ind = neigh.kneighbors(X, return_distance=True)
 
@@ -297,13 +301,18 @@ class VoGDetector(BaseEstimator):
         diffs = []
         for i in range(d):
             # prepare vectors for finite differences
-            vecs_end = X + self.epsilon * (X[neigh_ind[:, i+1]] - X)
-            vecs_start = X # - self.epsilon * (X[neigh_ind, i+1]] - X)
-            lengths = np.sqrt(((vecs_end - vecs_start)**2).sum(axis=1))
+            vecs_end = X + self.epsilon * (X[neigh_ind[:, i + 1]] - X)
+            vecs_start = X  # - self.epsilon * (X[neigh_ind, i+1]] - X)
+            lengths = np.sqrt(((vecs_end - vecs_start) ** 2).sum(axis=1))
 
             # compute finite differences
-            diffs.append((self.classifier.decision_function(vecs_end) -
-                         self.classifier.decision_function(vecs_start)) / lengths)
+            diffs.append(
+                (
+                    self.classifier.decision_function(vecs_end)
+                    - self.classifier.decision_function(vecs_start)
+                )
+                / lengths
+            )
         diffs = np.array(diffs).T
 
         m = np.abs(diffs).sum(axis=1)
