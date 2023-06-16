@@ -5,6 +5,7 @@ import inspect
 import itertools
 import math
 import os
+import subprocess
 import sys
 import time
 import warnings
@@ -49,14 +50,14 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.model_selection import (
-    GridSearchCV,
-    StratifiedShuffleSplit,
     cross_val_score,
+    GridSearchCV,
     learning_curve,
+    StratifiedShuffleSplit,
     train_test_split,
 )
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import (
     KBinsDiscretizer,
     LabelEncoder,
@@ -161,6 +162,9 @@ output_dir = "output"
 os.makedirs(output_dir, exist_ok=True)
 
 for dataset_name, dataset in datasets:
+    dataset_output_dir = os.path.join(output_dir, dataset_name)
+    os.makedirs(dataset_output_dir, exist_ok=True)
+
     X, y = dataset
 
     if sp.issparse(X):
@@ -239,6 +243,9 @@ for dataset_name, dataset in datasets:
         dict_writer.writerow(stat)
 
     for noise, noise_ratios in noises.items():
+        final_output_dir = os.path.join(dataset_output_dir, noise)
+        os.makedirs(final_output_dir, exist_ok=True)
+
         for noise_ratio in noise_ratios:
             y_corrupted = make_label_noise(
                 y_train,
@@ -309,7 +316,9 @@ for dataset_name, dataset in datasets:
 
                     model = GridSearchCV(estimator=clf, param_grid=param_grid, cv=5)
 
+                    start = time.perf_counter()
                     model.fit(X_train, y_corrupted)
+                    end = time.perf_counter()
 
                     y_pred = model.predict(X_test)
                     y_proba = model.predict_proba(X_test)
@@ -334,6 +343,7 @@ for dataset_name, dataset in datasets:
 
                     res = {
                         "dataset_name": dataset_name,
+                        "noise": noise,
                         "noise_ratio": noise_ratio,
                         "accuracy": round(acc, 4),
                         "balanced_accuracy": round(bacc, 4),
@@ -344,14 +354,22 @@ for dataset_name, dataset in datasets:
                         "detector_name": detector_name,
                         "final_classifier_name": final_classifier_name,
                         "corrector_name": corrector_name,
+                        "fitting_time": end - start,
+                        "commit": subprocess.check_output(
+                            ["git", "rev-parse", "HEAD"]
+                        ).strip(),
                     }
                     print(res)
 
                     with open(
-                        os.path.join(output_dir, "results.csv"), "a+", newline=""
+                        os.path.join(final_output_dir, "results.csv"),
+                        "a+",
+                        newline="",
                     ) as output_file:
                         dict_writer = csv.DictWriter(output_file, res.keys())
-                        if not os.path.getsize(os.path.join(output_dir, "results.csv")):
+                        if not os.path.getsize(
+                            os.path.join(final_output_dir, "results.csv")
+                        ):
                             dict_writer.writeheader()
                         dict_writer.writerow(res)
 
