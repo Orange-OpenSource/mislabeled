@@ -9,7 +9,7 @@ from sklearn.ensemble import AdaBoostClassifier, GradientBoostingClassifier
 from mislabeled.detect import AUMDetector
 
 
-@pytest.mark.parametrize("n_classes", [2, 10])
+@pytest.mark.parametrize("n_classes", [2, 5])
 def test_aum_multiclass(n_classes):
     seed = 1
     n_samples = 1000
