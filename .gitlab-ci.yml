@@ -1,0 +1,96 @@
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+
+before_script:
+  - python -V 
+  - pip install -r requirements.txt
+  - pip install -r test-requirements.txt
+
+stages:
+  - quality
+  - test
+  - doc
+  - deploy
+
+.parallel:
+  parallel:
+    matrix:
+      - PYTHON_IMAGE: ['python:3.8','python:3.9','python:3.10']
+
+quality:
+  stage: quality
+  image: 'python:3.9'
+  script:
+    - make quality
+
+test:
+  stage: test
+  needs: [quality]
+  image: $PYTHON_IMAGE
+  script:
+    - make test-coverage
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    when: always
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+      junit: junit.xml
+  parallel: !reference [.parallel,parallel]
+
+# test-doc:
+#   stage: test
+#   needs: [quality]
+#   image: 'python:3.9'
+#   script:
+#     - pip install -r docs/doc_requirements.txt
+#     - pip install -e .
+#     - make docs
+
+# pages:
+#   stage: doc
+#   needs: [test-doc]
+#   image: 'python:3.9'
+#   script:
+#     - pip install -r docs/doc_requirements.txt
+#     - pip install -e .
+#     - make docs
+#     - mv docs/build/html public
+#   artifacts:
+#     paths:
+#     - public
+#   only:
+#     - main
+#     - tags
+    
+# .publish:
+#   stage: deploy
+#   needs: [test]
+#   image: 'python:3.9'
+#   script:
+#     - pip install twine
+#     - python setup.py sdist bdist_wheel
+#     - twine upload --repository-url $TWINE_REPOSITORY_URL dist/*
+
+# publish-unstable:
+#   extends: .publish
+#   variables:
+#     TWINE_REPOSITORY_URL: "https://repos.tech.orange/artifactory/api/pypi/mislabeled-local-pypi-unstable"
+#   only:
+#     - main
+#   except:
+#     - tags
+    
+# publish-release:
+#   extends: .publish
+#   variables:
+#     TWINE_REPOSITORY_URL: "https://repos.tech.orange/artifactory/api/pypi/mislabeled-local-pypi-stable"
+#   only:
+#     - tags
+#   except:
+#     - branches
