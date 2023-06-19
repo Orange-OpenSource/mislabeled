@@ -162,9 +162,6 @@ output_dir = "output"
 os.makedirs(output_dir, exist_ok=True)
 
 for dataset_name, dataset in datasets:
-    dataset_output_dir = os.path.join(output_dir, dataset_name)
-    os.makedirs(dataset_output_dir, exist_ok=True)
-
     X, y = dataset
 
     if sp.issparse(X):
@@ -243,8 +240,6 @@ for dataset_name, dataset in datasets:
         dict_writer.writerow(stat)
 
     for noise, noise_ratios in noises.items():
-        final_output_dir = os.path.join(dataset_output_dir, noise)
-        os.makedirs(final_output_dir, exist_ok=True)
 
         for noise_ratio in noise_ratios:
             y_corrupted = make_label_noise(
@@ -360,6 +355,12 @@ for dataset_name, dataset in datasets:
                         ).strip(),
                     }
                     print(res)
+
+                    detector_output_dir = os.path.join(output_dir, detector_name)
+                    os.makedirs(detector_output_dir, exist_ok=True)
+
+                    final_output_dir = os.path.join(detector_output_dir, noise)
+                    os.makedirs(final_output_dir, exist_ok=True)
 
                     with open(
                         os.path.join(final_output_dir, "results.csv"),
