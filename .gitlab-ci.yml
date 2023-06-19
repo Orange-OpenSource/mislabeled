@@ -43,54 +43,54 @@ test:
       junit: junit.xml
   parallel: !reference [.parallel,parallel]
 
-test-doc:
-  stage: test
-  needs: [quality]
-  image: 'python:3.9'
-  script:
-    - pip install -r docs/doc_requirements.txt
-    - pip install -e .
-    - make docs
+# test-doc:
+#   stage: test
+#   needs: [quality]
+#   image: 'python:3.9'
+#   script:
+#     - pip install -r docs/doc_requirements.txt
+#     - pip install -e .
+#     - make docs
 
-pages:
-  stage: doc
-  needs: [test-doc]
-  image: 'python:3.9'
-  script:
-    - pip install -r docs/doc_requirements.txt
-    - pip install -e .
-    - make docs
-    - mv docs/build/html public
-  artifacts:
-    paths:
-    - public
-  only:
-    - main
-    - tags
+# pages:
+#   stage: doc
+#   needs: [test-doc]
+#   image: 'python:3.9'
+#   script:
+#     - pip install -r docs/doc_requirements.txt
+#     - pip install -e .
+#     - make docs
+#     - mv docs/build/html public
+#   artifacts:
+#     paths:
+#     - public
+#   only:
+#     - main
+#     - tags
     
-.publish:
-  stage: deploy
-  needs: [test]
-  image: 'python:3.9'
-  script:
-    - pip install twine
-    - python setup.py sdist bdist_wheel
-    - twine upload --repository-url $TWINE_REPOSITORY_URL dist/*
+# .publish:
+#   stage: deploy
+#   needs: [test]
+#   image: 'python:3.9'
+#   script:
+#     - pip install twine
+#     - python setup.py sdist bdist_wheel
+#     - twine upload --repository-url $TWINE_REPOSITORY_URL dist/*
 
-publish-unstable:
-  extends: .publish
-  variables:
-    TWINE_REPOSITORY_URL: "https://repos.tech.orange/artifactory/api/pypi/mislabeled-local-pypi-unstable"
-  only:
-    - main
-  except:
-    - tags
+# publish-unstable:
+#   extends: .publish
+#   variables:
+#     TWINE_REPOSITORY_URL: "https://repos.tech.orange/artifactory/api/pypi/mislabeled-local-pypi-unstable"
+#   only:
+#     - main
+#   except:
+#     - tags
     
-publish-release:
-  extends: .publish
-  variables:
-    TWINE_REPOSITORY_URL: "https://repos.tech.orange/artifactory/api/pypi/mislabeled-local-pypi-stable"
-  only:
-    - tags
-  except:
-    - branches
+# publish-release:
+#   extends: .publish
+#   variables:
+#     TWINE_REPOSITORY_URL: "https://repos.tech.orange/artifactory/api/pypi/mislabeled-local-pypi-stable"
+#   only:
+#     - tags
+#   except:
+#     - branches
