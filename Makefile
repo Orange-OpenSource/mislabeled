@@ -1,4 +1,4 @@
-.PHONY: quality format test test-examples coverage docs
+.PHONY: quality format test test-coverage docs
 
 # Check that source code meets quality standards
 
@@ -10,23 +10,18 @@ quality:
 # Format source code automatically
 
 format:
-	isort examples mislabeled
 	black examples mislabeled
+	isort examples mislabeled
 
 # Run tests for the library
 
 test:
-	pytest -n auto --dist loadfile -s -v mislabeled
-
-# Run tests for examples
-
-test-examples:
-	pytest -n auto --dist loadfile -s -v examples
+	pytest -n auto --dist loadfile -s -v mislabeled/tests
 
 # Run code coverage
 
-coverage:
-	pytest --cov -n auto --cov-report xml --dist loadfile -s -v mislabeled
+test-coverage:
+	pytest --cov --cov-report term --cov-report xml --junitxml=junit.xml -n auto --dist loadfile -s -v mislabeled/tests
 
 # Check that docs can build
 

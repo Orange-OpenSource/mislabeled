@@ -50,7 +50,6 @@ class ConsensusDetector(BaseEstimator):
         """
         X, y = check_X_y(X, y, accept_sparse=True)
         n = X.shape[0]
-        n_by_split = int(n / self.n_splits)
         consistent_label = np.zeros(n)
 
         kf = KFold(n_splits=self.n_splits, shuffle=True)  # TODO rng
@@ -179,7 +178,6 @@ class InfluenceDetector(BaseEstimator):
         else:
             X_t = self.transform.fit_transform(X)
 
-        n = X_t.shape[0]
         d = X_t.shape[1]
 
         inv = np.linalg.inv(X_t.T @ X_t + np.identity(d) * self.alpha)
@@ -234,7 +232,6 @@ class ClassifierDetector(BaseEstimator):
             Returns self.
         """
         X, y = check_X_y(X, y, accept_sparse=True)
-        n = X.shape[0]
 
         clf = self.classifier
 
@@ -285,7 +282,6 @@ class VoGDetector(BaseEstimator):
             Returns self.
         """
         X, y = check_X_y(X, y, accept_sparse=True)
-        n = X.shape[0]
         d = X.shape[1]
 
         neigh = KNeighborsClassifier(n_neighbors=d + 1)
