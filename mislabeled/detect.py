@@ -8,7 +8,38 @@ from sklearn.utils.validation import check_X_y
 
 
 def get_margins(logits, y, labels=None):
-    # adapted from sklearn's implementation of hinge_loss
+    """
+    Binary or multiclass margin.
+
+    In binary class case, assuming labels in y_true are encoded with +1 and -1,
+    when a prediction mistake is made, ``margin = y_true * logits`` is
+    always negative (since the signs disagree), implying ``1 - margin`` is
+    always greater than 1.
+
+    In multiclass case, the function expects that either all the labels are
+    included in y_true or an optional labels argument is provided which
+    contains all the labels. The multilabel margin is calculated according
+    to Crammer-Singer's method.
+
+    This function is adapted from sklearn's implementation of hinge_loss
+
+    Parameters
+    ----------
+    y_true : array of shape (n_samples,)
+        True target, consisting of integers of two values. The positive label
+        must be greater than the negative label.
+
+    logits : array of shape (n_samples,) or (n_samples, n_classes)
+        Predicted logits, as output by decision_function (floats).
+
+    labels : array-like, default=None
+        Contains all the labels for the problem. Used in multiclass margin.
+
+    Returns
+    -------
+    margins : np.array
+        The margin for each example
+    """
 
     check_consistent_length(y, logits)
     logits = check_array(logits, ensure_2d=False)
