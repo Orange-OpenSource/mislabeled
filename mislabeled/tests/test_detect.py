@@ -30,7 +30,7 @@ def simple_detect_test(n_classes, detector):
         random_state=seed,
     )
 
-    random.seed(seed)
+    np.random.seed(seed)
 
     # picks one example of each class, and flips its label to the next class
     indices_mislabeled = []
