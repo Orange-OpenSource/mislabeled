@@ -43,8 +43,6 @@ def simple_detect_test(n_classes, detector):
 
     selected_untrusted = np.argsort(trust_scores)[:n_classes]
 
-    print(set(selected_untrusted), set(indices_mislabeled))
-
     assert set(selected_untrusted) == set(indices_mislabeled)
 
 
