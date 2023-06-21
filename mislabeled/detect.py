@@ -2,7 +2,71 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import KFold
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import LabelBinarizer, LabelEncoder
+from sklearn.utils import check_array, check_consistent_length, column_or_1d
 from sklearn.utils.validation import check_X_y
+
+
+def get_margins(logits, y, labels=None):
+    # adapted from sklearn's implementation of hinge_loss
+
+    check_consistent_length(y, logits)
+    logits = check_array(logits, ensure_2d=False)
+    y = column_or_1d(y)
+    y_unique = np.unique(labels if labels is not None else y)
+
+    if y_unique.size > 2:
+        if logits.ndim <= 1:
+            raise ValueError(
+                "The shape of logits cannot be 1d array"
+                "with a multiclass target. logits shape "
+                "must be (n_samples, n_classes), that is "
+                f"({y.shape[0]}, {y_unique.size})."
+                f" Got: {logits.shape}"
+            )
+
+        # logits.ndim > 1 is true
+        if y_unique.size != logits.shape[1]:
+            if labels is None:
+                raise ValueError(
+                    "Please include all labels in y or pass labels as third argument"
+                )
+            else:
+                raise ValueError(
+                    "The shape of logits is not "
+                    "consistent with the number of classes. "
+                    "With a multiclass target, logits "
+                    "shape must be "
+                    "(n_samples, n_classes), that is "
+                    f"({y.shape[0]}, {y_unique.size}). "
+                    f"Got: {logits.shape}"
+                )
+        if labels is None:
+            labels = y_unique
+        le = LabelEncoder()
+        le.fit(labels)
+        y = le.transform(y)
+        mask = np.ones_like(logits, dtype=bool)
+        mask[np.arange(y.shape[0]), y] = False
+        margin = logits[~mask]
+        margin -= np.max(logits[mask].reshape(y.shape[0], -1), axis=1)
+
+    else:
+        # Handles binary class case
+        # this code assumes that positive and negative labels
+        # are encoded as +1 and -1 respectively
+        logits = column_or_1d(logits)
+        logits = np.ravel(logits)
+
+        lbin = LabelBinarizer(neg_label=-1)
+        y = lbin.fit_transform(y)[:, 0]
+
+        try:
+            margin = y * logits
+        except TypeError:
+            raise TypeError("logits should be an array of floats.")
+
+    return margin
 
 
 class ConsensusDetector(BaseEstimator):
@@ -116,20 +180,7 @@ class AUMDetector(BaseEstimator):
         margins = np.zeros((clf.n_estimators, n))
 
         for i, logits in enumerate(clf.staged_decision_function(X)):
-            if logits.ndim == 1:
-                logits = np.stack([-logits, logits], axis=1)
-            # ???
-            elif logits.shape[1] == 1:
-                logits = np.hstack([-logits, logits])
-            y_pred = np.argmax(logits, axis=1)
-            assigned_logit = np.take_along_axis(
-                logits, y.reshape(-1, 1), axis=1
-            ).flatten()
-            # Maybe partition is better ?
-            logits.sort(axis=1)
-            largest_other_logit = np.where(y == y_pred, logits[:, -2], logits[:, -1])
-            margin = assigned_logit - largest_other_logit
-            margins[i] = margin
+            margins[i] = get_margins(logits, y)
 
         return margins.sum(axis=0)
 
@@ -177,19 +228,15 @@ class InfluenceDetector(BaseEstimator):
             Returns self.
         """
         X, y = check_X_y(X, y, accept_sparse=True)
-        if self.transform is None:
-            X_t = X
-        else:
-            X_t = self.transform.fit_transform(X)
+        if self.transform is not None:
+            X = self.transform.fit_transform(X)
 
-        d = X_t.shape[1]
+        d = X.shape[1]
 
-        inv = np.linalg.inv(X_t.T @ X_t + np.identity(d) * self.alpha)
-        H = X_t @ inv @ X_t.T
-        y_cent = y - 0.5  # TODO multiclass
+        inv = np.linalg.inv(X.T @ X + np.identity(d) * self.alpha)
+        H = X @ inv @ X.T
 
-        J = y_cent.reshape(-1, 1) * H * y_cent.reshape(1, -1)
-        m = (J * (y.reshape(-1, 1) == y.reshape(1, -1))).sum(axis=1)
+        m = (H * (y.reshape(-1, 1) == y.reshape(1, -1))).sum(axis=1)
 
         return m
 
@@ -240,7 +287,7 @@ class ClassifierDetector(BaseEstimator):
         clf = self.classifier
 
         clf.fit(X, y)
-        return clf.decision_function(X) * (y - 0.5)
+        return get_margins(clf.decision_function(X), y)
 
 
 class VoGDetector(BaseEstimator):
