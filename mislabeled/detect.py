@@ -1,9 +1,15 @@
+import numbers
+
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import KFold
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelBinarizer, LabelEncoder
-from sklearn.utils import check_array, check_consistent_length, column_or_1d
+from sklearn.utils import (
+    check_array,
+    check_consistent_length,
+    check_random_state,
+    column_or_1d,
+)
 from sklearn.utils.validation import check_X_y
 
 
@@ -321,34 +327,40 @@ class ClassifierDetector(BaseEstimator):
         return get_margins(clf.decision_function(X), y)
 
 
-class VoGDetector(BaseEstimator):
-    """A template estimator to be used as a reference implementation.
-
-    For more information regarding how to build your own estimator, read more
-    in the :ref:`User Guide <user_guide>`.
+class InputSensitivityDetector(BaseEstimator):
+    """Detects likely mislabeled examples based on local smoothness of an overfitted
+    classifier. Smoothness is measured using an estimate of the gradients around
+    candidate examples using finite differences.
 
     Parameters
     ----------
-    demo_param : str, default='demo_param'
-        A parameter used for demonstation of how to pass and store paramters.
+    epsilon : float, default=1e-1
+        The length of the vectors used in the finite differences
 
-    Examples
-    --------
-    >>> from mislabeled import AUMDetector
-    >>> import numpy as np
-    >>> X = np.arange(100).reshape(100, 1)
-    >>> y = np.zeros((100, ))
-    >>> estimator = TemplateEstimator()
-    >>> estimator.fit(X, y)
-    TemplateEstimator()
+    n_directions : int or float, default=10
+        The number of random directions sampled in order to estimate the smoothness
+
+            - If int, then draws `n_directions` directions
+            - If float, then draws `n_directions * n_features_in_` directions
+
+    classifier : Estimator object
+        The classifier used to overfit the examples
+
+    random_state : int, RandomState instance or None, default=None
+        Pseudo random number generator state used for random uniform sampling
+        from lists of possible values instead of scipy.stats distributions.
+        Pass an int for reproducible output across multiple
+        function calls.
     """
 
-    def __init__(self, epsilon=0.5, classifier=None):
+    def __init__(self, epsilon=1e-1, n_directions=10, classifier=None, random_state=0):
         self.epsilon = epsilon
         self.classifier = classifier
+        self.n_directions = n_directions
+        self.random_state = random_state
 
     def trust_score(self, X, y):
-        """A reference implementation of a fitting function.
+        """Returns individual trust scores for examples passed as argument
 
         Parameters
         ----------
@@ -360,35 +372,42 @@ class VoGDetector(BaseEstimator):
 
         Returns
         -------
-        self : object
-            Returns self.
+        scores : np.array
+            The trust scores for examples in (X, y)
         """
         X, y = check_X_y(X, y, accept_sparse=True)
-        d = X.shape[1]
+        random_state = check_random_state(self.random_state)
 
-        neigh = KNeighborsClassifier(n_neighbors=d + 1)
-        neigh.fit(X, y)
-        neigh_dist, neigh_ind = neigh.kneighbors(X, return_distance=True)
+        if isinstance(self.n_directions, numbers.Integral):
+            n_directions = self.n_directions
+        else:
+            # treat as float
+            n_directions = round(self.n_directions * X.shape[1])
+
+        n = X.shape[0]
+        d = X.shape[1]
 
         self.classifier.fit(X, y)
 
         diffs = []
-        for i in range(d):
+
+        for i in range(n_directions):
             # prepare vectors for finite differences
-            vecs_end = X + self.epsilon * (X[neigh_ind[:, i + 1]] - X)
-            vecs_start = X  # - self.epsilon * (X[neigh_ind, i+1]] - X)
-            lengths = np.sqrt(((vecs_end - vecs_start) ** 2).sum(axis=1))
+            delta_x = random_state.normal(0, 1, size=(n, d))
+            delta_x /= np.linalg.norm(delta_x, axis=1, keepdims=True)
+            vecs_end = X + self.epsilon * delta_x
+            vecs_start = X
 
             # compute finite differences
             diffs.append(
                 (
-                    self.classifier.decision_function(vecs_end)
-                    - self.classifier.decision_function(vecs_start)
+                    get_margins(self.classifier.decision_function(vecs_end), y)
+                    - get_margins(self.classifier.decision_function(vecs_start), y)
                 )
-                / lengths
+                / self.epsilon
             )
         diffs = np.array(diffs).T
 
-        m = np.abs(diffs).sum(axis=1)
+        m = np.sum(diffs**2, axis=1)
 
         return m.max() - m
