@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from sklearn.datasets import make_blobs
@@ -48,17 +47,7 @@ def simple_detect_test(n_classes, detector):
 
     trust_scores = detector.trust_score(X, y)
 
-    plt.scatter(
-        X[:, 0], X[:, 1], c=y, s=1 / trust_scores / np.mean(1 / trust_scores) * 20
-    )
-    plt.savefig(f"n_classes_{n_classes}_detector_{detector.__class__.__name__}")
-    plt.clf()
-
     selected_untrusted = np.argsort(trust_scores)[:n_classes]
-
-    order = trust_scores.argsort()
-    ranks = order.argsort()
-    print(ranks[indices_mislabeled])
 
     assert set(selected_untrusted) == set(indices_mislabeled)
 
@@ -110,7 +99,7 @@ def test_outlier(n_classes):
 
 
 def test_kmm_detectors(n_classes):
-    detector = KMMDetector(kernel="rbf")
+    detector = KMMDetector()
     simple_detect_test(n_classes, detector)
 
 

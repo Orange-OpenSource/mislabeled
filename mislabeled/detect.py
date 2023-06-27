@@ -4,10 +4,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 from bqlearn.density_ratio import kmm, pdr
 from joblib import delayed, Parallel
-from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
-from sklearn.calibration import check_classification_targets
-from sklearn.dummy import class_distribution
-from sklearn.linear_model import LogisticRegression
+from sklearn.base import BaseEstimator, MetaEstimatorMixin
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelBinarizer, LabelEncoder
 from sklearn.utils import (
@@ -672,7 +669,7 @@ class KMMDetector(DRDetector):
 
     def _density_ratio(self, X_c, X):
         # TODO implement batching (or here true kmm ensembling) ...
-        return kmm(
+        density_ratio = kmm(
             X_c,
             X,
             kernel=self.kernel,
@@ -683,3 +680,6 @@ class KMMDetector(DRDetector):
             tol=self.tol,
             n_jobs=self.n_jobs,
         )
+        # Numerical errors linked to the solver
+        np.clip(density_ratio, np.finfo(X.dtype).eps, self.B, out=density_ratio)
+        return density_ratio
