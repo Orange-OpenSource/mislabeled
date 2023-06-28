@@ -1,7 +1,11 @@
 import numpy as np
 import pytest
 from sklearn.datasets import make_blobs
-from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
+from sklearn.ensemble import (
+    GradientBoostingClassifier,
+    HistGradientBoostingClassifier,
+    IsolationForest,
+)
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
@@ -13,6 +17,7 @@ from mislabeled.detect import (
     ConsensusDetector,
     InfluenceDetector,
     InputSensitivityDetector,
+    OutlierDetector,
 )
 
 
@@ -83,4 +88,10 @@ def test_i_sensitivity_multiclass(n_classes):
         n_directions=5.5,
         classifier=HistGradientBoostingClassifier(),
     )
+    simple_detect_test(n_classes, detector)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+def test_outlier(n_classes):
+    detector = OutlierDetector(estimator=IsolationForest())
     simple_detect_test(n_classes, detector)
