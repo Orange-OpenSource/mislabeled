@@ -1,7 +1,7 @@
 import numpy as np
 from joblib import delayed, Parallel
 from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
-from sklearn.calibration import LabelEncoder
+from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 

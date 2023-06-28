@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.base import check_array
-from sklearn.calibration import check_consistent_length, column_or_1d, LabelEncoder
-from sklearn.naive_bayes import LabelBinarizer
+from sklearn.preprocessing import LabelBinarizer, LabelEncoder
+from sklearn.utils import check_consistent_length, column_or_1d
 
 
 def get_margins(logits, y, labels=None):
