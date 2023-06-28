@@ -1,19 +1,34 @@
 import numpy as np
+from sklearn import clone
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.pipeline import check_memory
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 
+def _trust_score(detector, X, y):
+    return detector.trust_score(X, y)
+
+
 class FilterClassifier(ClassifierMixin, BaseEstimator):
-    """An example classifier which implements a 1-NN algorithm.
-
-    For more information regarding how to build your own classifier, read more
-    in the :ref:`User Guide <user_guide>`.
-
+    """
     Parameters
     ----------
-    demo_param : str, default='demo'
-        A parameter used for demonstation of how to pass and store paramters.
+    detector : object
+
+    classifier: object
+
+    trust_proportion: float, default=0.5
+
+    memory : str or object with the joblib.Memory interface, default=None
+        Used to cache the fitted transformers of the pipeline. By default,
+        no caching is performed. If a string is given, it is the path to
+        the caching directory. Enabling caching triggers a clone of
+        the transformers before fitting. Therefore, the transformer
+        instance given to the pipeline cannot be inspected
+        directly. Use the attribute ``named_steps`` or ``steps`` to
+        inspect estimators within the pipeline. Caching the
+        transformers is advantageous when fitting is time consuming.
 
     Attributes
     ----------
@@ -25,10 +40,11 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
         The classes seen at :meth:`fit`.
     """
 
-    def __init__(self, detector=None, classifier=None, trust_proportion=0.5):
+    def __init__(self, detector, classifier, *, trust_proportion=0.5, memory=None):
         self.detector = detector
         self.classifier = classifier
         self.trust_proportion = trust_proportion
+        self.memory = memory
 
     def fit(self, X, y):
         """A reference implementation of a fitting function for a classifier.
@@ -51,13 +67,21 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
         self.classes_ = unique_labels(y)
         n = X.shape[0]
 
-        trust_scores = self.detector.trust_score(X, y)
+        memory = check_memory(self.memory)
+
+        _trust_score_cached = memory.cache(_trust_score)
+
+        self.detector_ = clone(self.detector)
+
+        trust_scores = _trust_score_cached(self.detector_, X, y)
+
         indices_rank = np.argsort(trust_scores)[::-1]
 
         # only keep most trusted examples
         trusted = indices_rank[: int(n * self.trust_proportion)]
 
-        self.classifier.fit(X[trusted], y[trusted])
+        self.classifier_ = clone(self.classifier)
+        self.classifier_.fit(X[trusted], y[trusted])
 
         # Return the classifier
         return self
@@ -77,17 +101,17 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
             seen during fit.
         """
         # Check is fit had been called
-        check_is_fitted(self.classifier)
+        check_is_fitted(self.classifier_)
 
         # Input validation
         X = check_array(X)
 
-        return self.classifier.predict(X)
+        return self.classifier_.predict(X)
 
     def predict_proba(self, X):
-        check_is_fitted(self.classifier)
+        check_is_fitted(self.classifier_)
 
         # Input validation
         X = check_array(X)
 
-        return self.classifier.predict_proba(X)
+        return self.classifier_.predict_proba(X)
