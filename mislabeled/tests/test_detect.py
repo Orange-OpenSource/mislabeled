@@ -99,7 +99,7 @@ def test_outlier(n_classes):
 
 
 def test_kmm_detectors(n_classes):
-    detector = KMMDetector()
+    detector = KMMDetector(n_jobs=-1, kernel_params=dict(gamma=0.001))
     simple_detect_test(n_classes, detector)
 
 

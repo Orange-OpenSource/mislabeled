@@ -506,7 +506,7 @@ class DRDetector(BaseEstimator, metaclass=ABCMeta):
 
         def compute_density_ratio(self, X, c):
             X_c = X[safe_mask(X, y == c)]
-            return self._density_ratio(X_c, X)
+            return self._density_ratio(X, X_c)[y == c]
 
         per_class_density_ratio = Parallel(n_jobs=self.n_jobs)(
             delayed(compute_density_ratio)(self, X, c) for c in classes
@@ -515,7 +515,7 @@ class DRDetector(BaseEstimator, metaclass=ABCMeta):
         score_samples = np.empty(n_samples)
 
         for i, c in enumerate(classes):
-            score_samples[y == c] = class_prior[i] / per_class_density_ratio[i]
+            score_samples[y == c] = class_prior[i] * per_class_density_ratio[i]
 
         return score_samples
 
@@ -681,5 +681,5 @@ class KMMDetector(DRDetector):
             n_jobs=self.n_jobs,
         )
         # Numerical errors linked to the solver
-        np.clip(density_ratio, np.finfo(X.dtype).eps, self.B, out=density_ratio)
+        # np.clip(density_ratio, np.finfo(X.dtype).eps, self.B, out=density_ratio)
         return density_ratio
