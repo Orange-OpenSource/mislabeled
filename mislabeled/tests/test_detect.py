@@ -17,7 +17,9 @@ from mislabeled.detect import (
     ConsensusDetector,
     InfluenceDetector,
     InputSensitivityDetector,
+    KMMDetector,
     OutlierDetector,
+    PDRDetector,
 )
 
 
@@ -94,4 +96,18 @@ def test_i_sensitivity_multiclass(n_classes):
 @pytest.mark.parametrize("n_classes", [2, 5])
 def test_outlier(n_classes):
     detector = OutlierDetector(estimator=IsolationForest())
+    simple_detect_test(n_classes, detector)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+def test_kmm_detectors(n_classes):
+    detector = KMMDetector(n_jobs=-1, kernel_params=dict(gamma=0.001))
+    simple_detect_test(n_classes, detector)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+def test_pdr_detectors(n_classes):
+    detector = PDRDetector(
+        make_pipeline(RBFSampler(gamma="scale"), LogisticRegression())
+    )
     simple_detect_test(n_classes, detector)
