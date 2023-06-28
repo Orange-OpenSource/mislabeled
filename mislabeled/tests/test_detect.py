@@ -98,7 +98,7 @@ def test_outlier(n_classes):
     detector = OutlierDetector(estimator=IsolationForest())
     simple_detect_test(n_classes, detector)
 
-
+@pytest.mark.parametrize("n_classes", [2, 5])
 def test_kmm_detectors(n_classes):
     detector = KMMDetector(n_jobs=-1, kernel_params=dict(gamma=0.001))
     simple_detect_test(n_classes, detector)
