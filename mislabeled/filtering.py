@@ -101,17 +101,17 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
             seen during fit.
         """
         # Check is fit had been called
-        check_is_fitted(self.classifier)
+        check_is_fitted(self.classifier_)
 
         # Input validation
         X = check_array(X)
 
-        return self.classifier.predict(X)
+        return self.classifier_.predict(X)
 
     def predict_proba(self, X):
-        check_is_fitted(self.classifier)
+        check_is_fitted(self.classifier_)
 
         # Input validation
         X = check_array(X)
 
-        return self.classifier.predict_proba(X)
+        return self.classifier_.predict_proba(X)

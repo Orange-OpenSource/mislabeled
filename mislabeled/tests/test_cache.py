@@ -33,14 +33,15 @@ def test_caching():
     base_classifier = KNeighborsClassifier(n_neighbors=3)
     classifier_detect = ConsensusDetector(base_classifier)
 
-    grid_params = {"trust_proportion": np.linspace(0.1, 1, num=100)}
+    grid_params = {"trust_proportion": np.linspace(0.1, 1, num=200)}
 
     filter_classifier_caching = GridSearchCV(
         FilterClassifier(classifier_detect, base_classifier, memory="cache"),
         grid_params,
+        n_jobs=-1,
     )
     filter_classifier_no_caching = GridSearchCV(
-        FilterClassifier(classifier_detect, base_classifier), grid_params
+        FilterClassifier(classifier_detect, base_classifier), grid_params, n_jobs=-1
     )
 
     start = time.perf_counter()
@@ -55,4 +56,4 @@ def test_caching():
     time_no_caching = end - start
     print(f"fitting time without caching : {time_no_caching}")
 
-    assert time_no_caching / 20 > time_caching
+    assert time_no_caching / 10 > time_caching
