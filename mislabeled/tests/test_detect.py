@@ -96,6 +96,7 @@ def test_i_sensitivity_multiclass(n_classes):
 @pytest.mark.parametrize("n_classes", [2, 5])
 def test_outlier(n_classes):
     detector = OutlierDetector(estimator=IsolationForest())
+    simple_detect_test(n_classes, detector)
 
 
 def test_kmm_detectors(n_classes):

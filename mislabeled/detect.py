@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 from bqlearn.density_ratio import kmm, pdr
 from joblib import delayed, Parallel
-from sklearn.base import BaseEstimator, MetaEstimatorMixin
+from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelBinarizer, LabelEncoder
 from sklearn.utils import (
