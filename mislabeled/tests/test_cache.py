@@ -7,7 +7,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from mislabeled.detect import ConsensusDetector
 from mislabeled.filtering import FilterClassifier
 
-from .common import blobs_1_mislabeled
+from .utils import blobs_1_mislabeled
 
 
 def test_caching():

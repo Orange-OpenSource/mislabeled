@@ -21,7 +21,7 @@ from mislabeled.detect import (
     PDRDetector,
 )
 
-from .common import blobs_1_mislabeled
+from .utils import blobs_1_mislabeled
 
 
 def simple_detect_test(n_classes, detector):
