@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
+from sklearn.model_selection import cross_validate, LeaveOneOut
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.validation import _num_samples
 
@@ -9,9 +10,11 @@ class NaiveComplexityDetector(BaseEstimator, MetaEstimatorMixin):
     to not fitting it ?
     """
 
-    def __init__(self, estimator, get_complexity):
+    def __init__(self, estimator, get_complexity, *, n_jobs=-1):
         self.estimator = estimator
         self.get_complexity = get_complexity
+
+        self.n_jobs = n_jobs
 
     def trust_score(self, X, y):
         """A reference implementation of a fitting function.
@@ -30,18 +33,17 @@ class NaiveComplexityDetector(BaseEstimator, MetaEstimatorMixin):
             Returns self.
         """
         X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
-        n_samples = _num_samples(X)
 
-        complexity = []
-        for i in range(n_samples):
-            estimator_loo = clone(self.estimator)
+        scores = cross_validate(
+            self.estimator,
+            X,
+            y,
+            cv=LeaveOneOut(),
+            scoring=lambda est, X, y: self.get_complexity(est),
+            n_jobs=self.n_jobs,
+        )
 
-            mask = np.arange(n_samples) != i
-
-            estimator_loo.fit(X[mask, :], y[mask])
-            complexity.append(self.get_complexity(estimator_loo))
-
-        return np.array(complexity)
+        return scores["test_score"]
 
 
 class DecisionTreeComplexityDetector(BaseEstimator, MetaEstimatorMixin):
