@@ -1,16 +1,31 @@
+import math
+
 import numpy as np
 from sklearn import clone
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, MetaEstimatorMixin
 from sklearn.pipeline import check_memory
+from sklearn.utils.metaestimators import available_if
 from sklearn.utils.multiclass import unique_labels
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.validation import _num_samples, check_is_fitted
+
+
+def _estimator_has(attr):
+    """Check if we can delegate a method to the underlying estimator.
+    First, we check the first fitted final estimator if available, otherwise we
+    check the unfitted final estimator.
+    """
+    return lambda self: (
+        hasattr(self.estimator_, attr)
+        if hasattr(self, "estimator_")
+        else hasattr(self.estimator, attr)
+    )
 
 
 def _trust_score(detector, X, y):
     return detector.trust_score(X, y)
 
 
-class FilterClassifier(ClassifierMixin, BaseEstimator):
+class FilterClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin):
     """
     Parameters
     ----------
@@ -40,9 +55,9 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
         The classes seen at :meth:`fit`.
     """
 
-    def __init__(self, detector, classifier, *, trust_proportion=0.5, memory=None):
+    def __init__(self, detector, estimator, *, trust_proportion=0.5, memory=None):
         self.detector = detector
-        self.classifier = classifier
+        self.estimator = estimator
         self.trust_proportion = trust_proportion
         self.memory = memory
 
@@ -62,10 +77,11 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
             Returns self.
         """
         # Check that X and y have correct shape
-        X, y = check_X_y(X, y)
+        X, y = self._validate_data(X, y)
         # Store the classes seen during fit
         self.classes_ = unique_labels(y)
-        n = X.shape[0]
+
+        n_samples = _num_samples(X)
 
         memory = check_memory(self.memory)
 
@@ -78,14 +94,20 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
         indices_rank = np.argsort(trust_scores)[::-1]
 
         # only keep most trusted examples
-        trusted = indices_rank[: int(n * self.trust_proportion)]
+        trusted = indices_rank[: math.ceil(n_samples * self.trust_proportion)]
 
-        self.classifier_ = clone(self.classifier)
-        self.classifier_.fit(X[trusted], y[trusted])
+        self.estimator_ = clone(self.estimator)
+        self.estimator_.fit(X[trusted], y[trusted])
+
+        if hasattr(self.estimator_, "n_features_in_"):
+            self.n_features_in_ = self.estimator_.n_features_in_
+        if hasattr(self.estimator_, "feature_names_in_"):
+            self.feature_names_in_ = self.estimator_.feature_names_in_
 
         # Return the classifier
         return self
 
+    @available_if(_estimator_has("predict"))
     def predict(self, X):
         """A reference implementation of a prediction for a classifier.
 
@@ -101,17 +123,25 @@ class FilterClassifier(ClassifierMixin, BaseEstimator):
             seen during fit.
         """
         # Check is fit had been called
-        check_is_fitted(self.classifier_)
 
-        # Input validation
-        X = check_array(X)
+        check_is_fitted(self)
+        return self.estimator_.predict(X)
 
-        return self.classifier_.predict(X)
-
+    @available_if(_estimator_has("predict_proba"))
     def predict_proba(self, X):
-        check_is_fitted(self.classifier_)
+        check_is_fitted(self)
+        return self.estimator_.predict_proba(X)
 
-        # Input validation
-        X = check_array(X)
+    @available_if(_estimator_has("decision_function"))
+    def decision_function(self, X):
+        check_is_fitted(self)
+        return self.estimator_.decision_function(X)
 
-        return self.classifier_.predict_proba(X)
+    def _more_tags(self):
+        return {
+            "_xfail_checks": {
+                "check_parameters_default_constructible": (
+                    "no default detector at the moment"
+                ),
+            },
+        }
