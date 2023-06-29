@@ -67,7 +67,7 @@ from sklearn.preprocessing import (
 from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.detect import AUMDetector, ConsensusDetector, InfluenceDetector
-from mislabeled.filtering import FilterClassifier
+from mislabeled.handle._filter import FilterClassifier
 
 # %%
 
