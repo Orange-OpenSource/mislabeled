@@ -1,9 +1,10 @@
 import numpy as np
-from sklearn.base import BaseEstimator, check_X_y
-from sklearn.model_selection import KFold
+from sklearn.base import BaseEstimator, MetaEstimatorMixin
+from sklearn.model_selection import cross_val_predict
+from sklearn.utils.validation import _num_samples
 
 
-class ConsensusDetector(BaseEstimator):
+class ConsensusDetector(BaseEstimator, MetaEstimatorMixin):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -25,10 +26,11 @@ class ConsensusDetector(BaseEstimator):
     TemplateEstimator()
     """
 
-    def __init__(self, classifier=None, n_splits=4, n_cvs=4):
-        self.classifier = classifier
-        self.n_cvs = n_cvs
-        self.n_splits = n_splits
+    def __init__(self, estimator, *, n_rounds=5, cv=None, n_jobs=None):
+        self.estimator = estimator
+        self.n_rounds = n_rounds
+        self.cv = cv
+        self.n_jobs = n_jobs
 
     def trust_score(self, X, y):
         """A reference implementation of a fitting function.
@@ -46,17 +48,20 @@ class ConsensusDetector(BaseEstimator):
         self : object
             Returns self.
         """
-        X, y = check_X_y(X, y, accept_sparse=True)
-        n = X.shape[0]
-        consistent_label = np.zeros(n)
+        X, y = self._validate_data(X, y, accept_sparse=True)
 
-        kf = KFold(n_splits=self.n_splits, shuffle=True)  # TODO rng
+        n_samples = _num_samples(X)
 
-        for i in range(self.n_cvs):
-            for i_train, i_val in kf.split(X):
-                self.classifier.fit(X[i_train, :], y[i_train])
+        consensus = np.empty((n_samples, self.n_rounds))
 
-                y_pred = self.classifier.predict(X[i_val])
-                consistent_label[i_val] += (y[i_val] == y_pred).astype(int)
+        for i in range(self.n_rounds):
+            y_pred = cross_val_predict(
+                self.estimator,
+                X,
+                y,
+                cv=self.cv,
+                n_jobs=self.n_jobs,
+            )
+            consensus[:, i] = y_pred == y
 
-        return consistent_label / self.n_cvs
+        return np.mean(consensus, axis=1)

@@ -1,9 +1,9 @@
-from sklearn.base import BaseEstimator, check_X_y
+from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 
 from .utils import get_margins
 
 
-class ClassifierDetector(BaseEstimator):
+class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -25,8 +25,8 @@ class ClassifierDetector(BaseEstimator):
     TemplateEstimator()
     """
 
-    def __init__(self, classifier=None):
-        self.classifier = classifier
+    def __init__(self, estimator):
+        self.estimator = estimator
 
     def trust_score(self, X, y):
         """A reference implementation of a fitting function.
@@ -44,9 +44,9 @@ class ClassifierDetector(BaseEstimator):
         self : object
             Returns self.
         """
-        X, y = check_X_y(X, y, accept_sparse=True)
+        X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
 
-        clf = self.classifier
+        self.estimator_ = clone(self.estimator)
 
-        clf.fit(X, y)
-        return get_margins(clf.decision_function(X), y)
+        self.estimator_.fit(X, y)
+        return get_margins(self.estimator_.decision_function(X), y)

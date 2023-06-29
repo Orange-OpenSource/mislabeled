@@ -1,13 +1,13 @@
 import numbers
 
 import numpy as np
-from sklearn.base import BaseEstimator, check_X_y
+from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 from sklearn.dummy import check_random_state
 
 from .utils import get_margins
 
 
-class InputSensitivityDetector(BaseEstimator):
+class InputSensitivityDetector(BaseEstimator, MetaEstimatorMixin):
     """Detects likely mislabeled examples based on local smoothness of an overfitted
     classifier. Smoothness is measured using an estimate of the gradients around
     candidate examples using finite differences.
@@ -33,9 +33,9 @@ class InputSensitivityDetector(BaseEstimator):
         function calls.
     """
 
-    def __init__(self, epsilon=1e-1, n_directions=10, classifier=None, random_state=0):
+    def __init__(self, estimator, *, epsilon=1e-1, n_directions=10, random_state=0):
+        self.estimator = estimator
         self.epsilon = epsilon
-        self.classifier = classifier
         self.n_directions = n_directions
         self.random_state = random_state
 
@@ -55,7 +55,7 @@ class InputSensitivityDetector(BaseEstimator):
         scores : np.array
             The trust scores for examples in (X, y)
         """
-        X, y = check_X_y(X, y, accept_sparse=True)
+        X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
         random_state = check_random_state(self.random_state)
 
         if isinstance(self.n_directions, numbers.Integral):
@@ -67,7 +67,8 @@ class InputSensitivityDetector(BaseEstimator):
         n = X.shape[0]
         d = X.shape[1]
 
-        self.classifier.fit(X, y)
+        self.estimator_ = clone(self.estimator)
+        self.estimator_.fit(X, y)
 
         diffs = []
 
@@ -81,8 +82,8 @@ class InputSensitivityDetector(BaseEstimator):
             # compute finite differences
             diffs.append(
                 (
-                    get_margins(self.classifier.decision_function(vecs_end), y)
-                    - get_margins(self.classifier.decision_function(vecs_start), y)
+                    get_margins(self.estimator_.decision_function(vecs_end), y)
+                    - get_margins(self.estimator_.decision_function(vecs_start), y)
                 )
                 / self.epsilon
             )

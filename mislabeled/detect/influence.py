@@ -1,5 +1,6 @@
 import numpy as np
-from sklearn.base import BaseEstimator, check_X_y
+from sklearn.base import BaseEstimator, clone
+from sklearn.utils.validation import _num_features
 
 
 class InfluenceDetector(BaseEstimator):
@@ -24,7 +25,7 @@ class InfluenceDetector(BaseEstimator):
     TemplateEstimator()
     """
 
-    def __init__(self, alpha=1.0, transform=None):
+    def __init__(self, transform=None, *, alpha=1.0):
         self.alpha = alpha
         self.transform = transform
 
@@ -44,13 +45,15 @@ class InfluenceDetector(BaseEstimator):
         self : object
             Returns self.
         """
-        X, y = check_X_y(X, y, accept_sparse=True)
+        X, y = self._validate_data(X, y, accept_sparse=True)
+
         if self.transform is not None:
-            X = self.transform.fit_transform(X)
+            transform = clone(self.transform)
+            X = transform.fit_transform(X)
 
-        d = X.shape[1]
+        n_features = _num_features(X)
 
-        inv = np.linalg.inv(X.T @ X + np.identity(d) * self.alpha)
+        inv = np.linalg.inv(X.T @ X + np.identity(n_features) * self.alpha)
         H = X @ inv @ X.T
 
         m = (H * (y.reshape(-1, 1) == y.reshape(1, -1))).sum(axis=1)
