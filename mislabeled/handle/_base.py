@@ -1,12 +1,10 @@
-import math
+from abc import ABCMeta, abstractmethod
 
-import numpy as np
-from sklearn import clone
-from sklearn.base import BaseEstimator, ClassifierMixin, MetaEstimatorMixin
-from sklearn.pipeline import check_memory
+from sklearn.base import BaseEstimator, ClassifierMixin, clone, MetaEstimatorMixin
+from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.metaestimators import available_if
-from sklearn.utils.multiclass import unique_labels
-from sklearn.utils.validation import _num_samples, check_is_fitted
+from sklearn.utils.multiclass import check_classification_targets
+from sklearn.utils.validation import check_is_fitted, check_memory
 
 
 def _estimator_has(attr):
@@ -25,7 +23,9 @@ def _trust_score(detector, X, y):
     return detector.trust_score(X, y)
 
 
-class FilterClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin):
+class BaseHandleClassifier(
+    BaseEstimator, ClassifierMixin, MetaEstimatorMixin, metaclass=ABCMeta
+):
     """
     Parameters
     ----------
@@ -55,10 +55,10 @@ class FilterClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin):
         The classes seen at :meth:`fit`.
     """
 
-    def __init__(self, detector, estimator, *, trust_proportion=0.5, memory=None):
+    @abstractmethod
+    def __init__(self, detector, estimator, *, memory=None):
         self.detector = detector
         self.estimator = estimator
-        self.trust_proportion = trust_proportion
         self.memory = memory
 
     def fit(self, X, y):
@@ -78,10 +78,13 @@ class FilterClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin):
         """
         # Check that X and y have correct shape
         X, y = self._validate_data(X, y)
-        # Store the classes seen during fit
-        self.classes_ = unique_labels(y)
 
-        n_samples = _num_samples(X)
+        check_classification_targets(y)
+
+        # Store the classes seen during fit
+        self.le_ = LabelEncoder().fit(y)
+        y = self.le_.transform(y)
+        self.classes_ = self.le_.classes_
 
         memory = check_memory(self.memory)
 
@@ -91,13 +94,10 @@ class FilterClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin):
 
         trust_scores = _trust_score_cached(self.detector_, X, y)
 
-        indices_rank = np.argsort(trust_scores)[::-1]
-
-        # only keep most trusted examples
-        trusted = indices_rank[: math.ceil(n_samples * self.trust_proportion)]
+        X, y, fit_params = self.handle(X, y, trust_scores)
 
         self.estimator_ = clone(self.estimator)
-        self.estimator_.fit(X[trusted], y[trusted])
+        self.estimator_.fit(X, y, **fit_params)
 
         if hasattr(self.estimator_, "n_features_in_"):
             self.n_features_in_ = self.estimator_.n_features_in_
@@ -106,6 +106,10 @@ class FilterClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin):
 
         # Return the classifier
         return self
+
+    @abstractmethod
+    def handle(self, X, y, trust_scores):
+        """"""
 
     @available_if(_estimator_has("predict"))
     def predict(self, X):
@@ -125,7 +129,7 @@ class FilterClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin):
         # Check is fit had been called
 
         check_is_fitted(self)
-        return self.estimator_.predict(X)
+        return self.le_.inverse_transform(self.estimator_.predict(X))
 
     @available_if(_estimator_has("predict_proba"))
     def predict_proba(self, X):

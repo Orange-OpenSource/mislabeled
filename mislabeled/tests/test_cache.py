@@ -5,7 +5,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.neighbors import KNeighborsClassifier
 
 from mislabeled.detect import ConsensusDetector
-from mislabeled.filtering import FilterClassifier
+from mislabeled.handle import FilterClassifier
 
 from .utils import blobs_1_mislabeled
 
