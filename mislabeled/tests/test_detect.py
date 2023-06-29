@@ -14,6 +14,7 @@ from sklearn.tree import DecisionTreeClassifier
 from mislabeled.detect import (
     AUMDetector,
     ClassifierDetector,
+    ComplexityDetector,
     ConsensusDetector,
     InfluenceDetector,
     InputSensitivityDetector,
@@ -21,7 +22,6 @@ from mislabeled.detect import (
     OutlierDetector,
     PDRDetector,
 )
-from mislabeled.detect.complexity import ComplexityDetector
 
 from .utils import blobs_1_mislabeled
 
