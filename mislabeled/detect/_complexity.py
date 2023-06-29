@@ -47,10 +47,21 @@ class NaiveComplexityDetector(BaseEstimator, MetaEstimatorMixin):
 class DecisionTreeComplexityDetector(BaseEstimator, MetaEstimatorMixin):
     """How much more capacity does fitting every example require compared
     to not fitting it ?
+
+    Inspired from :
+    https://scikit-learn.org/stable/auto_examples/tree/plot_cost_complexity_pruning.html
+
+    Parameters
+    ----------
+    estimator : defaults to DecisionTreeClassifier
+                The estimator used to measure the complexity. It is required that this
+                estimator has a `cost_complexity_pruning_path` method. Overriding the
+                default parameter can be usedto pass custom parameters to the
+                DecisionTree object.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, estimator=DecisionTreeClassifier()):
+        self.estimator = estimator
 
     def trust_score(self, X, y):
         """A reference implementation of a fitting function.
@@ -71,15 +82,15 @@ class DecisionTreeComplexityDetector(BaseEstimator, MetaEstimatorMixin):
         X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
         n_samples = _num_samples(X)
 
-        clf = DecisionTreeClassifier()
+        self.estimator_ = clone(self.estimator)
 
-        path = clf.cost_complexity_pruning_path(X, y)
+        path = self.estimator_.cost_complexity_pruning_path(X, y)
 
         scores = np.zeros(n_samples)
 
         for ccp_alpha in path.ccp_alphas:
-            clf.ccp_alpha = ccp_alpha
-            preds = clf.fit(X, y).predict(X)
+            self.estimator_.ccp_alpha = ccp_alpha
+            preds = self.estimator_.fit(X, y).predict(X)
             scores += preds == y
 
         return scores
