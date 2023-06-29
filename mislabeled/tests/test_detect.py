@@ -14,11 +14,12 @@ from sklearn.tree import DecisionTreeClassifier
 from mislabeled.detect import (
     AUMDetector,
     ClassifierDetector,
-    ComplexityDetector,
     ConsensusDetector,
+    DecisionTreeComplexityDetector,
     InfluenceDetector,
     InputSensitivityDetector,
     KMMDetector,
+    NaiveComplexityDetector,
     OutlierDetector,
     PDRDetector,
 )
@@ -61,7 +62,8 @@ def simple_detect_test(n_classes, detector):
         PDRDetector(
             make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()), n_jobs=-1
         ),
-        ComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
+        NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
+        DecisionTreeComplexityDetector(),
     ],
 )
 def test_detectors(n_classes, detector):
