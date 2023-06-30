@@ -129,8 +129,8 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin):
     ----------
     .. [1] Toneva, M., Sordoni, A., des Combes, R. T., Trischler, A., Bengio, Y.,\
         & Gordon, G. J.\
-        An Empirical Study of Example Forgetting during Deep Neural Network Learning.\
-        In International Conference on Learning Representations.
+        "An Empirical Study of Example Forgetting during Deep Neural Network Learning."\
+        ICLR 2019.
     """
 
     def __init__(self, estimator, max_iter=100, staging=False):
