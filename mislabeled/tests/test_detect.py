@@ -16,6 +16,7 @@ from mislabeled.detect import (
     ClassifierDetector,
     ConsensusDetector,
     DecisionTreeComplexityDetector,
+    DynamicDetector,
     InfluenceDetector,
     InputSensitivityDetector,
     KMMDetector,
@@ -64,6 +65,11 @@ def simple_detect_test(n_classes, detector):
         ),
         NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
         DecisionTreeComplexityDetector(),
+        DynamicDetector(
+            GradientBoostingClassifier(max_depth=2),
+            staging=True,
+            max_iter=100,
+        ),
     ],
 )
 def test_detectors(n_classes, detector):

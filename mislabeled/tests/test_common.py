@@ -9,6 +9,7 @@ from mislabeled.detect import (
     AUMDetector,
     ClassifierDetector,
     ConsensusDetector,
+    DynamicDetector,
     InfluenceDetector,
     InputSensitivityDetector,
     KMMDetector,
@@ -33,6 +34,11 @@ detectors = [
     InputSensitivityDetector(LogisticRegression()),
     KMMDetector(n_jobs=-1),
     PDRDetector(LogisticRegression(), n_jobs=-1),
+    DynamicDetector(
+        GradientBoostingClassifier(max_depth=2),
+        staging=True,
+        max_iter=10,
+    ),
 ]
 
 
