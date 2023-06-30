@@ -16,7 +16,7 @@ from mislabeled.detect import (
     ClassifierDetector,
     ConsensusDetector,
     DecisionTreeComplexityDetector,
-    DynamicDetector,
+    ForgettingDetector,
     InfluenceDetector,
     InputSensitivityDetector,
     KMMDetector,
@@ -45,19 +45,13 @@ def simple_detect_test(n_classes, detector):
     "detector",
     [
         ConsensusDetector(KNeighborsClassifier(n_neighbors=3), n_jobs=-1),
-        AUMDetector(GradientBoostingClassifier(max_depth=1, n_estimators=20)),
+        AUMDetector(GradientBoostingClassifier(max_depth=1), staging=True),
         InfluenceDetector(RBFSampler(gamma="scale", n_components=100)),
         ClassifierDetector(
             make_pipeline(RBFSampler(gamma="scale"), LogisticRegression())
         ),
-        InputSensitivityDetector(
-            HistGradientBoostingClassifier(),
-            n_directions=10,
-        ),
-        InputSensitivityDetector(
-            HistGradientBoostingClassifier(),
-            n_directions=5.5,
-        ),
+        InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=10),
+        InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=5.5),
         OutlierDetector(IsolationForest(), n_jobs=-1),
         KMMDetector(n_jobs=-1, kernel_params=dict(gamma=0.001)),
         PDRDetector(
@@ -65,11 +59,7 @@ def simple_detect_test(n_classes, detector):
         ),
         NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
         DecisionTreeComplexityDetector(),
-        DynamicDetector(
-            GradientBoostingClassifier(max_depth=2),
-            staging=True,
-            max_iter=100,
-        ),
+        ForgettingDetector(GradientBoostingClassifier(max_depth=1), staging=True),
     ],
 )
 def test_detectors(n_classes, detector):
