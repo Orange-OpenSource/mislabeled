@@ -49,6 +49,4 @@ class BiqualityClassifier(BaseHandleClassifier):
         untrusted = indices_rank[math.ceil(n_samples * self.trust_proportion) :]
         sample_quality[untrusted] = 0
 
-        print(sample_quality)
-
         return X, y, dict(sample_quality=sample_quality)

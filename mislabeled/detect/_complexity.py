@@ -9,6 +9,21 @@ from sklearn.utils.validation import _num_samples
 class NaiveComplexityDetector(BaseEstimator, MetaEstimatorMixin):
     """How much more capacity does fitting every example require compared
     to not fitting it ?
+
+    Parameters
+    ----------
+    estimator : object
+        The estimator used to measure the complexity.
+
+    get_complexity : callable
+        The callable to get the complexity from the estimator.
+
+    n_jobs : int, default=None
+        The number of jobs to run in parallel. Computing trust scores
+        is parallelized over all samples.
+        ``None`` means 1 unless in a :obj:`joblib.parallel_backend`
+        context. ``-1`` means using all processors. See :term:`Glossary
+        <n_jobs>` for more details.
     """
 
     def __init__(self, estimator, get_complexity, *, n_jobs=-1):
@@ -63,7 +78,7 @@ class DecisionTreeComplexityDetector(BaseEstimator, MetaEstimatorMixin):
                 DecisionTree object.
     """
 
-    def __init__(self, estimator=DecisionTreeClassifier()):
+    def __init__(self, estimator=None):
         self.estimator = estimator
 
     def trust_score(self, X, y):
@@ -85,7 +100,16 @@ class DecisionTreeComplexityDetector(BaseEstimator, MetaEstimatorMixin):
         X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
         n_samples = _num_samples(X)
 
-        self.estimator_ = clone(self.estimator)
+        if self.estimator is None:
+            self.estimator_ = DecisionTreeClassifier()
+        else:
+            self.estimator_ = clone(self.estimator)
+
+        if not hasattr(self.estimator_, "cost_complexity_pruning_path"):
+            raise ValueError(
+                "%s doesn't support cost complexity pruning"
+                % self.estimator.__class__.__name__
+            )
 
         path = self.estimator_.cost_complexity_pruning_path(X, y)
 
