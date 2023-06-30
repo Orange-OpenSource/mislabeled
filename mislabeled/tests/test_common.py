@@ -9,9 +9,11 @@ from mislabeled.detect import (
     AUMDetector,
     ClassifierDetector,
     ConsensusDetector,
+    DecisionTreeComplexityDetector,
     InfluenceDetector,
     InputSensitivityDetector,
     KMMDetector,
+    NaiveComplexityDetector,
     OutlierDetector,
     PDRDetector,
 )
@@ -20,6 +22,11 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
+
+
+def complexity_decision_trees(dt_classifier):
+    return dt_classifier.get_n_leaves()
+
 
 detectors = [
     ConsensusDetector(LogisticRegression(), n_jobs=-1),
@@ -33,6 +40,10 @@ detectors = [
     InputSensitivityDetector(LogisticRegression()),
     KMMDetector(n_jobs=-1),
     PDRDetector(LogisticRegression(), n_jobs=-1),
+    NaiveComplexityDetector(
+        DecisionTreeClassifier(random_state=1), complexity_decision_trees
+    ),
+    DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
 ]
 
 
