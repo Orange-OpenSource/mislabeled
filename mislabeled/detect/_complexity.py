@@ -109,9 +109,28 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin):
         that the `estimator` supports iterative learning with `warm_start`.
 
     max_iter : int, default=100
+        Maximum number of iterations.
 
     staging : bool, default=False
         Uses staged predictions if `estimator` supports it.
+
+    Attributes
+    ----------
+    estimator_ : classifier
+        The fitted estimator.
+
+    y_preds_ : ndarray, shape (n_samples, n_iter_)
+        The predictions of all iterations of the classifier during :meth:`fit`.
+
+    n_iter_ : int
+        Number of iterations of the boosting process.
+
+    References
+    ----------
+    .. [1] Toneva, M., Sordoni, A., des Combes, R. T., Trischler, A., Bengio, Y.,\
+        & Gordon, G. J.\
+        An Empirical Study of Example Forgetting during Deep Neural Network Learning.\
+        In International Conference on Learning Representations.
     """
 
     def __init__(self, estimator, max_iter=100, staging=False):
@@ -183,6 +202,8 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin):
                 self.y_preds_.append(y_pred)
 
         self.y_preds_ = np.stack(self.y_preds_, axis=1)
+        self.n_iter_ = self.y_preds_.shape[1]
+
         n_changes = np.sum(self.y_preds_ != self.y_preds_[:, -1, None], axis=1)
 
-        return self.max_iter - n_changes
+        return self.n_iter_ - n_changes
