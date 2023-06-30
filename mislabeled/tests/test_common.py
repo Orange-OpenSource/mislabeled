@@ -23,11 +23,6 @@ from mislabeled.handle import (
     SemiSupervisedClassifier,
 )
 
-
-def complexity_decision_trees(dt_classifier):
-    return dt_classifier.get_n_leaves()
-
-
 detectors = [
     ConsensusDetector(LogisticRegression(), n_jobs=-1),
     AUMDetector(GradientBoostingClassifier(n_estimators=10)),
@@ -40,9 +35,6 @@ detectors = [
     InputSensitivityDetector(LogisticRegression()),
     KMMDetector(n_jobs=-1),
     PDRDetector(LogisticRegression(), n_jobs=-1),
-    NaiveComplexityDetector(
-        DecisionTreeClassifier(random_state=1), complexity_decision_trees
-    ),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
 ]
 
@@ -94,4 +86,41 @@ def test_all_detectors_with_ssl(estimator, check):
     )
 )
 def test_all_detectors_with_bq(estimator, check):
+    return check(estimator)
+
+
+def complexity_decision_trees(dt_classifier):
+    return dt_classifier.get_n_leaves()
+
+
+naive_complexity_detector = NaiveComplexityDetector(
+    DecisionTreeClassifier(random_state=1), complexity_decision_trees
+)
+
+parametrize = parametrize_with_checks(
+    [
+        FilterClassifier(
+            naive_complexity_detector, LogisticRegression(), trust_proportion=0.8
+        ),
+        SemiSupervisedClassifier(
+            naive_complexity_detector,
+            SelfTrainingClassifier(LogisticRegression()),
+            trust_proportion=0.8,
+        ),
+        BiqualityClassifier(
+            naive_complexity_detector,
+            TrAdaBoostClassifier(
+                DecisionTreeClassifier(max_depth=None),
+                n_estimators=10,
+                random_state=1,
+            ),
+            trust_proportion=0.8,
+        ),
+    ]
+)
+parametrize = parametrize.with_args(ids=[])
+
+
+@parametrize
+def test_naive_complexity(estimator, check):
     return check(estimator)
