@@ -9,14 +9,17 @@ from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.detect import (
     AUMDetector,
     ClassifierDetector,
     ConsensusDetector,
+    DecisionTreeComplexityDetector,
     InfluenceDetector,
     InputSensitivityDetector,
     KMMDetector,
+    NaiveComplexityDetector,
     OutlierDetector,
     PDRDetector,
 )
@@ -59,6 +62,8 @@ def simple_detect_test(n_classes, detector):
         PDRDetector(
             make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()), n_jobs=-1
         ),
+        NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
+        DecisionTreeComplexityDetector(),
     ],
 )
 def test_detectors(n_classes, detector):

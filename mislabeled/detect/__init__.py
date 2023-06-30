@@ -1,5 +1,6 @@
 from ._aum import AUMDetector
 from ._classifier import ClassifierDetector
+from ._complexity import DecisionTreeComplexityDetector, NaiveComplexityDetector
 from ._consensus import ConsensusDetector
 from ._density_ratio import KMMDetector, PDRDetector
 from ._influence import InfluenceDetector
@@ -15,4 +16,6 @@ __all__ = [
     "InputSensitivityDetector",
     "KMMDetector",
     "PDRDetector",
+    "NaiveComplexityDetector",
+    "DecisionTreeComplexityDetector",
 ]
