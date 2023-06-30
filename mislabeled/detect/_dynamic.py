@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from functools import reduce
 
 import numpy as np
 from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
@@ -7,25 +6,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
 from mislabeled.detect.utils import get_margins
-
-
-def _check_iter_param(estimator, param):
-    if isinstance(param, str):
-        list_params = [param]
-    else:
-        list_params = param
-
-    param = [
-        param if param in estimator.get_params() else None for param in list_params
-    ]
-    param = reduce(lambda x, y: x or y, param)
-    if param is None:
-        raise AttributeError(
-            f"{estimator.__class__.__name__} has none of the following params: "
-            f"{', '.join(list_params)}."
-        )
-
-    return param
 
 
 class BaseDynamicDetector(BaseEstimator, MetaEstimatorMixin, metaclass=ABCMeta):
@@ -101,7 +81,6 @@ class BaseDynamicDetector(BaseEstimator, MetaEstimatorMixin, metaclass=ABCMeta):
             self.estimator_.fit(X, y)
 
             self.uncertainties_ = []
-
             for y_pred in self.method_(X):
                 self.uncertainties_.append(self.uncertainty(y, y_pred))
 
@@ -112,14 +91,24 @@ class BaseDynamicDetector(BaseEstimator, MetaEstimatorMixin, metaclass=ABCMeta):
                     % estimator.__class__.__name__
                 )
 
-            self.method_ = _check_response_method(self.estimator_, self.method)
-
             self.estimator_.set_params(warm_start=True)
 
-            self.iter_param_ = _check_iter_param(
-                self.estimator_, ["n_estimators", "max_iter"]
-            )
-            self.max_iter_ = self.estimator_.get_params().get(self.iter_param_)
+            estimator_params = self.estimator_.get_params()
+            iter_params = ["n_estimators", "max_iter"]
+            filtered_iter_params = [
+                iter_param
+                for iter_param in iter_params
+                if iter_param in estimator_params
+            ]
+            if filtered_iter_params is None:
+                raise AttributeError(
+                    f"{estimator.__class__.__name__} has none of the following params: "
+                    f"{', '.join(iter_params)}."
+                )
+            self.iter_param_ = filtered_iter_params[0]
+            self.max_iter_ = estimator_params.get(self.iter_param_)
+
+            self.method_ = _check_response_method(self.estimator_, self.method)
 
             self.uncertainties_ = []
             for i in range(0, self.max_iter_):
