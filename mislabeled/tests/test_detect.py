@@ -60,7 +60,9 @@ def simple_detect_test(n_classes, detector):
         NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
         DecisionTreeComplexityDetector(),
         ForgettingDetector(
-            GradientBoostingClassifier(max_depth=1, n_estimators=500, subsample=0.2),
+            GradientBoostingClassifier(
+                max_depth=1, n_estimators=500, subsample=0.2, random_state=1
+            ),
             staging=True,
         ),
     ],
