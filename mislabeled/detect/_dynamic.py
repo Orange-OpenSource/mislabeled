@@ -176,7 +176,7 @@ class ForgettingDetector(BaseDynamicDetector):
         return margins
 
     def aggregate(self, uncertainties):
-        forgetting_events = np.diff(uncertainties, axis=1) < 0
+        forgetting_events = np.diff(uncertainties, axis=1, prepend=0) < 0
         return self.n_iter_ - forgetting_events.sum(axis=1)
 
 
