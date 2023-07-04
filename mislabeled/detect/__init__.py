@@ -1,4 +1,3 @@
-# from ._aum import AUMDetector
 from ._classifier import ClassifierDetector
 from ._complexity import DecisionTreeComplexityDetector, NaiveComplexityDetector
 from ._consensus import ConsensusDetector
