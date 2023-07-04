@@ -10,7 +10,7 @@ from mislabeled.detect import (
     ClassifierDetector,
     ConsensusDetector,
     DecisionTreeComplexityDetector,
-    DynamicDetector,
+    ForgettingDetector,
     InfluenceDetector,
     InputSensitivityDetector,
     KMMDetector,
@@ -37,10 +37,9 @@ detectors = [
     KMMDetector(n_jobs=-1),
     PDRDetector(LogisticRegression(), n_jobs=-1),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
-    DynamicDetector(
-        GradientBoostingClassifier(max_depth=2),
+    ForgettingDetector(
+        GradientBoostingClassifier(n_estimators=10),
         staging=True,
-        max_iter=10,
     ),
 ]
 

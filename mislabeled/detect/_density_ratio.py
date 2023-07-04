@@ -9,7 +9,7 @@ from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
 
-class DensityRatioDetector(BaseEstimator, metaclass=ABCMeta):
+class BaseDensityRatioDetector(BaseEstimator, metaclass=ABCMeta):
     """Base class for Density Ratio based Detectors.
 
     Warning: This class should not be used directly. Use derived classes
@@ -81,7 +81,7 @@ class DensityRatioDetector(BaseEstimator, metaclass=ABCMeta):
         """
 
 
-class PDRDetector(DensityRatioDetector, MetaEstimatorMixin):
+class PDRDetector(BaseDensityRatioDetector, MetaEstimatorMixin):
     """A PDR Detector.
 
     Parameters
@@ -121,7 +121,7 @@ class PDRDetector(DensityRatioDetector, MetaEstimatorMixin):
         return pdr(X_c, X, self.estimator, self.method)
 
 
-class KMMDetector(DensityRatioDetector):
+class KMMDetector(BaseDensityRatioDetector):
     """A KMM Detector.
 
     Parameters
@@ -222,5 +222,5 @@ class KMMDetector(DensityRatioDetector):
             n_jobs=self.n_jobs,
         )
         # Numerical errors linked to the solver
-        # np.clip(density_ratio, np.finfo(X.dtype).eps, self.B, out=density_ratio)
+        np.clip(density_ratio, 0, self.B, out=density_ratio)
         return density_ratio
