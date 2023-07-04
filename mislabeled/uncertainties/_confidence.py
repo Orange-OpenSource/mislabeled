@@ -5,39 +5,27 @@ from sklearn.base import check_array
 from sklearn.preprocessing import LabelBinarizer, LabelEncoder
 from sklearn.utils import check_consistent_length, column_or_1d
 from sklearn.utils.multiclass import type_of_target, unique_labels
+from sklearn.utils.validation import _check_sample_weight
+
+from ._entropy import entropy
 
 
-def normalized_margin(y_pred, y_true=None, sample_weight=None, labels=None):
-    """Normalized margin for label quality estimation.
+def self_confidence(y_pred, y_true=None, sample_weight=None, labels=None):
+    """Self confidence for label quality estimation.
 
-    Margin can be defined for both probabilities or logits. In the case of
-    multiclass classification it's defined as [2]:
-
-    .. math::
-
-        M(x) = \operatorname*{argmax}_{k \\in \\mathcal{Y}}\\mathbb{P}(Y=k|X=x)
-                - \operatorname*{argmax}_{k' \\in \\mathcal{Y}\\setminus\\{k\\}}
-                \\mathbb{P}(Y=k'|X=x)
-
-    In the supervised case, where y is not None, the definition changes slightly [1]:
+    The confidence of the classifier is the estimated probability of a sample belonging
+    to its most probable class:
 
     .. math::
 
-        M_y(x) = \\mathbb{P}(Y=y|X=x)
-                - \operatorname*{argmax}_{k \\in \\mathcal{Y}\\setminus\\{y\\}}
-                \\mathbb{P}(Y=k|X=x)
+        C(x) = \operatorname*{argmax}_{k \\in \\mathcal{Y}}\\mathbb{P}(Y=k|X=x)
 
-    For the case of logits in binary classification, it's the well known formula:
-
-    .. math::
-
-        M_y(x) = y f(x)
-
-    In the unsupervised case:
+    In the supervised case, where y is not None, it is the estimated probability
+    of a sample belonging to the class y:
 
     .. math::
 
-        M_y(x) = |f(x)|
+        C_y(x) = \\mathbb{P}(Y=y|X=x)
 
     This function is adapted from sklearn's implementation of hinge_loss
 
@@ -56,15 +44,8 @@ def normalized_margin(y_pred, y_true=None, sample_weight=None, labels=None):
 
     Returns
     -------
-    margins : array of shape (n_samples,)
-        The margin for each example
-
-    References
-    ----------
-    .. [1] Wei, C., Lee, J., Liu, Q., & Ma, T.,\
-        "On the margin theory of feedforward neural networks".
-
-    .. [2] Burr Settles, Section 2.3 of "Active Learning", 2012
+    confidences : array of shape (n_samples,)
+        The self-confidence for each example
     """
 
     check_consistent_length(y_true, y_pred)
@@ -120,8 +101,7 @@ def normalized_margin(y_pred, y_true=None, sample_weight=None, labels=None):
         y_true = le.transform(y_true)
         mask = np.ones_like(y_pred, dtype=bool)
         mask[np.arange(y_true.shape[0]), y_true] = False
-        margin = y_pred[~mask]
-        margin -= np.max(y_pred[mask].reshape(y_true.shape[0], -1), axis=1)
+        confidence = y_pred[~mask]
 
     # Binary Logits
     else:
@@ -139,6 +119,13 @@ def normalized_margin(y_pred, y_true=None, sample_weight=None, labels=None):
         lbin = LabelBinarizer(neg_label=-1)
         y_true = lbin.fit_transform(y_true)[:, 0]
 
-        margin = y_true * y_pred
+        confidence = y_true * y_pred
 
-    return margin
+    sample_weight = _check_sample_weight(sample_weight, y_pred)
+
+    return confidence * sample_weight
+
+
+def self_confidence_weighted_entropy(y_prob, y_true=None, labels=None):
+    inv_entropy = 1 / entropy(y_prob, labels=labels)
+    return self_confidence(y_prob, y_true, sample_weight=inv_entropy, labels=labels)
