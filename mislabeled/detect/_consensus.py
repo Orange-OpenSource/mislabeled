@@ -1,6 +1,6 @@
 import numpy as np
-from sklearn.base import BaseEstimator, MetaEstimatorMixin
-from sklearn.model_selection import cross_val_predict
+from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
+from sklearn.model_selection import cross_val_predict, StratifiedKFold
 from sklearn.utils.validation import _num_samples
 
 
@@ -52,6 +52,11 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin):
 
         n_samples = _num_samples(X)
 
+        if self.cv is None:
+            self.cv_ = StratifiedKFold(shuffle=True)
+        else:
+            self.cv_ = clone(self.cv)
+
         consensus = np.empty((n_samples, self.n_rounds))
 
         for i in range(self.n_rounds):
@@ -59,9 +64,8 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin):
                 self.estimator,
                 X,
                 y,
-                cv=self.cv,
+                cv=self.cv_,
                 n_jobs=self.n_jobs,
             )
             consensus[:, i] = y_pred == y
-
         return np.mean(consensus, axis=1)
