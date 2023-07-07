@@ -53,7 +53,7 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin):
         n_samples = _num_samples(X)
 
         if self.cv is None:
-            self.cv_ = StratifiedKFold(shuffle=True)
+            self.cv_ = StratifiedKFold(shuffle=True, random_state=0)
         else:
             self.cv_ = clone(self.cv)
 
