@@ -3,14 +3,14 @@ import warnings
 import numpy as np
 from sklearn.base import check_array
 from sklearn.preprocessing import LabelBinarizer, LabelEncoder
-from sklearn.utils import check_consistent_length, column_or_1d
+from sklearn.utils import check_consistent_length, check_scalar, column_or_1d
 from sklearn.utils.multiclass import type_of_target, unique_labels
 from sklearn.utils.validation import _check_sample_weight
 
 from ._entropy import entropy
 
 
-def self_confidence(y_pred, y_true=None, sample_weight=None, labels=None):
+def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None):
     """Self confidence for label quality estimation.
 
     The confidence of the classifier is the estimated probability of a sample belonging
@@ -37,10 +37,16 @@ def self_confidence(y_pred, y_true=None, sample_weight=None, labels=None):
     y_true : array of shape (n_samples,), default=None
         True targets, can be multiclass targets.
 
+    k : int, default=1
+        Returns the k-th self-confidence.
+
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
         If ``None`` is given, those that appear at least once
         in ``y_true`` or ``y_prob`` are used in sorted order.
+
+    sample_weight : array-like of shape (n_samples,), default=None
+        Sample weights. If None, all samples are treated equally.
 
     Returns
     -------
@@ -51,21 +57,31 @@ def self_confidence(y_pred, y_true=None, sample_weight=None, labels=None):
     check_consistent_length(y_true, y_pred)
     y_pred = check_array(y_pred, ensure_2d=False)
 
+    sample_weight = _check_sample_weight(sample_weight, y_pred)
+
     # If no sample labels are provided, use the most confident class as the label.
     if y_true is None:
         if y_pred.ndim == 1:
-            y_true = y_pred > 0
+            y_true = (y_pred > 0).astype(int)
         else:
             y_true = np.argmax(y_pred, axis=1)
 
-    # Multilabel is not yet implemented
-    y_type = type_of_target(y_true)
-    if y_type not in ("binary", "multiclass"):
-        raise ValueError("%s is not supported" % y_type)
-
-    # If no class labels are provided, use the labels from sample labels.
-    if labels is None:
+        if labels is not None:
+            warnings.warn(
+                f"Ignored labels ${labels} when y_true is None.",
+                UserWarning,
+            )
         labels = unique_labels(y_true)
+
+    else:
+        # Multilabel is not yet implemented
+        y_type = type_of_target(y_true)
+        if y_type not in ("binary", "multiclass"):
+            raise ValueError("%s is not supported" % y_type)
+
+        # If no class labels are provided, use the labels from sample labels.
+        if labels is None:
+            labels = unique_labels(y_true)
 
     if np.all(labels != sorted(labels)):
         warnings.warn(
@@ -79,6 +95,8 @@ def self_confidence(y_pred, y_true=None, sample_weight=None, labels=None):
         )
 
     n_classes = len(labels)
+
+    check_scalar(k, "k", int, min_val=1, max_val=n_classes)
 
     # Probabilities or multiclass Logits
     if y_pred.ndim > 1:
@@ -101,7 +119,12 @@ def self_confidence(y_pred, y_true=None, sample_weight=None, labels=None):
         y_true = le.transform(y_true)
         mask = np.ones_like(y_pred, dtype=bool)
         mask[np.arange(y_true.shape[0]), y_true] = False
-        confidence = y_pred[~mask]
+        if k == 1:
+            confidence = y_pred[~mask]
+        else:
+            confidence = np.sort(y_pred[mask].reshape(y_true.shape[0], -1), axis=1)[
+                :, k - 1
+            ]
 
     # Binary Logits
     else:
@@ -117,11 +140,10 @@ def self_confidence(y_pred, y_true=None, sample_weight=None, labels=None):
         y_pred = np.ravel(y_pred)
 
         lbin = LabelBinarizer(neg_label=-1)
-        y_true = lbin.fit_transform(y_true)[:, 0]
+        lbin.fit(labels)
+        y_true = lbin.transform(y_true)[:, 0]
 
         confidence = y_true * y_pred
-
-    sample_weight = _check_sample_weight(sample_weight, y_pred)
 
     return confidence * sample_weight
 

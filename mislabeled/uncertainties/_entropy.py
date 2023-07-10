@@ -18,7 +18,7 @@ def entropy(y_prob, y_true=None, labels=None):
 
     .. math::
 
-        E_y(x) = \sum_{k\\in\\mathcal{Y}}\mathbb{1}_{k=y}\log(\mathbb{P}(Y=y|X=X))
+        E_y(x) = \sum_{k\\in\\mathcal{Y}}\mathbb{1}_{k=y}\log(\mathbb{P}(Y=k|X=X))
 
     This function is adapted from sklearn's implementation of log_loss
 
@@ -37,15 +37,8 @@ def entropy(y_prob, y_true=None, labels=None):
 
     Returns
     -------
-    margins : array of shape (n_samples,)
-        The margin for each example
-
-    References
-    ----------
-    .. [1] Wei, C., Lee, J., Liu, Q., & Ma, T.,\
-        "On the margin theory of feedforward neural networks".
-
-    .. [2] Burr Settles, Section 2.3 of "Active Learning", 2012
+    entropies : array of shape (n_samples,)
+        The entropy for each example
     """
 
     check_consistent_length(y_true, y_prob)
