@@ -14,16 +14,6 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin):
     ----------
     demo_param : str, default='demo_param'
         A parameter used for demonstation of how to pass and store paramters.
-
-    Examples
-    --------
-    >>> from mislabeled import ConsensusDetector
-    >>> import numpy as np
-    >>> X = np.arange(100).reshape(100, 1)
-    >>> y = np.zeros((100, ))
-    >>> estimator = TemplateEstimator()
-    >>> estimator.fit(X, y)
-    TemplateEstimator()
     """
 
     def __init__(self, estimator, *, n_rounds=5, cv=None, n_jobs=None):
