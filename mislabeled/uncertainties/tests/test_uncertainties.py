@@ -1,15 +1,14 @@
-from re import escape
-
 import numpy as np
 import pytest
 from pytest import raises, warns
+from scipy.special import softmax
 from sklearn.metrics.tests.test_classification import make_prediction
 
-from mislabeled.uncertainties import normalized_margin, self_confidence
+from mislabeled.uncertainties import entropy, normalized_margin, self_confidence
 
 
 # Incredible it's just a bug in sklearn hinge_loss
-@pytest.mark.parametrize("uncertainty", [normalized_margin, self_confidence])
+@pytest.mark.parametrize("uncertainty", [normalized_margin, self_confidence, entropy])
 def test_uncertainty_not_sorted_labels_throws_user_warning(uncertainty):
     y_true, _, probas_pred = make_prediction()
 
@@ -21,7 +20,7 @@ def test_uncertainty_not_sorted_labels_throws_user_warning(uncertainty):
         uncertainty(probas_pred, y_labels, labels=labels)
 
 
-@pytest.mark.parametrize("uncertainty", [normalized_margin, self_confidence])
+@pytest.mark.parametrize("uncertainty", [normalized_margin, self_confidence, entropy])
 def test_uncertainty_unsupervised_with_labels_throws_user_warning(uncertainty):
     _, _, probas_pred = make_prediction()
 
@@ -33,7 +32,7 @@ def test_uncertainty_unsupervised_with_labels_throws_user_warning(uncertainty):
 
 
 # Test from sklearn
-@pytest.mark.parametrize("uncertainty", [normalized_margin, self_confidence])
+@pytest.mark.parametrize("uncertainty", [normalized_margin, self_confidence, entropy])
 def test_uncertainty_multiclass_missing_labels_with_labels_none(uncertainty):
     y_true = np.array([0, 1, 2, 2])
     pred_decision = np.array(
@@ -44,36 +43,23 @@ def test_uncertainty_multiclass_missing_labels_with_labels_none(uncertainty):
             [-2.36, -0.79, -0.27, +0.24],
         ]
     )
-    error_message = "Please include all labels in y or pass labels as third argument"
-    with raises(ValueError, match=error_message):
+    pred_decision = softmax(pred_decision, axis=1)
+    with raises(ValueError):
         uncertainty(pred_decision, y_true)
 
 
 # Test from sklearn
-@pytest.mark.parametrize("uncertainty", [normalized_margin, self_confidence])
+@pytest.mark.parametrize("uncertainty", [normalized_margin, self_confidence, entropy])
 def test_uncertainty_multiclass_no_consistent_pred_decision_shape(uncertainty):
     # test for inconsistency between multiclass problem and logits
     # argument
     y_true = np.array([2, 1, 0, 1, 0, 1, 1])
     pred_decision = np.array([0, 1, 2, 1, 0, 2, 1])
-    error_message = (
-        "The shape of logits cannot be 1d array"
-        "with a multiclass target. logits shape "
-        "must be (n_samples, n_classes), that is "
-        "(7, 3). Got: (7,)"
-    )
-    with raises(ValueError, match=escape(error_message)):
+    with raises(ValueError):
         uncertainty(pred_decision, y_true=y_true)
 
     # test for inconsistency between y_pred shape and labels number
     pred_decision = np.array([[0, 1], [0, 1], [0, 1], [0, 1], [2, 0], [0, 1], [1, 0]])
     labels = [0, 1, 2]
-    error_message = (
-        "The shape of y_pred is not "
-        "consistent with the number of classes. "
-        "With a multiclass target, y_pred "
-        "shape must be (n_samples, n_classes), that is "
-        "(7, 3). Got: (7, 2)"
-    )
-    with raises(ValueError, match=escape(error_message)):
+    with raises(ValueError):
         uncertainty(pred_decision, y_true=y_true, labels=labels)

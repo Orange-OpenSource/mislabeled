@@ -1,4 +1,5 @@
-from ._margin import normalized_margin
 from ._confidence import self_confidence
+from ._entropy import entropy
+from ._margin import normalized_margin
 
-__all__ = ["normalized_margin", "self_confidence"]
+__all__ = ["normalized_margin", "self_confidence", "entropy"]

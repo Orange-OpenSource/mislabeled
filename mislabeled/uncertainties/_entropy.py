@@ -5,6 +5,7 @@ from scipy.special import xlogy
 from sklearn.base import check_array
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.utils import check_consistent_length
+from sklearn.utils.multiclass import unique_labels
 
 
 def entropy(y_prob, y_true=None, labels=None):
@@ -46,14 +47,18 @@ def entropy(y_prob, y_true=None, labels=None):
 
     if y_true is None:
         Y_true = y_prob
+        if labels is not None:
+            warnings.warn(
+                f"Ignored labels ${labels} when y_true is None.",
+                UserWarning,
+            )
     else:
         lb = LabelBinarizer()
 
-        if labels is not None:
-            lb.fit(labels)
-        else:
-            lb.fit(y_true)
+        if labels is None:
+            labels = unique_labels(y_true)
 
+        lb.fit(labels)
         Y_true = lb.transform(y_true)
 
         if not np.all(lb.classes_ == labels):
