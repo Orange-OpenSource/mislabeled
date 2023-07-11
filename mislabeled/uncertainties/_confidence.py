@@ -96,7 +96,7 @@ def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None
 
     check_scalar(k, "k", int, min_val=1, max_val=n_classes)
 
-    # Probabilities or multiclass Logits
+    # Multiclass
     if y_pred.ndim > 1:
         if n_classes < y_pred.shape[1]:
             raise ValueError(
@@ -121,10 +121,10 @@ def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None
             confidence = y_pred[~mask]
         else:
             confidence = np.sort(y_pred[mask].reshape(y_true.shape[0], -1), axis=1)[
-                :, k - 1
+                :, k - 2
             ]
 
-    # Binary Logits
+    # Binary
     else:
         if n_classes > 2:
             raise ValueError(
@@ -146,6 +146,6 @@ def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None
     return confidence * sample_weight
 
 
-def self_confidence_weighted_entropy(y_prob, y_true=None, labels=None):
-    inv_entropy = 1 / entropy(y_prob, labels=labels)
+def weighted_self_confidence(y_prob, y_true=None, labels=None):
+    inv_entropy = -1 / entropy(y_prob, labels=labels)
     return self_confidence(y_prob, y_true, sample_weight=inv_entropy, labels=labels)

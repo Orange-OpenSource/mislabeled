@@ -43,7 +43,14 @@ def entropy(y_prob, y_true=None, labels=None):
     """
 
     check_consistent_length(y_true, y_prob)
-    y_prob = check_array(y_prob)
+    y_prob = check_array(
+        y_prob, ensure_2d=False, dtype=[np.float64, np.float32, np.float16]
+    )
+
+    if y_prob.ndim == 1:
+        y_prob = y_prob[:, np.newaxis]
+    if y_prob.shape[1] == 1:
+        y_prob = np.append(1 - y_prob, y_prob, axis=1)
 
     if y_true is None:
         Y_true = y_prob
@@ -92,13 +99,6 @@ def entropy(y_prob, y_true=None, labels=None):
     eps = np.finfo(y_prob.dtype).eps
     y_prob = np.clip(y_prob, eps, 1 - eps)
 
-    y_prob_sum = y_prob.sum(axis=1, keepdims=True)
-    if not np.isclose(y_prob_sum, 1, rtol=1e-15, atol=5 * eps).all():
-        warnings.warn(
-            "The y_prob values do not sum to one. Starting from 1.5 this"
-            "will result in an error.",
-            UserWarning,
-        )
-    y_prob = y_prob / y_prob_sum[:, np.newaxis]
+    y_prob /= y_prob.sum(axis=1, keepdims=True)
 
     return xlogy(Y_true, y_prob).sum(axis=1)

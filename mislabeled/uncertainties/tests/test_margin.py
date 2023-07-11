@@ -15,4 +15,4 @@ def test_proba_normalized_margin_is_borned():
 
 def test_unsupervised_logits_normalized_margin_is_abs():
     logits_pred = np.random.normal(size=(1000,))
-    assert np.all(normalized_margin(logits_pred) == np.abs(logits_pred))
+    np.testing.assert_allclose(normalized_margin(logits_pred), np.abs(logits_pred))

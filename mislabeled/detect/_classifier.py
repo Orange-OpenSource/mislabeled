@@ -1,9 +1,9 @@
-from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
+from sklearn.base import clone, MetaEstimatorMixin
 
-from .utils import get_margins
+from mislabeled.detect.base import BaseDetector
 
 
-class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
+class ClassifierDetector(BaseDetector, MetaEstimatorMixin):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -15,7 +15,8 @@ class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, estimator):
+    def __init__(self, estimator, uncertainty="normalized_margin", adjust=False):
+        super().__init__(uncertainty=uncertainty, adjust=adjust)
         self.estimator = estimator
 
     def trust_score(self, X, y):
@@ -39,4 +40,5 @@ class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
         self.estimator_ = clone(self.estimator)
 
         self.estimator_.fit(X, y)
-        return get_margins(self.estimator_.decision_function(X), y)
+        self.qualifier_ = self._make_qualifier()
+        return self.qualifier_(self.estimator_, X, y)
