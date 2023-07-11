@@ -150,13 +150,6 @@ def make_qualifier(
     `needs_threshold=True`, the uncertainty function is supposed to accept the
     output of :term:`decision_function` or :term:`predict_proba` when
     :term:`decision_function` is not present.
-
-    Examples
-    --------
-    >>> from mislabeled.uncertainties import self_confidence, make_qualifier
-    >>> self_confidence_qualifier = make_qualifier(self_confidence, beta=2)
-    >>> self_confidence_qualifier
-    make_qualifier(self_confidence, beta=2)
     """
     sign = 1 if greater_is_better else -1
     if needs_proba and needs_threshold:
