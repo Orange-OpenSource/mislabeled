@@ -63,12 +63,10 @@ def entropy(y_prob, y_true=None, labels=None):
 
         if not np.all(lb.classes_ == labels):
             warnings.warn(
-                (
-                    f"Labels passed were {labels}. But this function "
-                    "assumes labels are ordered lexicographically. "
-                    "Ensure that labels in y_prob are ordered as "
-                    f"{lb.classes_}."
-                ),
+                f"Labels passed were {labels}. But this function "
+                "assumes labels are ordered lexicographically. "
+                "Ensure that labels in y_prob are ordered as "
+                f"{lb.classes_}.",
                 UserWarning,
             )
 
@@ -97,10 +95,8 @@ def entropy(y_prob, y_true=None, labels=None):
     y_prob_sum = y_prob.sum(axis=1, keepdims=True)
     if not np.isclose(y_prob_sum, 1, rtol=1e-15, atol=5 * eps).all():
         warnings.warn(
-            (
-                "The y_prob values do not sum to one. Starting from 1.5 this"
-                "will result in an error."
-            ),
+            "The y_prob values do not sum to one. Starting from 1.5 this"
+            "will result in an error.",
             UserWarning,
         )
     y_prob = y_prob / y_prob_sum[:, np.newaxis]
