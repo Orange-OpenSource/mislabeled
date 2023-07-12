@@ -1,12 +1,10 @@
 import copy
-from functools import partial, wraps
+from functools import partial
 
 import numpy as np
 from sklearn.base import is_regressor
 from sklearn.metrics._scorer import _BaseScorer
 from sklearn.metrics._scorer import _PredictScorer as _PredictQualifier
-
-# from sklearn.metrics._scorer import _ProbaScorer as _ProbaQualifier
 from sklearn.utils.multiclass import type_of_target
 
 from ._adjust import adjusted_uncertainty
@@ -135,12 +133,20 @@ class _ThresholdQualifier(_BaseScorer):
         return ", needs_threshold=True"
 
 
-def flip(f):
-    @wraps(f)
-    def flipped(a, b, **kwargs):
-        return f(b, a, **kwargs)
+# TODO : me couper une couille
+class flip:
+    def __init__(self, f):
+        self.f = f
 
-    return flipped
+    def __call__(self, a, b, **kwargs):
+        return self.f(b, a, **kwargs)
+
+
+# def flip(f):
+#     def flipped(a, b, **kwargs):
+#         return f(b, a, **kwargs)
+
+#     return flipped
 
 
 def make_qualifier(

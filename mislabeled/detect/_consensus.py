@@ -54,7 +54,7 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin):
 
         self.cv_ = check_cv(self.cv, y, classifier=is_classifier(self.estimator))
 
-        consensus = np.empty((n_samples, self.cv_.get_n_splits()))
+        consensus = np.empty((n_samples, self.cv_.get_n_splits(X, y)))
         consensus.fill(np.nan)
         self.qualifier_ = self._make_qualifier()
 

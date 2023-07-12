@@ -50,7 +50,6 @@ def simple_detect_test(n_classes, detector):
             cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
             n_jobs=-1,
         ),
-        AUMDetector(GradientBoostingClassifier(max_depth=1), staging=True),
         InfluenceDetector(RBFSampler(gamma="scale", n_components=100)),
         ClassifierDetector(
             make_pipeline(RBFSampler(gamma="scale"), LogisticRegression())
@@ -64,9 +63,14 @@ def simple_detect_test(n_classes, detector):
         ),
         NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
         DecisionTreeComplexityDetector(),
+        AUMDetector(GradientBoostingClassifier(max_depth=1), staging=True),
         ForgettingDetector(
             GradientBoostingClassifier(
-                max_depth=1, n_estimators=500, subsample=0.2, random_state=1
+                max_depth=None,
+                n_estimators=100,
+                subsample=0.3,
+                random_state=1,
+                init="zero",
             ),
             staging=True,
         ),

@@ -97,7 +97,7 @@ def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None
     check_scalar(k, "k", int, min_val=1, max_val=n_classes)
 
     # Multiclass
-    if y_pred.ndim > 1:
+    if y_pred.ndim > 1 and y_pred.shape[1] > 1:
         if n_classes < y_pred.shape[1]:
             raise ValueError(
                 "Please include all labels in y or pass labels as third argument"

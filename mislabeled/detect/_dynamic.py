@@ -1,14 +1,17 @@
+import copy
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
-from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
+from sklearn.base import clone, MetaEstimatorMixin
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
-from mislabeled.detect.utils import get_margins
+from mislabeled.detect.base import BaseDetector
+from mislabeled.uncertainties import adjusted_uncertainty
+from mislabeled.uncertainties._qualifier import _UNCERTAINTIES
 
 
-class BaseDynamicDetector(BaseEstimator, MetaEstimatorMixin, metaclass=ABCMeta):
+class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
     """Detector based on training dynamics.
 
     Parameters
@@ -42,7 +45,10 @@ class BaseDynamicDetector(BaseEstimator, MetaEstimatorMixin, metaclass=ABCMeta):
         ICLR 2019.
     """
 
-    def __init__(self, estimator, *, staging=False, method="predict"):
+    def __init__(
+        self, estimator, uncertainty, adjust, *, staging=False, method="predict"
+    ):
+        super().__init__(uncertainty=uncertainty, adjust=adjust)
         self.estimator = estimator
         self.staging = staging
         self.method = method
@@ -72,6 +78,8 @@ class BaseDynamicDetector(BaseEstimator, MetaEstimatorMixin, metaclass=ABCMeta):
             estimator = self.estimator
 
         self.estimator_ = clone(estimator)
+        # Can't work at the "qualifier" level because of staged version
+        self.uncertainty_ = copy.deepcopy(_UNCERTAINTIES[self.uncertainty])
 
         if self.staging:
             self.method_ = _check_response_method(
@@ -82,7 +90,10 @@ class BaseDynamicDetector(BaseEstimator, MetaEstimatorMixin, metaclass=ABCMeta):
 
             self.uncertainties_ = []
             for y_pred in self.method_(X):
-                self.uncertainties_.append(self.uncertainty(y, y_pred))
+                uncertainties = self.uncertainty_(y_pred, y)
+                if self.adjust:
+                    uncertainties = adjusted_uncertainty(uncertainties, y_pred, y)
+                self.uncertainties_.append(uncertainties)
 
         else:
             if not hasattr(self.estimator_, "warm_start"):
@@ -114,16 +125,16 @@ class BaseDynamicDetector(BaseEstimator, MetaEstimatorMixin, metaclass=ABCMeta):
             for i in range(0, self.max_iter_):
                 self.estimator_.set_params(**{f"{self.iter_param_}": i + 1})
                 self.estimator_.fit(X, y)
-                self.uncertainties_.append(self.uncertainty(y, self.method_(X)))
+                y_pred = self.method_(X)
+                uncertainties = self.uncertainty_(y_pred, y)
+                if self.adjust:
+                    uncertainties = adjusted_uncertainty(uncertainties, y_pred, y)
+                self.uncertainties_.append(uncertainties)
 
         self.n_iter_ = len(self.uncertainties_)
         self.uncertainties_ = np.stack(self.uncertainties_, axis=1)
 
         return self.aggregate(self.uncertainties_)
-
-    @abstractmethod
-    def uncertainty(self, y, y_pred):
-        """"""
 
     @abstractmethod
     def aggregate(self, uncertainties):
@@ -165,15 +176,9 @@ class ForgettingDetector(BaseDynamicDetector):
     """
 
     def __init__(self, estimator, *, staging=False):
-        super().__init__(estimator, staging=staging, method="decision_function")
-
-    def uncertainty(self, y, y_pred):
-        # Hard Margins
-        # Maybe swap to acc to not require dec_func but only pred ?
-        margins = get_margins(y_pred, y)
-        np.sign(margins, out=margins)
-        np.clip(margins, a_min=0, a_max=None, out=margins)
-        return margins
+        super().__init__(
+            estimator, "hard_margin", False, staging=staging, method="decision_function"
+        )
 
     def aggregate(self, uncertainties):
         forgetting_events = np.diff(uncertainties, axis=1, prepend=0) < 0
@@ -214,10 +219,13 @@ class AUMDetector(BaseDynamicDetector):
     """
 
     def __init__(self, estimator, *, staging=False):
-        super().__init__(estimator, staging=staging, method="decision_function")
-
-    def uncertainty(self, y, y_pred):
-        return get_margins(y_pred, y)
+        super().__init__(
+            estimator,
+            "normalized_margin",
+            False,
+            staging=staging,
+            method="decision_function",
+        )
 
     def aggregate(self, uncertainties):
         return uncertainties.sum(axis=1)

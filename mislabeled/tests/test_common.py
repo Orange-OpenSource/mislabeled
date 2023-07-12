@@ -1,6 +1,7 @@
 from bqlearn.tradaboost import TrAdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
@@ -25,8 +26,11 @@ from mislabeled.handle import (
 )
 
 detectors = [
-    ConsensusDetector(LogisticRegression(), n_jobs=-1),
-    AUMDetector(GradientBoostingClassifier(n_estimators=10)),
+    ConsensusDetector(
+        LogisticRegression(),
+        cv=RepeatedStratifiedKFold(n_splits=3, n_repeats=10),
+        n_jobs=-1,
+    ),
     InfluenceDetector(),
     ClassifierDetector(LogisticRegression()),
     OutlierDetector(
@@ -37,6 +41,7 @@ detectors = [
     KMMDetector(n_jobs=-1),
     PDRDetector(LogisticRegression(), n_jobs=-1),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
+    AUMDetector(GradientBoostingClassifier(n_estimators=10)),
     ForgettingDetector(
         GradientBoostingClassifier(n_estimators=10),
         staging=True,
@@ -48,7 +53,7 @@ detectors = [
     list(
         map(
             lambda detector: FilterClassifier(
-                detector, LogisticRegression(), trust_proportion=0.8
+                detector, LogisticRegression(), trust_proportion=1.0
             ),
             detectors,
         )
@@ -64,7 +69,7 @@ def test_all_detectors_with_filter(estimator, check):
             lambda detector: SemiSupervisedClassifier(
                 detector,
                 SelfTrainingClassifier(LogisticRegression()),
-                trust_proportion=0.8,
+                trust_proportion=1.0,
             ),
             detectors,
         )
@@ -84,7 +89,7 @@ def test_all_detectors_with_ssl(estimator, check):
                     n_estimators=10,
                     random_state=1,
                 ),
-                trust_proportion=0.8,
+                trust_proportion=1.0,
             ),
             detectors,
         )
@@ -105,12 +110,12 @@ naive_complexity_detector = NaiveComplexityDetector(
 parametrize = parametrize_with_checks(
     [
         FilterClassifier(
-            naive_complexity_detector, LogisticRegression(), trust_proportion=0.8
+            naive_complexity_detector, LogisticRegression(), trust_proportion=1.0
         ),
         SemiSupervisedClassifier(
             naive_complexity_detector,
             SelfTrainingClassifier(LogisticRegression()),
-            trust_proportion=0.8,
+            trust_proportion=1.0,
         ),
         BiqualityClassifier(
             naive_complexity_detector,
@@ -119,7 +124,7 @@ parametrize = parametrize_with_checks(
                 n_estimators=10,
                 random_state=1,
             ),
-            trust_proportion=0.8,
+            trust_proportion=1.0,
         ),
     ]
 )

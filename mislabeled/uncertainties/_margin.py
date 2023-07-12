@@ -67,7 +67,7 @@ def normalized_margin(y_pred, y_true=None, *, labels=None):
     y_pred = check_array(y_pred, ensure_2d=False)
 
     # Multiclass
-    if y_pred.ndim > 1:
+    if y_pred.ndim > 1 and y_pred.shape[1] > 1:
         margin = self_confidence(
             y_pred, y_true=y_true, labels=labels
         ) - self_confidence(y_pred, k=2, y_true=y_true, labels=labels)
