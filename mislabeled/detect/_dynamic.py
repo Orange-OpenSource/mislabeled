@@ -36,13 +36,6 @@ class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
 
     n_iter_ : int
         Number of iterations of the boosting process.
-
-    References
-    ----------
-    .. [1] Toneva, M., Sordoni, A., des Combes, R. T., Trischler, A., Bengio, Y.,\
-        & Gordon, G. J.\
-        "An Empirical Study of Example Forgetting during Deep Neural Network Learning."\
-        ICLR 2019.
     """
 
     def __init__(
