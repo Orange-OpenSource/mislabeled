@@ -1,10 +1,12 @@
 import copy
-from functools import partial
+from functools import partial, wraps
 
+import numpy as np
 from sklearn.base import is_regressor
 from sklearn.metrics._scorer import _BaseScorer
 from sklearn.metrics._scorer import _PredictScorer as _PredictQualifier
-from sklearn.metrics._scorer import _ProbaScorer as _ProbaQualifier
+
+# from sklearn.metrics._scorer import _ProbaScorer as _ProbaQualifier
 from sklearn.utils.multiclass import type_of_target
 
 from ._adjust import adjusted_uncertainty
@@ -13,7 +15,60 @@ from ._entropy import entropy
 from ._margin import hard_margin, normalized_margin
 
 
-class _ThresholdScorer(_BaseScorer):
+class _ProbaQualifier(_BaseScorer):
+    def _score(self, method_caller, clf, X, y, **kwargs):
+        """Evaluate predicted probabilities for X relative to y_true.
+
+        Parameters
+        ----------
+        method_caller : callable
+            Returns predictions given an estimator, method name, and other
+            arguments, potentially caching results.
+
+        clf : object
+            Trained classifier to use for scoring. Must have a `predict_proba`
+            method; the output of that is used to compute the score.
+
+        X : {array-like, sparse matrix}
+            Test data that will be fed to clf.predict_proba.
+
+        y : array-like
+            Gold standard target values for X. These must be class labels,
+            not probabilities.
+
+        **kwargs : dict
+            Other parameters passed to the scorer. Refer to
+            :func:`set_score_request` for more details.
+
+            .. versionadded:: 1.3
+
+        Returns
+        -------
+        score : float
+            Score function applied to prediction of estimator on X.
+        """
+        self._warn_overlap(
+            message=(
+                "There is an overlap between set kwargs of this scorer instance and"
+                " passed metadata. Please pass them either as kwargs to `make_scorer`"
+                " or metadata, but not both."
+            ),
+            kwargs=kwargs,
+        )
+
+        y_pred = method_caller(clf, "predict_proba", X, pos_label=self._get_pos_label())
+        if y_pred.ndim == 1:
+            y_pred = y_pred[:, np.newaxis]
+        if y_pred.shape[1] == 1:
+            y_pred = np.append(1 - y_pred, y_pred, axis=1)
+        scoring_kwargs = {**self._kwargs, **kwargs}
+        return self._sign * self._score_func(y, y_pred, **scoring_kwargs)
+
+    def _factory_args(self):
+        return ", needs_proba=True"
+
+
+class _ThresholdQualifier(_BaseScorer):
     def _score(self, method_caller, clf, X, y, **kwargs):
         """Evaluate decision function output for X relative to y_true.
 
@@ -50,8 +105,8 @@ class _ThresholdScorer(_BaseScorer):
         self._warn_overlap(
             message=(
                 "There is an overlap between set kwargs of this scorer instance and"
-                " passed metadata. Please pass them either as kwargs to `make_scorer`"
-                " or metadata, but not both."
+                " passed metadata. Please pass them either as kwargs to "
+                "`make_qualifier` or metadata, but not both."
             ),
             kwargs=kwargs,
         )
@@ -68,6 +123,10 @@ class _ThresholdScorer(_BaseScorer):
 
             except (NotImplementedError, AttributeError):
                 y_pred = method_caller(clf, "predict_proba", X)
+                if y_pred.ndim == 1:
+                    y_pred = y_pred[:, np.newaxis]
+                if y_pred.shape[1] == 1:
+                    y_pred = np.append(1 - y_pred, y_pred, axis=1)
 
         scoring_kwargs = {**self._kwargs, **kwargs}
         return self._sign * self._score_func(y, y_pred, **scoring_kwargs)
@@ -76,8 +135,12 @@ class _ThresholdScorer(_BaseScorer):
         return ", needs_threshold=True"
 
 
-def flipped(f, a, b, **kwargs):
-    return f(b, a, **kwargs)
+def flip(f):
+    @wraps(f)
+    def flipped(a, b, **kwargs):
+        return f(b, a, **kwargs)
+
+    return flipped
 
 
 def make_qualifier(
@@ -159,11 +222,11 @@ def make_qualifier(
     if needs_proba:
         cls = _ProbaQualifier
     elif needs_threshold:
-        cls = _ThresholdScorer
+        cls = _ThresholdQualifier
     else:
         cls = _PredictQualifier
 
-    return cls(partial(flipped, uncertainty_func), sign, kwargs)
+    return cls(flip(uncertainty_func), sign, kwargs)
 
 
 self_confidence_qualifier = make_qualifier(self_confidence, needs_threshold=True)

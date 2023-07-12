@@ -26,7 +26,9 @@ def entropy(y_prob, y_true=None, labels=None):
     Parameters
     ----------
     y_prob : array of shape (n_samples,) or (n_samples, n_classes)
-        Predicted probabilities.
+        Predicted probabilities, as returned by a classifier's predict_proba method.
+        If y_pred.shape = (n_samples,) the probabilities provided are assumed
+        to be that of the positive class.
 
     y_true : array of shape (n_samples,), default=None
         True targets, can be multiclass targets.

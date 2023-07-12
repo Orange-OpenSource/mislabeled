@@ -117,23 +117,14 @@ def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None
         y_true = le.transform(y_true)
         mask = np.ones_like(y_pred, dtype=bool)
         mask[np.arange(y_true.shape[0]), y_true] = False
-        print(y_pred[~mask], y_pred[mask])
-        # if k > 1:
-        #     print(
-        #         np.partition(
-        #             y_pred[mask].reshape(y_true.shape[0], -1),
-        #             kth=2 - k,
-        #             axis=1,
-        #         )[:, 2 - k],
-        #     )
         if k == 1:
             confidence = y_pred[~mask]
         else:
-            confidence = -np.partition(
-                -y_pred[mask].reshape(y_true.shape[0], -1),
-                kth=k - 2,
+            confidence = np.partition(
+                y_pred[mask].reshape(y_true.shape[0], -1),
+                kth=1 - k,
                 axis=1,
-            )[:, k - 2]
+            )[:, 1 - k]
 
     # Binary
     else:

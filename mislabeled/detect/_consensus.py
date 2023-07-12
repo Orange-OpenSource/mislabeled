@@ -1,10 +1,12 @@
 import numpy as np
-from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
-from sklearn.model_selection import cross_val_predict, StratifiedKFold
+from sklearn.base import is_classifier, MetaEstimatorMixin
+from sklearn.model_selection import check_cv, cross_validate
 from sklearn.utils.validation import _num_samples
 
+from mislabeled.detect.base import BaseDetector
 
-class ConsensusDetector(BaseEstimator, MetaEstimatorMixin):
+
+class ConsensusDetector(BaseDetector, MetaEstimatorMixin):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -16,9 +18,17 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, estimator, *, n_rounds=5, cv=None, n_jobs=None):
+    def __init__(
+        self,
+        estimator,
+        uncertainty="hard_margin",
+        adjust=False,
+        *,
+        cv=None,
+        n_jobs=None,
+    ):
+        super().__init__(uncertainty=uncertainty, adjust=adjust)
         self.estimator = estimator
-        self.n_rounds = n_rounds
         self.cv = cv
         self.n_jobs = n_jobs
 
@@ -42,20 +52,24 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin):
 
         n_samples = _num_samples(X)
 
-        if self.cv is None:
-            self.cv_ = StratifiedKFold(shuffle=True, random_state=0)
-        else:
-            self.cv_ = clone(self.cv)
+        self.cv_ = check_cv(self.cv, y, classifier=is_classifier(self.estimator))
 
-        consensus = np.empty((n_samples, self.n_rounds))
+        consensus = np.empty((n_samples, self.cv_.get_n_splits()))
+        consensus.fill(np.nan)
+        self.qualifier_ = self._make_qualifier()
 
-        for i in range(self.n_rounds):
-            y_pred = cross_val_predict(
-                self.estimator,
-                X,
-                y,
-                cv=self.cv_,
-                n_jobs=self.n_jobs,
-            )
-            consensus[:, i] = y_pred == y
-        return np.mean(consensus, axis=1)
+        scores = cross_validate(
+            self.estimator,
+            X,
+            y,
+            cv=self.cv_,
+            n_jobs=self.n_jobs,
+            return_estimator=True,
+            return_indices=True,
+        )
+        estimators, tests = scores["estimator"], scores["indices"]["test"]
+        # TODO: parallel
+        for i, (estimator, test) in enumerate(zip(estimators, tests)):
+            consensus[test, i] = self.qualifier_(estimator, X[test], y[test])
+
+        return np.nanmean(consensus, axis=1)

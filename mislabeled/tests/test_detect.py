@@ -7,6 +7,7 @@ from sklearn.ensemble import (
 )
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier
@@ -44,7 +45,11 @@ def simple_detect_test(n_classes, detector):
 @pytest.mark.parametrize(
     "detector",
     [
-        ConsensusDetector(KNeighborsClassifier(n_neighbors=3), n_jobs=-1),
+        ConsensusDetector(
+            KNeighborsClassifier(n_neighbors=3),
+            cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
+            n_jobs=-1,
+        ),
         AUMDetector(GradientBoostingClassifier(max_depth=1), staging=True),
         InfluenceDetector(RBFSampler(gamma="scale", n_components=100)),
         ClassifierDetector(
