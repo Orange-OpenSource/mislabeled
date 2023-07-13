@@ -1,5 +1,7 @@
 import numpy as np
-from sklearn.base import check_array
+from sklearn.metrics._classification import _check_targets
+from sklearn.utils import check_array
+from sklearn.utils.sparsefuncs import count_nonzero
 
 from ._confidence import confidence
 
@@ -142,4 +144,11 @@ def accuracy(y_pred, y_true):
     accuracies : array of shape (n_samples,)
         The accuracy for each example
     """
-    return y_true == y_pred
+    y_type, y_true, y_pred = _check_targets(y_true, y_pred)
+    if y_type.startswith("multilabel"):
+        differing_labels = count_nonzero(y_true - y_pred, axis=1)
+        score = differing_labels == 0
+    else:
+        score = (y_true == y_pred).astype(int)
+
+    return score

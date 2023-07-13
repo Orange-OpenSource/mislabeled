@@ -170,7 +170,7 @@ class ForgettingDetector(BaseDynamicDetector):
 
     def __init__(self, estimator, *, staging=False):
         super().__init__(
-            estimator, "accuracy", False, staging=staging, method="decision_function"
+            estimator, "accuracy", False, staging=staging, method="predict"
         )
 
     def aggregate(self, uncertainties):
