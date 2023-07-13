@@ -36,7 +36,7 @@ class InputSensitivityDetector(BaseDetector, MetaEstimatorMixin):
     def __init__(
         self,
         estimator,
-        uncertainty="normalized_margin",
+        uncertainty="soft_margin",
         adjust=False,
         *,
         epsilon=1e-1,

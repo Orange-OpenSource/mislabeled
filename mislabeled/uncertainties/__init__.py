@@ -1,7 +1,7 @@
 from ._adjust import adjusted_uncertainty
-from ._confidence import self_confidence, weighted_self_confidence
+from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy
-from ._margin import hard_margin, normalized_margin
+from ._margin import hard_margin, soft_margin
 from ._qualifier import (
     check_uncertainty,
     get_qualifier,
@@ -10,10 +10,10 @@ from ._qualifier import (
 )
 
 __all__ = [
-    "normalized_margin",
+    "soft_margin",
     "hard_margin",
-    "self_confidence",
-    "weighted_self_confidence",
+    "confidence",
+    "confidence_entropy_ratio",
     "entropy",
     "adjusted_uncertainty",
     "make_qualifier",

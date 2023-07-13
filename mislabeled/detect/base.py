@@ -17,7 +17,7 @@ class BaseDetector(BaseEstimator):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, uncertainty="normalized_margin", adjust=False):
+    def __init__(self, uncertainty="soft_margin", adjust=False):
         self.uncertainty = uncertainty
         self.adjust = adjust
 

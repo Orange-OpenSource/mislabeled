@@ -8,9 +8,9 @@ from sklearn.metrics._scorer import _PredictScorer as _PredictQualifier
 from sklearn.utils.multiclass import type_of_target
 
 from ._adjust import adjusted_uncertainty
-from ._confidence import self_confidence, weighted_self_confidence
+from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy
-from ._margin import hard_margin, normalized_margin
+from ._margin import accuracy, hard_margin, soft_margin
 
 
 class _ProbaQualifier(_BaseScorer):
@@ -133,20 +133,13 @@ class _ThresholdQualifier(_BaseScorer):
         return ", needs_threshold=True"
 
 
-# TODO : me couper une couille
+# Needed to make uncertainties compatible with metrics from sklearn
 class flip:
     def __init__(self, f):
         self.f = f
 
     def __call__(self, a, b, **kwargs):
         return self.f(b, a, **kwargs)
-
-
-# def flip(f):
-#     def flipped(a, b, **kwargs):
-#         return f(b, a, **kwargs)
-
-#     return flipped
 
 
 def make_qualifier(
@@ -235,35 +228,38 @@ def make_qualifier(
     return cls(flip(uncertainty_func), sign, kwargs)
 
 
-self_confidence_qualifier = make_qualifier(self_confidence, needs_threshold=True)
-weighted_self_confidence_qualifier = make_qualifier(
-    weighted_self_confidence, needs_proba=True
+confidence_qualifier = make_qualifier(confidence, needs_threshold=True)
+confidence_entropy_ratio_qualifier = make_qualifier(
+    confidence_entropy_ratio, needs_proba=True
 )
-normalized_margin_qualifier = make_qualifier(normalized_margin, needs_threshold=True)
-# TODO: remove needs_threshold=True
+soft_margin_qualifier = make_qualifier(soft_margin, needs_threshold=True)
 hard_margin_qualifier = make_qualifier(hard_margin, needs_threshold=True)
+accuracy_qualifier = make_qualifier(accuracy)
 entropy_qualifier = make_qualifier(entropy, needs_proba=True)
 
 _QUALIFIERS = dict(
-    self_confidence=self_confidence_qualifier,
-    weighted_self_confidence=weighted_self_confidence_qualifier,
-    normalized_margin=normalized_margin_qualifier,
+    confidence=confidence_qualifier,
+    confidence_entropy_ratio=confidence_entropy_ratio_qualifier,
+    soft_margin=soft_margin_qualifier,
     hard_margin=hard_margin_qualifier,
+    accuracy=accuracy_qualifier,
     entropy=entropy_qualifier,
 )
 
 _UNCERTAINTIES = dict(
-    self_confidence=self_confidence,
-    weighted_self_confidence=weighted_self_confidence,
-    normalized_margin=normalized_margin,
+    confidence=confidence,
+    confidence_entropy_ratio=confidence_entropy_ratio,
+    soft_margin=soft_margin,
     hard_margin=hard_margin,
+    accuracy=accuracy,
     entropy=entropy,
 )
 
 for key, uncertainty in _UNCERTAINTIES.items():
-    _QUALIFIERS["adjusted_" + key] = make_qualifier(
-        partial(adjusted_uncertainty, uncertainty), needs_proba=True
-    )
+    if key not in ["accuracy", "hard_margin"]:
+        _QUALIFIERS["adjusted_" + key] = make_qualifier(
+            partial(adjusted_uncertainty, uncertainty), needs_proba=True
+        )
 
 
 def get_qualifier(uncertainty):

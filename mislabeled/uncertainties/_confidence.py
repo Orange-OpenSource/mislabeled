@@ -10,7 +10,7 @@ from sklearn.utils.validation import _check_sample_weight
 from ._entropy import entropy
 
 
-def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None):
+def confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None):
     """Self confidence for label quality estimation.
 
     The confidence of the classifier is the estimated probability of a sample belonging
@@ -54,7 +54,6 @@ def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None
         The self-confidence for each example
     """
 
-    check_consistent_length(y_true, y_pred)
     y_pred = check_array(y_pred, ensure_2d=False)
 
     sample_weight = _check_sample_weight(sample_weight, y_pred)
@@ -85,15 +84,18 @@ def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None
 
     if np.all(labels != sorted(labels)):
         warnings.warn(
-            f"Labels passed were {labels}. But this function "
-            "assumes labels are ordered lexicographically. "
-            "Ensure that labels in y_pred are ordered as "
-            f"{sorted(labels)}.",
+            (
+                f"Labels passed were {labels}. But this function "
+                "assumes labels are ordered lexicographically. "
+                "Ensure that labels in y_pred are ordered as "
+                f"{sorted(labels)}."
+            ),
             UserWarning,
         )
 
-    n_classes = len(labels)
+    check_consistent_length(y_true, y_pred)
 
+    n_classes = len(labels)
     check_scalar(k, "k", int, min_val=1, max_val=n_classes)
 
     # Multiclass
@@ -148,6 +150,46 @@ def self_confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None
     return confidence * sample_weight
 
 
-def weighted_self_confidence(y_prob, y_true=None, labels=None):
-    inv_entropy = -1 / entropy(y_prob, labels=labels)
-    return self_confidence(y_prob, y_true, sample_weight=inv_entropy, labels=labels)
+def confidence_entropy_ratio(y_prob, y_true=None, labels=None):
+    """Self confidence weighted by the inverse entropy for label quality estimation.
+
+    The confidence of the classifier is weighted by the inverse entropy to take
+    out-of-distribution samples into account.
+
+    .. math::
+
+        CER(x) = \\frac{C(x)}{- E(x)}
+
+    Or in the supervised case:
+
+    .. math::
+
+        CER_y(x) = \\frac{C_y(x)}{- E(x)}
+
+    Parameters
+    ----------
+    y_pred : array of shape (n_samples,) or (n_samples, n_classes)
+        Predicted logits or probabilities.
+
+    y_true : array of shape (n_samples,), default=None
+        True targets, can be multiclass targets.
+
+    labels : array-like of shape (n_classes), default=None
+        List of labels. They need to be in ordered lexicographically
+        If ``None`` is given, those that appear at least once
+        in ``y_true`` or ``y_prob`` are used in sorted order.
+
+    Returns
+    -------
+    weighted_confidences : array of shape (n_samples,)
+        The self-confidence for each example
+
+    References
+    ----------
+    .. [1] Kuan, Johnson, and Jonas Mueller.\
+        "Model-agnostic label quality scoring to detect real-world label errors."\
+        ICML DataPerf Workshop. 2022.
+    """
+    return confidence(
+        y_prob, y_true, sample_weight=-1 / entropy(y_prob, labels=labels), labels=labels
+    )

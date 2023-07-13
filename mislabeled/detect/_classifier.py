@@ -15,7 +15,7 @@ class ClassifierDetector(BaseDetector, MetaEstimatorMixin):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, estimator, uncertainty="normalized_margin", adjust=False):
+    def __init__(self, estimator, uncertainty="soft_margin", adjust=False):
         super().__init__(uncertainty=uncertainty, adjust=adjust)
         self.estimator = estimator
 

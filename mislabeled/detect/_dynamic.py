@@ -170,7 +170,7 @@ class ForgettingDetector(BaseDynamicDetector):
 
     def __init__(self, estimator, *, staging=False):
         super().__init__(
-            estimator, "hard_margin", False, staging=staging, method="decision_function"
+            estimator, "accuracy", False, staging=staging, method="decision_function"
         )
 
     def aggregate(self, uncertainties):
@@ -214,7 +214,7 @@ class AUMDetector(BaseDynamicDetector):
     def __init__(self, estimator, *, staging=False):
         super().__init__(
             estimator,
-            "normalized_margin",
+            "soft_margin",
             False,
             staging=staging,
             method="decision_function",

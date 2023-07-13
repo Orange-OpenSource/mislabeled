@@ -44,7 +44,6 @@ def entropy(y_prob, y_true=None, labels=None):
         The entropy for each example
     """
 
-    check_consistent_length(y_true, y_prob)
     y_prob = check_array(
         y_prob, ensure_2d=False, dtype=[np.float64, np.float32, np.float16]
     )
@@ -72,10 +71,12 @@ def entropy(y_prob, y_true=None, labels=None):
 
         if not np.all(lb.classes_ == labels):
             warnings.warn(
-                f"Labels passed were {labels}. But this function "
-                "assumes labels are ordered lexicographically. "
-                "Ensure that labels in y_prob are ordered as "
-                f"{lb.classes_}.",
+                (
+                    f"Labels passed were {labels}. But this function "
+                    "assumes labels are ordered lexicographically. "
+                    "Ensure that labels in y_prob are ordered as "
+                    f"{lb.classes_}."
+                ),
                 UserWarning,
             )
 
@@ -97,6 +98,8 @@ def entropy(y_prob, y_true=None, labels=None):
 
         if Y_true.shape[1] == 1:
             Y_true = np.append(1 - Y_true, Y_true, axis=1)
+
+    check_consistent_length(Y_true, y_prob)
 
     eps = np.finfo(y_prob.dtype).eps
     y_prob = np.clip(y_prob, eps, 1 - eps)

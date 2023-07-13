@@ -1,10 +1,10 @@
 import numpy as np
 from sklearn.base import check_array
 
-from ._confidence import self_confidence
+from ._confidence import confidence
 
 
-def normalized_margin(y_pred, y_true=None, *, labels=None):
+def soft_margin(y_pred, y_true=None, *, labels=None):
     """Soft margin for label quality estimation.
 
     Margin can be defined for both probabilities or logits. In the case of
@@ -36,8 +36,6 @@ def normalized_margin(y_pred, y_true=None, *, labels=None):
 
         M_y(x) = |f(x)|
 
-    This function is adapted from sklearn's implementation of hinge_loss
-
     Parameters
     ----------
     y_pred : array of shape (n_samples,) or (n_samples, n_classes)
@@ -68,25 +66,31 @@ def normalized_margin(y_pred, y_true=None, *, labels=None):
 
     # Multiclass
     if y_pred.ndim > 1 and y_pred.shape[1] > 1:
-        margin = self_confidence(
-            y_pred, y_true=y_true, labels=labels
-        ) - self_confidence(y_pred, k=2, y_true=y_true, labels=labels)
+        margin = confidence(y_pred, y_true=y_true, labels=labels) - confidence(
+            y_pred, k=2, y_true=y_true, labels=labels
+        )
 
     # Binary
     else:
-        margin = self_confidence(y_pred, y_true=y_true, labels=labels)
+        margin = confidence(y_pred, y_true=y_true, labels=labels)
 
     return margin
 
 
-def hard_margin(y_pred, y_true, *, labels=None):
+def hard_margin(y_pred, y_true=None, *, labels=None):
     """Hard margin for label quality estimation.
 
-    Hard Margin is defined as the indicator function of a positive Soft Margin:
+    Hard Margin is defined as the positive part of the Soft Margin:
 
     .. math::
 
-        HardM_y(x) = \mathbb{1}_{M_y(x)>0}
+        HardM(x) = max(M(x), 0)
+
+    In the supervised case:
+
+    .. math::
+
+        HardM_y(x) = max(M_y(x), 0)
 
     Parameters
     ----------
@@ -106,7 +110,36 @@ def hard_margin(y_pred, y_true, *, labels=None):
     margins : array of shape (n_samples,)
         The margin for each example
     """
-    margin = normalized_margin(y_pred, y_true=y_true, labels=labels)
-    np.sign(margin, out=margin)
+    margin = soft_margin(y_pred, y_true=y_true, labels=labels)
     np.clip(margin, a_min=0, a_max=None, out=margin)
     return margin
+
+
+def accuracy(y_pred, y_true):
+    """Accuracy for label quality estimation.
+
+    Accuracy checks for equality between the predicted class and the label:
+
+    .. math::
+
+        A_y(k) = \\mathbb{1}_{y=k}
+
+    Parameters
+    ----------
+    y_pred : array of shape (n_samples,) or (n_samples, n_classes)
+        Predicted logits or probabilities.
+
+    y_true : array of shape (n_samples,)
+        True targets, can be multiclass targets.
+
+    labels : array-like of shape (n_classes), default=None
+        List of labels. They need to be in ordered lexicographically
+        If ``None`` is given, those that appear at least once
+        in ``y_true`` or ``y_prob`` are used in sorted order.
+
+    Returns
+    -------
+    accuracies : array of shape (n_samples,)
+        The accuracy for each example
+    """
+    return y_true == y_pred

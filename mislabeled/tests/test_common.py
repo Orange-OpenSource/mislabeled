@@ -28,7 +28,7 @@ from mislabeled.handle import (
 detectors = [
     ConsensusDetector(
         LogisticRegression(),
-        cv=RepeatedStratifiedKFold(n_splits=3, n_repeats=10),
+        cv=RepeatedStratifiedKFold(n_splits=3, n_repeats=10, random_state=1),
         n_jobs=-1,
     ),
     InfluenceDetector(),
@@ -53,7 +53,7 @@ detectors = [
     list(
         map(
             lambda detector: FilterClassifier(
-                detector, LogisticRegression(), trust_proportion=1.0
+                detector, LogisticRegression(), trust_proportion=0.8
             ),
             detectors,
         )
@@ -69,7 +69,7 @@ def test_all_detectors_with_filter(estimator, check):
             lambda detector: SemiSupervisedClassifier(
                 detector,
                 SelfTrainingClassifier(LogisticRegression()),
-                trust_proportion=1.0,
+                trust_proportion=0.8,
             ),
             detectors,
         )
@@ -89,7 +89,7 @@ def test_all_detectors_with_ssl(estimator, check):
                     n_estimators=10,
                     random_state=1,
                 ),
-                trust_proportion=1.0,
+                trust_proportion=0.8,
             ),
             detectors,
         )
@@ -110,12 +110,12 @@ naive_complexity_detector = NaiveComplexityDetector(
 parametrize = parametrize_with_checks(
     [
         FilterClassifier(
-            naive_complexity_detector, LogisticRegression(), trust_proportion=1.0
+            naive_complexity_detector, LogisticRegression(), trust_proportion=0.8
         ),
         SemiSupervisedClassifier(
             naive_complexity_detector,
             SelfTrainingClassifier(LogisticRegression()),
-            trust_proportion=1.0,
+            trust_proportion=0.8,
         ),
         BiqualityClassifier(
             naive_complexity_detector,
@@ -124,7 +124,7 @@ parametrize = parametrize_with_checks(
                 n_estimators=10,
                 random_state=1,
             ),
-            trust_proportion=1.0,
+            trust_proportion=0.8,
         ),
     ]
 )
