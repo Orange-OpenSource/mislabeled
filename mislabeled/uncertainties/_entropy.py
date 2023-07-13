@@ -71,12 +71,10 @@ def entropy(y_prob, y_true=None, labels=None):
 
         if not np.all(lb.classes_ == labels):
             warnings.warn(
-                (
-                    f"Labels passed were {labels}. But this function "
-                    "assumes labels are ordered lexicographically. "
-                    "Ensure that labels in y_prob are ordered as "
-                    f"{lb.classes_}."
-                ),
+                f"Labels passed were {labels}. But this function "
+                "assumes labels are ordered lexicographically. "
+                "Ensure that labels in y_prob are ordered as "
+                f"{lb.classes_}.",
                 UserWarning,
             )
 

@@ -4,7 +4,7 @@ from pytest import raises, warns
 from scipy.special import softmax
 from sklearn.metrics.tests.test_classification import make_prediction
 
-from mislabeled.uncertainties import entropy, soft_margin, confidence
+from mislabeled.uncertainties import confidence, entropy, soft_margin
 
 
 # Incredible it's just a bug in sklearn hinge_loss
