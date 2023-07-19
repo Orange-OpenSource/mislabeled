@@ -21,7 +21,7 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin):
     def __init__(
         self,
         estimator,
-        uncertainty="hard_margin",
+        uncertainty="accuracy",
         adjust=False,
         *,
         cv=None,
