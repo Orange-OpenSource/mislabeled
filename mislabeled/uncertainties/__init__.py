@@ -2,11 +2,11 @@ from ._adjust import adjusted_uncertainty
 from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy
 from ._margin import hard_margin, soft_margin
-from ._qualifier import (
+from ._scorer import (
     check_uncertainty,
-    get_qualifier,
-    get_qualifier_names,
-    make_qualifier,
+    get_uncertainty_scorer,
+    get_uncertainty_scorer_names,
+    make_uncertainty_scorer,
 )
 
 __all__ = [
@@ -16,8 +16,8 @@ __all__ = [
     "confidence_entropy_ratio",
     "entropy",
     "adjusted_uncertainty",
-    "make_qualifier",
-    "get_qualifier",
-    "get_qualifier_names",
+    "make_uncertainty_scorer",
+    "get_uncertainty_scorer",
+    "get_uncertainty_scorer_names",
     "check_uncertainty",
 ]

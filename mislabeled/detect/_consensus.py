@@ -56,7 +56,7 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin):
 
         consensus = np.empty((n_samples, self.cv_.get_n_splits(X, y)))
         consensus.fill(np.nan)
-        self.qualifier_ = self._make_qualifier()
+        self.uncertainty_scorer_ = self._make_uncertainty_scorer()
 
         scores = cross_validate(
             self.estimator,
@@ -70,6 +70,6 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin):
         estimators, tests = scores["estimator"], scores["indices"]["test"]
         # TODO: parallel
         for i, (estimator, test) in enumerate(zip(estimators, tests)):
-            consensus[test, i] = self.qualifier_(estimator, X[test], y[test])
+            consensus[test, i] = self.uncertainty_scorer_(estimator, X[test], y[test])
 
         return np.nanmean(consensus, axis=1)

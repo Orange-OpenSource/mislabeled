@@ -4,7 +4,7 @@ from functools import partial
 import numpy as np
 from sklearn.base import is_regressor
 from sklearn.metrics._scorer import _BaseScorer
-from sklearn.metrics._scorer import _PredictScorer as _PredictQualifier
+from sklearn.metrics._scorer import _PredictScorer as _PredictUncertaintyScorer
 from sklearn.utils.multiclass import type_of_target
 
 from ._adjust import adjusted_uncertainty
@@ -13,7 +13,7 @@ from ._entropy import entropy
 from ._margin import accuracy, hard_margin, soft_margin
 
 
-class _ProbaQualifier(_BaseScorer):
+class _ProbaUncertaintyScorer(_BaseScorer):
     def _score(self, method_caller, clf, X, y, **kwargs):
         """Evaluate predicted probabilities for X relative to y_true.
 
@@ -66,7 +66,7 @@ class _ProbaQualifier(_BaseScorer):
         return ", needs_proba=True"
 
 
-class _ThresholdQualifier(_BaseScorer):
+class _ThresholdUncertaintyScorer(_BaseScorer):
     def _score(self, method_caller, clf, X, y, **kwargs):
         """Evaluate decision function output for X relative to y_true.
 
@@ -104,7 +104,7 @@ class _ThresholdQualifier(_BaseScorer):
             message=(
                 "There is an overlap between set kwargs of this scorer instance and"
                 " passed metadata. Please pass them either as kwargs to "
-                "`make_qualifier` or metadata, but not both."
+                "`make_uncertainty_scorer` or metadata, but not both."
             ),
             kwargs=kwargs,
         )
@@ -133,7 +133,7 @@ class _ThresholdQualifier(_BaseScorer):
         return ", needs_threshold=True"
 
 
-def make_qualifier(
+def make_uncertainty_scorer(
     uncertainty_func,
     *,
     greater_is_better=True,
@@ -141,7 +141,7 @@ def make_qualifier(
     needs_threshold=False,
     **kwargs,
 ):
-    """Make a qualifier from a certainty or uncertainty function.
+    """Make a uncertainty_scorer from a certainty or uncertainty function.
 
     This factory function wraps uncertainty functions for use in
     :class:`~mislabeled.detect.Detector`.
@@ -163,7 +163,7 @@ def make_qualifier(
     greater_is_better : bool, default=True
         Whether `uncertainty_func` is a uncertainty function (default), meaning high is
         good, or a certainty function, meaning low is good. In the latter case, the
-        qualifier object will sign-flip the outcome of the `uncertainty_func`.
+        uncertainty_scorer object will sign-flip the outcome of the `uncertainty_func`.
 
     needs_proba : bool, default=False
         Whether `uncertainty_func` requires `predict_proba` to get probability
@@ -190,7 +190,7 @@ def make_qualifier(
 
     Returns
     -------
-    qualifier : callable
+    uncertainty_scorer : callable
         Callable object that returns a scalar uncertainty; greater is better.
 
     Notes
@@ -210,48 +210,54 @@ def make_qualifier(
             "Set either needs_proba or needs_threshold to True, but not both."
         )
     if needs_proba:
-        cls = _ProbaQualifier
+        cls = _ProbaUncertaintyScorer
     elif needs_threshold:
-        cls = _ThresholdQualifier
+        cls = _ThresholdUncertaintyScorer
     else:
-        cls = _PredictQualifier
+        cls = _PredictUncertaintyScorer
 
     return cls(uncertainty_func, sign, kwargs)
 
 
-confidence_qualifier = make_qualifier(confidence, needs_threshold=True)
-confidence_entropy_ratio_qualifier = make_qualifier(
+confidence_uncertainty_scorer = make_uncertainty_scorer(
+    confidence, needs_threshold=True
+)
+confidence_entropy_ratio_uncertainty_scorer = make_uncertainty_scorer(
     confidence_entropy_ratio, needs_proba=True
 )
-soft_margin_qualifier = make_qualifier(soft_margin, needs_threshold=True)
-hard_margin_qualifier = make_qualifier(hard_margin, needs_threshold=True)
-accuracy_qualifier = make_qualifier(accuracy)
-entropy_qualifier = make_qualifier(entropy, needs_proba=True)
+soft_margin_uncertainty_scorer = make_uncertainty_scorer(
+    soft_margin, needs_threshold=True
+)
+hard_margin_uncertainty_scorer = make_uncertainty_scorer(
+    hard_margin, needs_threshold=True
+)
+accuracy_uncertainty_scorer = make_uncertainty_scorer(accuracy)
+entropy_uncertainty_scorer = make_uncertainty_scorer(entropy, needs_proba=True)
 
-unsupervised_confidence_qualifier = make_qualifier(
+unsupervised_confidence_uncertainty_scorer = make_uncertainty_scorer(
     confidence, supervised=False, needs_threshold=True
 )
-unsupervised_soft_margin_qualifier = make_qualifier(
+unsupervised_soft_margin_uncertainty_scorer = make_uncertainty_scorer(
     soft_margin, supervised=False, needs_threshold=True
 )
-unsupervised_hard_margin_qualifier = make_qualifier(
+unsupervised_hard_margin_uncertainty_scorer = make_uncertainty_scorer(
     hard_margin, supervised=False, needs_threshold=True
 )
-unsupervised_entropy_qualifier = make_qualifier(
+unsupervised_entropy_uncertainty_scorer = make_uncertainty_scorer(
     entropy, supervised=False, needs_proba=True
 )
 
-_QUALIFIERS = dict(
-    confidence=confidence_qualifier,
-    unsupervised_confidence=unsupervised_confidence_qualifier,
-    confidence_entropy_ratio=confidence_entropy_ratio_qualifier,
-    soft_margin=soft_margin_qualifier,
-    unsupervised_soft_margin=unsupervised_soft_margin_qualifier,
-    hard_margin=hard_margin_qualifier,
-    unsupervised_hard_margin=unsupervised_hard_margin_qualifier,
-    accuracy=accuracy_qualifier,
-    entropy=entropy_qualifier,
-    unsupervised_entropy=unsupervised_entropy_qualifier,
+_UNCERTAINTY_SCORERS = dict(
+    confidence=confidence_uncertainty_scorer,
+    unsupervised_confidence=unsupervised_confidence_uncertainty_scorer,
+    confidence_entropy_ratio=confidence_entropy_ratio_uncertainty_scorer,
+    soft_margin=soft_margin_uncertainty_scorer,
+    unsupervised_soft_margin=unsupervised_soft_margin_uncertainty_scorer,
+    hard_margin=hard_margin_uncertainty_scorer,
+    unsupervised_hard_margin=unsupervised_hard_margin_uncertainty_scorer,
+    accuracy=accuracy_uncertainty_scorer,
+    entropy=entropy_uncertainty_scorer,
+    unsupervised_entropy=unsupervised_entropy_uncertainty_scorer,
 )
 
 _UNCERTAINTIES = dict(
@@ -265,17 +271,17 @@ _UNCERTAINTIES = dict(
 
 for key, uncertainty in _UNCERTAINTIES.items():
     if key not in ["accuracy", "hard_margin"]:
-        _QUALIFIERS["adjusted_" + key] = make_qualifier(
+        _UNCERTAINTY_SCORERS["adjusted_" + key] = make_uncertainty_scorer(
             partial(adjusted_uncertainty, uncertainty), needs_proba=True
         )
 
 
-def get_qualifier(uncertainty):
-    """Get a qualifier from string.
+def get_uncertainty_scorer(uncertainty):
+    """Get a uncertainty_scorer from string.
 
     Read more in the :ref:`User Guide <uncertainty_parameter>`.
-    :func:`~mislabeled.uncertainties.get_qualifier_names` can be used to retrieve the
-    names of all available qualifiers.
+    :func:`~mislabeled.uncertainties.get_uncertainty_scorer_names`
+    can be used to retrieve the names of all available uncertainty_scorers.
 
     Parameters
     ----------
@@ -285,77 +291,78 @@ def get_qualifier(uncertainty):
 
     Returns
     -------
-    qualifier : callable
-        The qualifier.
+    uncertainty_scorer : callable
+        The uncertainty_scorer.
 
     Notes
     -----
-    When passed a string, this function always returns a copy of the qualifier
-    object. Calling `get_qualifier` twice for the same qualifier results in two
-    separate qualifier objects.
+    When passed a string, this function always returns a copy of the uncertainty_scorer
+    object. Calling `get_uncertainty_scorer` twice for the same uncertainty_scorer
+    results in two separate uncertainty_scorer objects.
     """
     if isinstance(uncertainty, str):
         try:
-            qualifier = copy.deepcopy(_QUALIFIERS[uncertainty])
+            uncertainty_scorer = copy.deepcopy(_UNCERTAINTY_SCORERS[uncertainty])
         except KeyError:
             raise ValueError(
                 "%r is not a valid uncertainty value. "
-                "Use mislabeled.uncertainties.get_qualifier_names() "
+                "Use mislabeled.uncertainties.get_uncertainty_scorer_names() "
                 "to get valid options." % uncertainty
             )
     else:
-        qualifier = uncertainty
-    return qualifier
+        uncertainty_scorer = uncertainty
+    return uncertainty_scorer
 
 
-def get_qualifier_names():
-    """Get the names of all available qualifiers.
+def get_uncertainty_scorer_names():
+    """Get the names of all available uncertainty_scorers.
 
-    These names can be passed to :func:`~mislabeled.uncertainties.get_qualifier` to
-    retrieve the qualifier object.
+    These names can be passed to
+    :func:`~mislabeled.uncertainties.get_uncertainty_scorer` to
+    retrieve the uncertainty_scorer object.
 
     Returns
     -------
     list of str
-        Names of all available qualifiers.
+        Names of all available uncertainty_scorers.
     """
-    return sorted(_QUALIFIERS.keys())
+    return sorted(_UNCERTAINTY_SCORERS.keys())
 
 
 def check_uncertainty(uncertainty):
-    """Determine qualifier from user options.
+    """Determine uncertainty_scorer from user options.
 
     Parameters
     ----------
     uncertainty : str or callable, default=None
         A string (see model evaluation documentation) or
-        a qualifier callable object / function with signature
-        ``qualifier(estimator, X, y)``.
+        a uncertainty_scorer callable object / function with signature
+        ``uncertainty_scorer(estimator, X, y)``.
 
     Returns
     -------
     uncertainty : callable
-        A qualifier callable object / function with signature
-        ``qualifier(estimator, X, y)``.
+        A uncertainty_scorer callable object / function with signature
+        ``uncertainty_scorer(estimator, X, y)``.
     """
     if isinstance(uncertainty, str):
-        return get_qualifier(uncertainty)
+        return get_uncertainty_scorer(uncertainty)
     if callable(uncertainty):
         # Heuristic to ensure user has not passed an uncertainty
         module = getattr(uncertainty, "__module__", None)
         if (
             hasattr(module, "startswith")
             and module.startswith("mislabeled.uncertainties.")
-            and not module.startswith("mislabeled.uncertainties._qualifier")
+            and not module.startswith("mislabeled.uncertainties._scorer")
             and not module.startswith("mislabeled.uncertainties.tests.")
         ):
             raise ValueError(
-                "uncertainty value %r looks like it is an uncertainty "
-                "function rather than a qualifier. A qualifier should "
-                "require an estimator as its first parameter. "
-                "Please use `make_qualifier` to convert an uncertainty "
-                "to a qualifier." % uncertainty
+                "uncertainty value %r looks like it is an uncertainty function rather"
+                " than a uncertainty_scorer. A uncertainty_scorer should require an"
+                " estimator as its first parameter. Please use"
+                " `make_uncertainty_scorer` to convert an uncertainty to a"
+                " uncertainty_scorer." % uncertainty
             )
-        return get_qualifier(uncertainty)
+        return get_uncertainty_scorer(uncertainty)
     else:
         raise TypeError(f"${uncertainty} not supported")

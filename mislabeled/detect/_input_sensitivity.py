@@ -80,7 +80,7 @@ class InputSensitivityDetector(BaseDetector, MetaEstimatorMixin):
         self.estimator_ = clone(self.estimator)
         self.estimator_.fit(X, y)
 
-        self.qualifier_ = self._make_qualifier()
+        self.uncertainty_scorer_ = self._make_uncertainty_scorer()
 
         diffs = []
 
@@ -94,8 +94,8 @@ class InputSensitivityDetector(BaseDetector, MetaEstimatorMixin):
             # compute finite differences
             diffs.append(
                 (
-                    self.qualifier_(self.estimator_, vecs_end, y)
-                    - self.qualifier_(self.estimator_, vecs_start, y)
+                    self.uncertainty_scorer_(self.estimator_, vecs_end, y)
+                    - self.uncertainty_scorer_(self.estimator_, vecs_start, y)
                 )
                 / self.epsilon
             )

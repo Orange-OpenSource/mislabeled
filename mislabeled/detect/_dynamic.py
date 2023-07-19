@@ -8,7 +8,7 @@ from sklearn.utils.validation import _check_response_method
 
 from mislabeled.detect.base import BaseDetector
 from mislabeled.uncertainties import adjusted_uncertainty
-from mislabeled.uncertainties._qualifier import _UNCERTAINTIES
+from mislabeled.uncertainties._scorer import _UNCERTAINTIES
 
 
 class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
@@ -71,7 +71,7 @@ class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
             estimator = self.estimator
 
         self.estimator_ = clone(estimator)
-        # Can't work at the "qualifier" level because of staged version
+        # Can't work at the "uncertainty_scorer" level because of staged version
         self.uncertainty_ = copy.deepcopy(_UNCERTAINTIES[self.uncertainty])
 
         if self.staging:
@@ -112,13 +112,13 @@ class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
             self.iter_param_ = filtered_iter_params[0]
             self.max_iter_ = estimator_params.get(self.iter_param_)
 
-            self.qualifier_ = self._make_qualifier()
+            self.uncertainty_scorer_ = self._make_uncertainty_scorer()
 
             self.uncertainties_ = []
             for i in range(0, self.max_iter_):
                 self.estimator_.set_params(**{f"{self.iter_param_}": i + 1})
                 self.estimator_.fit(X, y)
-                uncertainties = self.qualifier_(self.estimator_, X, y)
+                uncertainties = self.uncertainty_scorer_(self.estimator_, X, y)
                 self.uncertainties_.append(uncertainties)
 
         self.n_iter_ = len(self.uncertainties_)

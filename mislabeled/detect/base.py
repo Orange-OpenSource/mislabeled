@@ -21,7 +21,7 @@ class BaseDetector(BaseEstimator):
         self.uncertainty = uncertainty
         self.adjust = adjust
 
-    def _make_qualifier(self):
+    def _make_uncertainty_scorer(self):
         if self.adjust:
             if isinstance(self.uncertainty, str):
                 return check_uncertainty("adjusted_" + self.uncertainty)

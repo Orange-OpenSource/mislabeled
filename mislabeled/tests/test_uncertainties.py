@@ -5,7 +5,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect import ClassifierDetector
-from mislabeled.uncertainties._qualifier import _QUALIFIERS
+from mislabeled.uncertainties._scorer import _UNCERTAINTY_SCORERS
 
 from .utils import blobs_1_mislabeled, blobs_1_ood
 
@@ -36,24 +36,26 @@ def simple_ood_test(n_classes, n_outliers, detector):
 
 @pytest.mark.parametrize("n_classes", [2, 5])
 @pytest.mark.parametrize(
-    "qualifier", filter(lambda name: "unsupervised" not in name, _QUALIFIERS.keys())
+    "uncertainty_scorer",
+    filter(lambda name: "unsupervised" not in name, _UNCERTAINTY_SCORERS.keys()),
 )
-def test_supervised_uncertainties(n_classes, qualifier):
+def test_supervised_uncertainties(n_classes, uncertainty_scorer):
     detector = ClassifierDetector(
         make_pipeline(RBFSampler(gamma="scale", n_components=200), LogisticRegression())
     )
-    detector.set_params(uncertainty=_QUALIFIERS[qualifier])
+    detector.set_params(uncertainty=_UNCERTAINTY_SCORERS[uncertainty_scorer])
     simple_detect_test(n_classes, detector)
 
 
 @pytest.mark.parametrize("n_classes", [2])
 @pytest.mark.parametrize("n_outliers", [5, 10, 30])
 @pytest.mark.parametrize(
-    "qualifier", filter(lambda name: "unsupervised" in name, _QUALIFIERS.keys())
+    "uncertainty_scorer",
+    filter(lambda name: "unsupervised" in name, _UNCERTAINTY_SCORERS.keys()),
 )
-def test_unsupervised_uncertainties(n_classes, n_outliers, qualifier):
+def test_unsupervised_uncertainties(n_classes, n_outliers, uncertainty_scorer):
     detector = ClassifierDetector(
         make_pipeline(RBFSampler(gamma="scale", n_components=200), LogisticRegression())
     )
-    detector.set_params(uncertainty=_QUALIFIERS[qualifier])
+    detector.set_params(uncertainty=_UNCERTAINTY_SCORERS[uncertainty_scorer])
     simple_ood_test(n_classes, n_outliers, detector)

@@ -40,5 +40,5 @@ class ClassifierDetector(BaseDetector, MetaEstimatorMixin):
         self.estimator_ = clone(self.estimator)
 
         self.estimator_.fit(X, y)
-        self.qualifier_ = self._make_qualifier()
-        return self.qualifier_(self.estimator_, X, y)
+        self.uncertainty_scorer_ = self._make_uncertainty_scorer()
+        return self.uncertainty_scorer_(self.estimator_, X, y)
