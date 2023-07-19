@@ -228,13 +228,30 @@ hard_margin_qualifier = make_qualifier(hard_margin, needs_threshold=True)
 accuracy_qualifier = make_qualifier(accuracy)
 entropy_qualifier = make_qualifier(entropy, needs_proba=True)
 
+unsupervised_confidence_qualifier = make_qualifier(
+    confidence, supervised=False, needs_threshold=True
+)
+unsupervised_soft_margin_qualifier = make_qualifier(
+    soft_margin, supervised=False, needs_threshold=True
+)
+unsupervised_hard_margin_qualifier = make_qualifier(
+    hard_margin, supervised=False, needs_threshold=True
+)
+unsupervised_entropy_qualifier = make_qualifier(
+    entropy, supervised=False, needs_proba=True
+)
+
 _QUALIFIERS = dict(
     confidence=confidence_qualifier,
+    unsupervised_confidence=unsupervised_confidence_qualifier,
     confidence_entropy_ratio=confidence_entropy_ratio_qualifier,
     soft_margin=soft_margin_qualifier,
+    unsupervised_soft_margin=unsupervised_soft_margin_qualifier,
     hard_margin=hard_margin_qualifier,
+    unsupervised_hard_margin=unsupervised_hard_margin_qualifier,
     accuracy=accuracy_qualifier,
     entropy=entropy_qualifier,
+    unsupervised_entropy=unsupervised_entropy_qualifier,
 )
 
 _UNCERTAINTIES = dict(
