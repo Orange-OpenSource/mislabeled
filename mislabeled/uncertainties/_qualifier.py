@@ -133,15 +133,6 @@ class _ThresholdQualifier(_BaseScorer):
         return ", needs_threshold=True"
 
 
-# Needed to make uncertainties compatible with metrics from sklearn
-class flip:
-    def __init__(self, f):
-        self.f = f
-
-    def __call__(self, a, b, **kwargs):
-        return self.f(b, a, **kwargs)
-
-
 def make_qualifier(
     uncertainty_func,
     *,
@@ -225,7 +216,7 @@ def make_qualifier(
     else:
         cls = _PredictQualifier
 
-    return cls(flip(uncertainty_func), sign, kwargs)
+    return cls(uncertainty_func, sign, kwargs)
 
 
 confidence_qualifier = make_qualifier(confidence, needs_threshold=True)

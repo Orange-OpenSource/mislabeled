@@ -10,7 +10,9 @@ from sklearn.utils.validation import _check_sample_weight
 from ._entropy import entropy
 
 
-def confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None):
+def confidence(
+    y_true, y_pred, *, k=1, supervised=True, labels=None, sample_weight=None
+):
     """Self confidence for label quality estimation.
 
     The confidence of the classifier is the estimated probability of a sample belonging
@@ -31,14 +33,17 @@ def confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None):
 
     Parameters
     ----------
+    y_true : array of shape (n_samples,) or None
+        True targets, can be multiclass targets.
+
     y_pred : array of shape (n_samples,) or (n_samples, n_classes)
         Predicted logits or probabilities.
 
-    y_true : array of shape (n_samples,), default=None
-        True targets, can be multiclass targets.
-
     k : int, default=1
         Returns the k-th self-confidence.
+
+    supervised : boolean, default=True
+        Use the supervised or unsupervised uncertainty.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
@@ -59,7 +64,7 @@ def confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None):
     sample_weight = _check_sample_weight(sample_weight, y_pred)
 
     # If no sample labels are provided, use the most confident class as the label.
-    if y_true is None:
+    if not supervised:
         if y_pred.ndim == 1:
             y_true = (y_pred > 0).astype(int)
         else:
@@ -148,7 +153,7 @@ def confidence(y_pred, y_true=None, *, k=1, labels=None, sample_weight=None):
     return confidence * sample_weight
 
 
-def confidence_entropy_ratio(y_prob, y_true=None, labels=None):
+def confidence_entropy_ratio(y_true, y_prob, *, supervised=True, labels=None):
     """Self confidence weighted by the inverse entropy for label quality estimation.
 
     The confidence of the classifier is weighted by the inverse entropy to take
@@ -166,11 +171,14 @@ def confidence_entropy_ratio(y_prob, y_true=None, labels=None):
 
     Parameters
     ----------
+    y_true : array of shape (n_samples,) or None
+        True targets, can be multiclass targets.
+
     y_pred : array of shape (n_samples,) or (n_samples, n_classes)
         Predicted logits or probabilities.
 
-    y_true : array of shape (n_samples,), default=None
-        True targets, can be multiclass targets.
+    supervised : boolean, default=True
+        Use the supervised or unsupervised uncertainty.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
@@ -189,5 +197,9 @@ def confidence_entropy_ratio(y_prob, y_true=None, labels=None):
         ICML DataPerf Workshop. 2022.
     """
     return confidence(
-        y_prob, y_true, sample_weight=-1 / entropy(y_prob, labels=labels), labels=labels
+        y_true,
+        y_prob,
+        supervised=supervised,
+        sample_weight=-1 / entropy(None, y_prob, supervised=False, labels=labels),
+        labels=labels,
     )

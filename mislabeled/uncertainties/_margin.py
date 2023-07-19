@@ -6,7 +6,7 @@ from sklearn.utils.sparsefuncs import count_nonzero
 from ._confidence import confidence
 
 
-def soft_margin(y_pred, y_true=None, *, labels=None):
+def soft_margin(y_true, y_pred, *, supervised=True, labels=None):
     """Soft margin for label quality estimation.
 
     Margin can be defined for both probabilities or logits. In the case of
@@ -40,11 +40,14 @@ def soft_margin(y_pred, y_true=None, *, labels=None):
 
     Parameters
     ----------
+    y_true : array of shape (n_samples,) or None
+        True targets, can be multiclass targets.
+
     y_pred : array of shape (n_samples,) or (n_samples, n_classes)
         Predicted logits or probabilities.
 
-    y_true : array of shape (n_samples,), default=None
-        True targets, can be multiclass targets.
+    supervised : boolean, default=True
+        Use the supervised or unsupervised uncertainty.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
@@ -68,18 +71,18 @@ def soft_margin(y_pred, y_true=None, *, labels=None):
 
     # Multiclass
     if y_pred.ndim > 1 and y_pred.shape[1] > 1:
-        margin = confidence(y_pred, y_true=y_true, labels=labels) - confidence(
-            y_pred, k=2, y_true=y_true, labels=labels
-        )
+        margin = confidence(
+            y_true, y_pred, supervised=supervised, labels=labels
+        ) - confidence(y_true, y_pred, supervised=supervised, k=2, labels=labels)
 
     # Binary
     else:
-        margin = confidence(y_pred, y_true=y_true, labels=labels)
+        margin = confidence(y_true, y_pred, supervised=supervised, labels=labels)
 
     return margin
 
 
-def hard_margin(y_pred, y_true=None, *, labels=None):
+def hard_margin(y_true, y_pred, *, supervised=True, labels=None):
     """Hard margin for label quality estimation.
 
     Hard Margin is defined as the positive part of the Soft Margin:
@@ -96,11 +99,14 @@ def hard_margin(y_pred, y_true=None, *, labels=None):
 
     Parameters
     ----------
+    y_true : array of shape (n_samples,) or None
+        True targets, can be multiclass targets.
+
     y_pred : array of shape (n_samples,) or (n_samples, n_classes)
         Predicted logits or probabilities.
 
-    y_true : array of shape (n_samples,)
-        True targets, can be multiclass targets.
+    supervised : boolean, default=True
+        Use the supervised or unsupervised uncertainty.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
@@ -112,12 +118,12 @@ def hard_margin(y_pred, y_true=None, *, labels=None):
     margins : array of shape (n_samples,)
         The margin for each example
     """
-    margin = soft_margin(y_pred, y_true=y_true, labels=labels)
+    margin = soft_margin(y_true, y_pred, supervised=supervised, labels=labels)
     np.clip(margin, a_min=0, a_max=None, out=margin)
     return margin
 
 
-def accuracy(y_pred, y_true):
+def accuracy(y_true, y_pred):
     """Accuracy for label quality estimation.
 
     Accuracy checks for equality between the predicted class and the label:
@@ -128,11 +134,11 @@ def accuracy(y_pred, y_true):
 
     Parameters
     ----------
-    y_pred : array of shape (n_samples,) or (n_samples, n_classes)
-        Predicted logits or probabilities.
-
     y_true : array of shape (n_samples,)
         True targets, can be multiclass targets.
+
+    y_pred : array of shape (n_samples,) or (n_samples, n_classes)
+        Predicted logits or probabilities.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically

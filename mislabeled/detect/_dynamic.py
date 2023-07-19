@@ -83,9 +83,9 @@ class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
 
             self.uncertainties_ = []
             for y_pred in self.method_(X):
-                uncertainties = self.uncertainty_(y_pred, y)
+                uncertainties = self.uncertainty_(y, y_pred)
                 if self.adjust:
-                    uncertainties = adjusted_uncertainty(uncertainties, y_pred, y)
+                    uncertainties = adjusted_uncertainty(uncertainties, y, y_pred)
                 self.uncertainties_.append(uncertainties)
 
         else:
@@ -112,16 +112,13 @@ class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
             self.iter_param_ = filtered_iter_params[0]
             self.max_iter_ = estimator_params.get(self.iter_param_)
 
-            self.method_ = _check_response_method(self.estimator_, self.method)
+            self.qualifier_ = self._make_qualifier()
 
             self.uncertainties_ = []
             for i in range(0, self.max_iter_):
                 self.estimator_.set_params(**{f"{self.iter_param_}": i + 1})
                 self.estimator_.fit(X, y)
-                y_pred = self.method_(X)
-                uncertainties = self.uncertainty_(y_pred, y)
-                if self.adjust:
-                    uncertainties = adjusted_uncertainty(uncertainties, y_pred, y)
+                uncertainties = self.qualifier_(self.estimator_, X, y)
                 self.uncertainties_.append(uncertainties)
 
         self.n_iter_ = len(self.uncertainties_)
