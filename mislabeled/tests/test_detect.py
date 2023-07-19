@@ -7,9 +7,11 @@ from sklearn.ensemble import (
 )
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.utils.estimator_checks import _get_check_estimator_ids
 
 from mislabeled.detect import (
     AUMDetector,
@@ -44,8 +46,11 @@ def simple_detect_test(n_classes, detector):
 @pytest.mark.parametrize(
     "detector",
     [
-        ConsensusDetector(KNeighborsClassifier(n_neighbors=3), n_jobs=-1),
-        AUMDetector(GradientBoostingClassifier(max_depth=1), staging=True),
+        ConsensusDetector(
+            KNeighborsClassifier(n_neighbors=3),
+            cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
+            n_jobs=-1,
+        ),
         InfluenceDetector(RBFSampler(gamma="scale", n_components=100)),
         ClassifierDetector(
             make_pipeline(RBFSampler(gamma="scale"), LogisticRegression())
@@ -57,15 +62,28 @@ def simple_detect_test(n_classes, detector):
         PDRDetector(
             make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()), n_jobs=-1
         ),
-        NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
         DecisionTreeComplexityDetector(),
+        AUMDetector(GradientBoostingClassifier(max_depth=1), staging=True),
         ForgettingDetector(
             GradientBoostingClassifier(
-                max_depth=1, n_estimators=500, subsample=0.2, random_state=1
+                max_depth=None,
+                n_estimators=100,
+                subsample=0.3,
+                random_state=1,
+                init="zero",
             ),
             staging=True,
         ),
     ],
+    ids=_get_check_estimator_ids,
 )
 def test_detectors(n_classes, detector):
     simple_detect_test(n_classes, detector)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+def test_naive_complexity_detector(n_classes):
+    simple_detect_test(
+        n_classes,
+        NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
+    )

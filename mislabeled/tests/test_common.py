@@ -1,6 +1,7 @@
 from bqlearn.tradaboost import TrAdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
@@ -25,8 +26,11 @@ from mislabeled.handle import (
 )
 
 detectors = [
-    ConsensusDetector(LogisticRegression(), n_jobs=-1),
-    AUMDetector(GradientBoostingClassifier(n_estimators=10)),
+    ConsensusDetector(
+        LogisticRegression(),
+        cv=RepeatedStratifiedKFold(n_splits=3, n_repeats=10, random_state=1),
+        n_jobs=-1,
+    ),
     InfluenceDetector(),
     ClassifierDetector(LogisticRegression()),
     OutlierDetector(
@@ -37,6 +41,7 @@ detectors = [
     KMMDetector(n_jobs=-1),
     PDRDetector(LogisticRegression(), n_jobs=-1),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
+    AUMDetector(GradientBoostingClassifier(n_estimators=10)),
     ForgettingDetector(
         GradientBoostingClassifier(n_estimators=10),
         staging=True,
