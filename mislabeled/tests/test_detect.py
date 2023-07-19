@@ -11,6 +11,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.utils.estimator_checks import _get_check_estimator_ids
 
 from mislabeled.detect import (
     AUMDetector,
@@ -61,7 +62,6 @@ def simple_detect_test(n_classes, detector):
         PDRDetector(
             make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()), n_jobs=-1
         ),
-        NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
         DecisionTreeComplexityDetector(),
         AUMDetector(GradientBoostingClassifier(max_depth=1), staging=True),
         ForgettingDetector(
@@ -75,6 +75,15 @@ def simple_detect_test(n_classes, detector):
             staging=True,
         ),
     ],
+    ids=_get_check_estimator_ids,
 )
 def test_detectors(n_classes, detector):
     simple_detect_test(n_classes, detector)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+def test_naive_complexity_detector(n_classes):
+    simple_detect_test(
+        n_classes,
+        NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
+    )
