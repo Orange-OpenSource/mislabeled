@@ -43,12 +43,10 @@ def confidence_normalization(uncertainty, y_true, y_prob, labels=None, **kwargs)
 
     if not np.all(classes == labels):
         warnings.warn(
-            (
-                f"Labels passed were {labels}. But this function "
-                "assumes labels are ordered lexicographically. "
-                "Ensure that labels in y_prob are ordered as "
-                f"{classes}."
-            ),
+            f"Labels passed were {labels}. But this function "
+            "assumes labels are ordered lexicographically. "
+            "Ensure that labels in y_prob are ordered as "
+            f"{classes}.",
             UserWarning,
         )
     y_encoded = label_encoder.transform(y_true)

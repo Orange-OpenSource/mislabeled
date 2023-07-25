@@ -81,12 +81,10 @@ def confidence(y_true, y_pred, *, k=1, supervised=True, labels=None):
 
     if np.all(labels != sorted(labels)):
         warnings.warn(
-            (
-                f"Labels passed were {labels}. But this function "
-                "assumes labels are ordered lexicographically. "
-                "Ensure that labels in y_pred are ordered as "
-                f"{sorted(labels)}."
-            ),
+            f"Labels passed were {labels}. But this function "
+            "assumes labels are ordered lexicographically. "
+            "Ensure that labels in y_pred are ordered as "
+            f"{sorted(labels)}.",
             UserWarning,
         )
 
