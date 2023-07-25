@@ -3,37 +3,10 @@ import warnings
 import numpy as np
 from scipy.spatial.distance import jensenshannon
 from scipy.special import xlogy
-from scipy.stats import entropy as scipy_entropy
-from sklearn.base import check_array
-from sklearn.preprocessing import LabelBinarizer
 from sklearn.utils import check_consistent_length
-from sklearn.utils.multiclass import unique_labels
 
-
-def one_hot_labels(y_true, labels=None):
-    lb = LabelBinarizer()
-
-    if labels is None:
-        labels = unique_labels(y_true)
-
-    lb.fit(labels)
-    Y_true = lb.transform(y_true)
-
-    if not np.all(lb.classes_ == labels):
-        warnings.warn(
-            (
-                f"Labels passed were {labels}. But this function "
-                "assumes labels are ordered lexicographically. "
-                "Ensure that labels in y_prob are ordered as "
-                f"{lb.classes_}."
-            ),
-            UserWarning,
-        )
-
-    if Y_true.shape[1] == 1:
-        Y_true = np.append(1 - Y_true, Y_true, axis=1)
-
-    return Y_true, lb.classes_
+from ._weight import confidence_normalization
+from .utils import check_array_prob, one_hot_labels
 
 
 def entropy(y_true, y_prob, *, supervised=True, labels=None):
@@ -41,14 +14,14 @@ def entropy(y_true, y_prob, *, supervised=True, labels=None):
 
     .. math::
 
-        E(x) = \sum_{k\\in\\mathcal{Y}}\mathbb{P}(Y=k|X=X)\log(\mathbb{P}(Y=k|X=X))
+        H(x) = \sum_{k\\in\\mathcal{Y}}\mathbb{P}(Y=k|X=X)\log(\mathbb{P}(Y=k|X=X))
 
-    In the supervised case, it is the Kullback-Leibler divergence,
-    which is equivalent to the Cross Entropy in the case of one-hot labels.
+    In the supervised case, it is the Cross Entropy between one-hot labels and
+    predicted probabilities.
 
     .. math::
 
-        E_y(x) = \sum_{k\\in\\mathcal{Y}}\mathbb{1}_{k=y}\log(\mathbb{P}(Y=k|X=X))
+        H_y(x) = \sum_{k\\in\\mathcal{Y}}\mathbb{1}_{k=y}\log(\mathbb{P}(Y=k|X=X))
 
     This function is adapted from sklearn's implementation of log_loss
 
@@ -76,14 +49,7 @@ def entropy(y_true, y_prob, *, supervised=True, labels=None):
         The entropy for each example
     """
 
-    y_prob = check_array(
-        y_prob, ensure_2d=False, dtype=[np.float64, np.float32, np.float16]
-    )
-
-    if y_prob.ndim == 1:
-        y_prob = y_prob[:, np.newaxis]
-    if y_prob.shape[1] == 1:
-        y_prob = np.append(1 - y_prob, y_prob, axis=1)
+    y_prob = check_array_prob(y_prob)
 
     if not supervised:
         Y_true = y_prob
@@ -144,21 +110,19 @@ def jensen_shannon(y_true, y_prob, *, labels=None):
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
         If ``None`` is given, those that appear at least once
-        in ``y_true`` or ``y_prob`` are used in sorted order.
+        in ``y_true`` are used in sorted order.
 
     Returns
     -------
     entropies : array of shape (n_samples,)
         The entropy for each example
-    """
-    y_prob = check_array(
-        y_prob, ensure_2d=True, dtype=[np.float64, np.float32, np.float16]
-    )
 
-    if y_prob.ndim == 1:
-        y_prob = y_prob[:, np.newaxis]
-    if y_prob.shape[1] == 1:
-        y_prob = np.append(1 - y_prob, y_prob, axis=1)
+    References
+    ----------
+    .. [1] Zhang, Yiliang, et al. "Combating noisy-labeled and imbalanced data\
+        by two stage bi-dimensional sample selection." arXiv preprint (2022).
+    """
+    y_prob = check_array_prob(y_prob)
 
     Y_true, classes = one_hot_labels(y_true, labels=labels)
 
@@ -181,3 +145,40 @@ def jensen_shannon(y_true, y_prob, *, labels=None):
     check_consistent_length(Y_true, y_prob)
 
     return -jensenshannon(Y_true, y_prob, axis=1)
+
+
+def weighted_jensen_shannon(y_true, y_prob, *, labels=None):
+    """Jensen-Shannon divergence weighted by the classifier confidence to deal
+    with imbalanced datasets.
+
+    .. math::
+
+        WJSD_y(x) = ....
+
+    Parameters
+    ----------
+    y_true : array of shape (n_samples,) or None
+        True targets, can be multiclass targets.
+
+    y_pred : array of shape (n_samples,) or (n_samples, n_classes)
+        Predicted logits or probabilities.
+
+    supervised : boolean, default=True
+        Use the supervised or unsupervised uncertainty.
+
+    labels : array-like of shape (n_classes), default=None
+        List of labels. They need to be in ordered lexicographically
+        If ``None`` is given, those that appear at least once
+        in ``y_true`` or ``y_prob`` are used in sorted order.
+
+    Returns
+    -------
+    weighted_jensen_shannon_divergences : array of shape (n_samples,)
+        The weighted Jensen Shannon divergence for each samples.
+
+    References
+    ----------
+    .. [1] Zhang, Yiliang, et al. "Combating noisy-labeled and imbalanced data\
+        by two stage bi-dimensional sample selection." arXiv preprint (2022).
+    """
+    return confidence_normalization(jensen_shannon, y_true, y_prob, labels=labels)

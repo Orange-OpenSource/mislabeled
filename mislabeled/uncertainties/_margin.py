@@ -140,11 +140,6 @@ def accuracy(y_true, y_pred):
     y_pred : array of shape (n_samples,) or (n_samples, n_classes)
         Predicted logits or probabilities.
 
-    labels : array-like of shape (n_classes), default=None
-        List of labels. They need to be in ordered lexicographically
-        If ``None`` is given, those that appear at least once
-        in ``y_true`` or ``y_prob`` are used in sorted order.
-
     Returns
     -------
     accuracies : array of shape (n_samples,)

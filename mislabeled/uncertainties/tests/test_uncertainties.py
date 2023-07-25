@@ -4,7 +4,14 @@ from pytest import raises, warns
 from scipy.special import softmax
 from sklearn.metrics.tests.test_classification import make_prediction
 
-from mislabeled.uncertainties import confidence, entropy, hard_margin, soft_margin
+from mislabeled.uncertainties import (
+    confidence,
+    entropy,
+    hard_margin,
+    jensen_shannon,
+    soft_margin,
+    weighted_jensen_shannon,
+)
 
 
 # Incredible it's just a bug in sklearn hinge_loss
@@ -49,7 +56,17 @@ def test_uncertainty_multiclass_missing_labels_with_labels_none(uncertainty):
 
 
 # Test from sklearn
-@pytest.mark.parametrize("uncertainty", [soft_margin, hard_margin, confidence, entropy])
+@pytest.mark.parametrize(
+    "uncertainty",
+    [
+        soft_margin,
+        hard_margin,
+        confidence,
+        entropy,
+        jensen_shannon,
+        weighted_jensen_shannon,
+    ],
+)
 def test_uncertainty_multiclass_no_consistent_pred_decision_shape(uncertainty):
     # test for inconsistency between multiclass problem and logits
     # argument
