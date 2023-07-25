@@ -9,7 +9,7 @@ from sklearn.utils.multiclass import type_of_target
 
 from ._adjust import adjusted_uncertainty
 from ._confidence import confidence, confidence_entropy_ratio
-from ._entropy import entropy
+from ._entropy import entropy, jensen_shannon
 from ._margin import accuracy, hard_margin, soft_margin
 
 
@@ -233,6 +233,7 @@ hard_margin_uncertainty_scorer = make_uncertainty_scorer(
 )
 accuracy_uncertainty_scorer = make_uncertainty_scorer(accuracy)
 entropy_uncertainty_scorer = make_uncertainty_scorer(entropy, needs_proba=True)
+jensen_shannon_scorer = make_uncertainty_scorer(jensen_shannon, needs_proba=True)
 
 unsupervised_confidence_uncertainty_scorer = make_uncertainty_scorer(
     confidence, supervised=False, needs_threshold=True
@@ -257,6 +258,7 @@ _UNCERTAINTY_SCORERS = dict(
     unsupervised_hard_margin=unsupervised_hard_margin_uncertainty_scorer,
     accuracy=accuracy_uncertainty_scorer,
     entropy=entropy_uncertainty_scorer,
+    jensen_shannon=jensen_shannon_scorer,
     unsupervised_entropy=unsupervised_entropy_uncertainty_scorer,
 )
 
@@ -267,6 +269,7 @@ _UNCERTAINTIES = dict(
     hard_margin=hard_margin,
     accuracy=accuracy,
     entropy=entropy,
+    jensen_shannon=jensen_shannon,
 )
 
 for key, uncertainty in _UNCERTAINTIES.items():
