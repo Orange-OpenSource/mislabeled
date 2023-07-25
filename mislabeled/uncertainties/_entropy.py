@@ -180,4 +180,4 @@ def jensen_shannon(y_true, y_prob, *, labels=None):
 
     check_consistent_length(Y_true, y_prob)
 
-    return jensenshannon(Y_true, y_prob)
+    return -jensenshannon(Y_true, y_prob, axis=1)
