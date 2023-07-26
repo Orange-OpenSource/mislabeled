@@ -57,17 +57,18 @@ def confidence(y_true, y_pred, *, k=1, supervised=True, labels=None):
 
     # If no sample labels are provided, use the most confident class as the label.
     if not supervised:
-        if y_pred.ndim == 1:
-            y_true = (y_pred > 0).astype(int)
-        else:
-            y_true = np.argmax(y_pred, axis=1)
-
         if labels is not None:
             warnings.warn(
                 f"Ignored labels ${labels} when y_true is None.",
                 UserWarning,
             )
-        labels = unique_labels(y_true)
+
+        if y_pred.ndim == 1:
+            y_true = (y_pred > 0).astype(int)
+            labels = range(2)
+        else:
+            y_true = np.argmax(y_pred, axis=1)
+            labels = range(y_pred.shape[1])
 
     else:
         # Multilabel is not yet implemented
