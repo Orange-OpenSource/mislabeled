@@ -1,3 +1,5 @@
+from itertools import product, starmap
+
 from bqlearn.tradaboost import TrAdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.linear_model import LogisticRegression
@@ -24,6 +26,7 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
+from mislabeled.splitters import GMMSplitter, ThresholdSplitter
 
 detectors = [
     ConsensusDetector(
@@ -48,30 +51,35 @@ detectors = [
     ),
 ]
 
+splitters = [
+    GMMSplitter(),
+    ThresholdSplitter(trust_proportion=0.8),
+]
+
 
 @parametrize_with_checks(
     list(
-        map(
-            lambda detector: FilterClassifier(
-                detector, LogisticRegression(), trust_proportion=0.8
+        starmap(
+            lambda detector, splitter: FilterClassifier(
+                detector, splitter, LogisticRegression()
             ),
-            detectors,
+            product(detectors, splitters),
         )
     )
 )
-def test_all_detectors_with_filter(estimator, check):
+def test_all_detectors_with_splitter(estimator, check):
     return check(estimator)
 
 
 @parametrize_with_checks(
     list(
-        map(
-            lambda detector: SemiSupervisedClassifier(
+        starmap(
+            lambda detector, splitter: SemiSupervisedClassifier(
                 detector,
+                splitter,
                 SelfTrainingClassifier(LogisticRegression()),
-                trust_proportion=0.8,
             ),
-            detectors,
+            product(detectors, splitters),
         )
     )
 )
@@ -81,17 +89,17 @@ def test_all_detectors_with_ssl(estimator, check):
 
 @parametrize_with_checks(
     list(
-        map(
-            lambda detector: BiqualityClassifier(
+        starmap(
+            lambda detector, splitter: BiqualityClassifier(
                 detector,
+                splitter,
                 TrAdaBoostClassifier(
                     DecisionTreeClassifier(max_depth=None),
                     n_estimators=10,
                     random_state=1,
                 ),
-                trust_proportion=0.8,
             ),
-            detectors,
+            product(detectors, splitters),
         )
     )
 )
@@ -110,21 +118,21 @@ naive_complexity_detector = NaiveComplexityDetector(
 parametrize = parametrize_with_checks(
     [
         FilterClassifier(
-            naive_complexity_detector, LogisticRegression(), trust_proportion=0.8
+            naive_complexity_detector, ThresholdSplitter(), LogisticRegression()
         ),
         SemiSupervisedClassifier(
             naive_complexity_detector,
+            ThresholdSplitter(),
             SelfTrainingClassifier(LogisticRegression()),
-            trust_proportion=0.8,
         ),
         BiqualityClassifier(
             naive_complexity_detector,
+            ThresholdSplitter(),
             TrAdaBoostClassifier(
                 DecisionTreeClassifier(max_depth=None),
                 n_estimators=10,
                 random_state=1,
             ),
-            trust_proportion=0.8,
         ),
     ]
 )

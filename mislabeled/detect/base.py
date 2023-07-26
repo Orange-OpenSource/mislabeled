@@ -1,11 +1,11 @@
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 
 from sklearn.base import BaseEstimator
 
 from mislabeled.uncertainties import check_uncertainty
 
 
-class BaseDetector(BaseEstimator):
+class BaseDetector(BaseEstimator, metaclass=ABCMeta):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more

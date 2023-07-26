@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.base import is_classifier, MetaEstimatorMixin
 from sklearn.model_selection import check_cv, cross_validate
+from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
 from mislabeled.detect.base import BaseDetector
@@ -70,6 +71,8 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin):
         estimators, tests = scores["estimator"], scores["indices"]["test"]
         # TODO: parallel
         for i, (estimator, test) in enumerate(zip(estimators, tests)):
-            consensus[test, i] = self.uncertainty_scorer_(estimator, X[test], y[test])
+            consensus[test, i] = self.uncertainty_scorer_(
+                estimator, X[safe_mask(X, test)], y[test]
+            )
 
         return np.nanmean(consensus, axis=1)

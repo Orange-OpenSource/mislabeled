@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from copy import deepcopy
 
 from sklearn.base import BaseEstimator, ClassifierMixin, clone, MetaEstimatorMixin
 from sklearn.preprocessing import LabelEncoder
@@ -31,9 +32,9 @@ class BaseHandleClassifier(
     ----------
     detector : object
 
-    classifier: object
+    splitter: object
 
-    trust_proportion: float, default=0.5
+    estimator: object
 
     memory : str or object with the joblib.Memory interface, default=None
         Used to cache the fitted transformers of the pipeline. By default,
@@ -56,8 +57,9 @@ class BaseHandleClassifier(
     """
 
     @abstractmethod
-    def __init__(self, detector, estimator, *, memory=None):
+    def __init__(self, detector, splitter, estimator, *, memory=None):
         self.detector = detector
+        self.splitter = splitter
         self.estimator = estimator
         self.memory = memory
 
@@ -91,10 +93,12 @@ class BaseHandleClassifier(
         _trust_score_cached = memory.cache(_trust_score)
 
         self.detector_ = clone(self.detector)
-
         trust_scores = _trust_score_cached(self.detector_, X, y)
 
-        X, y, fit_params = self.handle(X, y, trust_scores)
+        self.splitter_ = deepcopy(self.splitter)
+        trusted = self.splitter_.split(trust_scores)
+
+        X, y, fit_params = self.handle(X, y, trusted)
 
         self.estimator_ = clone(self.estimator)
         self.estimator_.fit(X, y, **fit_params)
@@ -108,7 +112,7 @@ class BaseHandleClassifier(
         return self
 
     @abstractmethod
-    def handle(self, X, y, trust_scores):
+    def handle(self, X, y, trusted):
         """"""
 
     @available_if(_estimator_has("predict"))
