@@ -5,14 +5,11 @@ from sklearn.base import check_array
 from sklearn.preprocessing import LabelBinarizer, LabelEncoder
 from sklearn.utils import check_consistent_length, check_scalar, column_or_1d
 from sklearn.utils.multiclass import type_of_target, unique_labels
-from sklearn.utils.validation import _check_sample_weight
 
-from ._entropy import entropy
+from ._weight import entropy_normalization
 
 
-def confidence(
-    y_true, y_pred, *, k=1, supervised=True, labels=None, sample_weight=None
-):
+def confidence(y_true, y_pred, *, k=1, supervised=True, labels=None):
     """Self confidence for label quality estimation.
 
     The confidence of the classifier is the estimated probability of a sample belonging
@@ -50,9 +47,6 @@ def confidence(
         If ``None`` is given, those that appear at least once
         in ``y_true`` or ``y_prob`` are used in sorted order.
 
-    sample_weight : array-like of shape (n_samples,), default=None
-        Sample weights. If None, all samples are treated equally.
-
     Returns
     -------
     confidences : array of shape (n_samples,)
@@ -61,21 +55,20 @@ def confidence(
 
     y_pred = check_array(y_pred, ensure_2d=False)
 
-    sample_weight = _check_sample_weight(sample_weight, y_pred)
-
     # If no sample labels are provided, use the most confident class as the label.
     if not supervised:
-        if y_pred.ndim == 1:
-            y_true = (y_pred > 0).astype(int)
-        else:
-            y_true = np.argmax(y_pred, axis=1)
-
         if labels is not None:
             warnings.warn(
                 f"Ignored labels ${labels} when y_true is None.",
                 UserWarning,
             )
-        labels = unique_labels(y_true)
+
+        if y_pred.ndim == 1:
+            y_true = (y_pred > 0).astype(int)
+            labels = range(2)
+        else:
+            y_true = np.argmax(y_pred, axis=1)
+            labels = range(y_pred.shape[1])
 
     else:
         # Multilabel is not yet implemented
@@ -150,7 +143,7 @@ def confidence(
 
         confidence = y_true * y_pred
 
-    return confidence * sample_weight
+    return confidence
 
 
 def confidence_entropy_ratio(y_true, y_prob, *, supervised=True, labels=None):
@@ -161,13 +154,13 @@ def confidence_entropy_ratio(y_true, y_prob, *, supervised=True, labels=None):
 
     .. math::
 
-        CER(x) = \\frac{C(x)}{- E(x)}
+        CER(x) = \\frac{C(x)}{- H(x)}
 
     Or in the supervised case:
 
     .. math::
 
-        CER_y(x) = \\frac{C_y(x)}{- E(x)}
+        CER_y(x) = \\frac{C_y(x)}{- H(x)}
 
     Parameters
     ----------
@@ -188,7 +181,7 @@ def confidence_entropy_ratio(y_true, y_prob, *, supervised=True, labels=None):
     Returns
     -------
     weighted_confidences : array of shape (n_samples,)
-        The self-confidence for each example
+        The weighted self-confidence for each samples.
 
     References
     ----------
@@ -196,10 +189,6 @@ def confidence_entropy_ratio(y_true, y_prob, *, supervised=True, labels=None):
         "Model-agnostic label quality scoring to detect real-world label errors."\
         ICML DataPerf Workshop. 2022.
     """
-    return confidence(
-        y_true,
-        y_prob,
-        supervised=supervised,
-        sample_weight=-1 / entropy(None, y_prob, supervised=False, labels=labels),
-        labels=labels,
+    return entropy_normalization(
+        confidence, y_true, y_prob, supervised=supervised, labels=labels
     )

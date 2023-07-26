@@ -1,7 +1,6 @@
 import copy
 from functools import partial
 
-import numpy as np
 from sklearn.base import is_regressor
 from sklearn.metrics._scorer import _BaseScorer
 from sklearn.metrics._scorer import _PredictScorer as _PredictUncertaintyScorer
@@ -9,8 +8,9 @@ from sklearn.utils.multiclass import type_of_target
 
 from ._adjust import adjusted_uncertainty
 from ._confidence import confidence, confidence_entropy_ratio
-from ._entropy import entropy
+from ._entropy import entropy, jensen_shannon, weighted_jensen_shannon
 from ._margin import accuracy, hard_margin, soft_margin
+from .utils import check_array_prob
 
 
 class _ProbaUncertaintyScorer(_BaseScorer):
@@ -55,10 +55,7 @@ class _ProbaUncertaintyScorer(_BaseScorer):
         )
 
         y_pred = method_caller(clf, "predict_proba", X, pos_label=self._get_pos_label())
-        if y_pred.ndim == 1:
-            y_pred = y_pred[:, np.newaxis]
-        if y_pred.shape[1] == 1:
-            y_pred = np.append(1 - y_pred, y_pred, axis=1)
+        y_pred = check_array_prob(y_pred)
         scoring_kwargs = {**self._kwargs, **kwargs}
         return self._sign * self._score_func(y, y_pred, **scoring_kwargs)
 
@@ -121,10 +118,7 @@ class _ThresholdUncertaintyScorer(_BaseScorer):
 
             except (NotImplementedError, AttributeError):
                 y_pred = method_caller(clf, "predict_proba", X)
-                if y_pred.ndim == 1:
-                    y_pred = y_pred[:, np.newaxis]
-                if y_pred.shape[1] == 1:
-                    y_pred = np.append(1 - y_pred, y_pred, axis=1)
+                y_pred = check_array_prob(y_pred)
 
         scoring_kwargs = {**self._kwargs, **kwargs}
         return self._sign * self._score_func(y, y_pred, **scoring_kwargs)
@@ -233,6 +227,10 @@ hard_margin_uncertainty_scorer = make_uncertainty_scorer(
 )
 accuracy_uncertainty_scorer = make_uncertainty_scorer(accuracy)
 entropy_uncertainty_scorer = make_uncertainty_scorer(entropy, needs_proba=True)
+jensen_shannon_scorer = make_uncertainty_scorer(jensen_shannon, needs_proba=True)
+weighted_jensen_shannon_scorer = make_uncertainty_scorer(
+    weighted_jensen_shannon, needs_proba=True
+)
 
 unsupervised_confidence_uncertainty_scorer = make_uncertainty_scorer(
     confidence, supervised=False, needs_threshold=True
@@ -257,6 +255,8 @@ _UNCERTAINTY_SCORERS = dict(
     unsupervised_hard_margin=unsupervised_hard_margin_uncertainty_scorer,
     accuracy=accuracy_uncertainty_scorer,
     entropy=entropy_uncertainty_scorer,
+    jensen_shannon=jensen_shannon_scorer,
+    weighted_jensen_shannon=weighted_jensen_shannon_scorer,
     unsupervised_entropy=unsupervised_entropy_uncertainty_scorer,
 )
 
@@ -267,10 +267,12 @@ _UNCERTAINTIES = dict(
     hard_margin=hard_margin,
     accuracy=accuracy,
     entropy=entropy,
+    jensen_shannon=jensen_shannon,
+    weighted_jensen_shannon=weighted_jensen_shannon,
 )
 
 for key, uncertainty in _UNCERTAINTIES.items():
-    if key not in ["accuracy", "hard_margin"]:
+    if key not in ["accuracy", "hard_margin", "weighted_jensen_shannon"]:
         _UNCERTAINTY_SCORERS["adjusted_" + key] = make_uncertainty_scorer(
             partial(adjusted_uncertainty, uncertainty), needs_proba=True
         )

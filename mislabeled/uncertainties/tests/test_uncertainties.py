@@ -4,11 +4,29 @@ from pytest import raises, warns
 from scipy.special import softmax
 from sklearn.metrics.tests.test_classification import make_prediction
 
-from mislabeled.uncertainties import confidence, entropy, hard_margin, soft_margin
+from mislabeled.uncertainties import (
+    confidence,
+    confidence_entropy_ratio,
+    entropy,
+    hard_margin,
+    jensen_shannon,
+    soft_margin,
+    weighted_jensen_shannon,
+)
+
+uncertainties_with_logits = [
+    soft_margin,
+    hard_margin,
+    confidence,
+    entropy,
+    confidence_entropy_ratio,
+    jensen_shannon,
+    weighted_jensen_shannon,
+]
 
 
 # Incredible it's just a bug in sklearn hinge_loss
-@pytest.mark.parametrize("uncertainty", [soft_margin, hard_margin, confidence, entropy])
+@pytest.mark.parametrize("uncertainty", uncertainties_with_logits)
 def test_uncertainty_not_sorted_labels_throws_user_warning(uncertainty):
     y_true, _, probas_pred = make_prediction()
 
@@ -32,7 +50,7 @@ def test_uncertainty_unsupervised_with_labels_throws_user_warning(uncertainty):
 
 
 # Test from sklearn
-@pytest.mark.parametrize("uncertainty", [soft_margin, hard_margin, confidence, entropy])
+@pytest.mark.parametrize("uncertainty", uncertainties_with_logits)
 def test_uncertainty_multiclass_missing_labels_with_labels_none(uncertainty):
     y_true = np.array([0, 1, 2, 2])
     pred_decision = np.array(
@@ -49,7 +67,7 @@ def test_uncertainty_multiclass_missing_labels_with_labels_none(uncertainty):
 
 
 # Test from sklearn
-@pytest.mark.parametrize("uncertainty", [soft_margin, hard_margin, confidence, entropy])
+@pytest.mark.parametrize("uncertainty", uncertainties_with_logits)
 def test_uncertainty_multiclass_no_consistent_pred_decision_shape(uncertainty):
     # test for inconsistency between multiclass problem and logits
     # argument
