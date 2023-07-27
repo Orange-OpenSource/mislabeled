@@ -24,7 +24,7 @@ class GMMSplitter(BaseSplitter):
     def __init__(self, estimator=None):
         self.estimator = estimator
 
-    def split(self, trust_scores):
+    def split(self, X, y, trust_scores):
         n_samples = _num_samples(trust_scores)
 
         if self.estimator is None:

@@ -3,6 +3,7 @@ from itertools import product, starmap
 from bqlearn.tradaboost import TrAdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.linear_model import LogisticRegression
+from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -26,7 +27,7 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
-from mislabeled.splitters import GMMSplitter, ThresholdSplitter
+from mislabeled.splitters import GMMSplitter, OneVsRestSplitter, ThresholdSplitter
 
 detectors = [
     ConsensusDetector(
@@ -52,8 +53,8 @@ detectors = [
 ]
 
 splitters = [
-    GMMSplitter(),
-    ThresholdSplitter(trust_proportion=0.8),
+    OneVsRestSplitter(GMMSplitter(GaussianMixture(random_state=1))),
+    OneVsRestSplitter(ThresholdSplitter(trust_proportion=0.5)),
 ]
 
 

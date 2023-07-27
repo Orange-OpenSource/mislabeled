@@ -96,7 +96,7 @@ class BaseHandleClassifier(
         trust_scores = _trust_score_cached(self.detector_, X, y)
 
         self.splitter_ = deepcopy(self.splitter)
-        trusted = self.splitter_.split(trust_scores)
+        trusted = self.splitter_.split(X, y, trust_scores)
 
         X, y, fit_params = self.handle(X, y, trusted)
 

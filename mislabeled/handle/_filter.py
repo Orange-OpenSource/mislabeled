@@ -1,4 +1,5 @@
 from sklearn.utils import safe_mask
+
 from ._base import BaseHandleClassifier
 
 

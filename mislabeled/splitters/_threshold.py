@@ -16,7 +16,7 @@ class ThresholdSplitter(BaseSplitter):
     def __init__(self, trust_proportion=0.5):
         self.trust_proportion = trust_proportion
 
-    def split(self, trust_scores):
+    def split(self, X, y, trust_scores):
         n_samples = _num_samples(trust_scores)
         indices_rank = np.argsort(trust_scores)[::-1]
 
