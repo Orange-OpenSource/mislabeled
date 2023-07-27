@@ -18,7 +18,7 @@ def test_caching():
     classifier_detect = ConsensusDetector(base_classifier)
     splitter = ThresholdSplitter()
 
-    grid_params = {"trust_proportion": np.linspace(0.1, 1, num=200)}
+    grid_params = {"splitter__trust_proportion": np.linspace(0.1, 1, num=200)}
 
     splitter_classifier_caching = GridSearchCV(
         FilterClassifier(classifier_detect, splitter, base_classifier, memory="cache"),

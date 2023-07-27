@@ -53,7 +53,7 @@ detectors = [
 ]
 
 splitters = [
-    OneVsRestSplitter(GMMSplitter(GaussianMixture(random_state=1))),
+    OneVsRestSplitter(GMMSplitter(GaussianMixture(n_components=2, random_state=1))),
     OneVsRestSplitter(ThresholdSplitter(trust_proportion=0.5)),
 ]
 
