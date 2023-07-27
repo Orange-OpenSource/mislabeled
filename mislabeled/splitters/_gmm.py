@@ -17,8 +17,9 @@ class GMMSplitter(BaseSplitter):
 
     References
     ----------
-    .. [1] Zhang, Yiliang, et al. "Combating noisy-labeled and imbalanced data by two\
-        stage bi-dimensional sample selection." arXiv (2022).
+    .. [1] Li, Junnan, Richard Socher, and Steven CH Hoi.\
+        "Dividemix: Learning with noisy labels as semi-supervised learning."\
+        arXiv (2020).
     """
 
     def __init__(self, estimator=None):

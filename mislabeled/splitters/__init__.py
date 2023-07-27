@@ -1,5 +1,5 @@
 from ._gmm import GMMSplitter
-from ._multiclass import OneVsRestSplitter
+from ._multiclass import PerClassSplitter
 from ._quantile import QuantileSplitter
 
-__all__ = ["GMMSplitter", "QuantileSplitter", "OneVsRestSplitter"]
+__all__ = ["GMMSplitter", "QuantileSplitter", "PerClassSplitter"]

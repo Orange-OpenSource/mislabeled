@@ -27,7 +27,7 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
-from mislabeled.splitters import GMMSplitter, OneVsRestSplitter, QuantileSplitter
+from mislabeled.splitters import GMMSplitter, PerClassSplitter, QuantileSplitter
 
 detectors = [
     ConsensusDetector(
@@ -53,8 +53,8 @@ detectors = [
 ]
 
 splitters = [
-    OneVsRestSplitter(GMMSplitter(GaussianMixture(n_components=2, random_state=1))),
-    OneVsRestSplitter(QuantileSplitter(trust_proportion=0.5)),
+    PerClassSplitter(GMMSplitter(GaussianMixture(n_components=2, random_state=1))),
+    PerClassSplitter(QuantileSplitter(trust_proportion=0.5)),
 ]
 
 

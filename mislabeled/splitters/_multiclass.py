@@ -7,7 +7,7 @@ from sklearn.utils.validation import _num_samples
 from ._base import BaseSplitter
 
 
-class OneVsRestSplitter(BaseSplitter):
+class PerClassSplitter(BaseSplitter):
     def __init__(self, splitter):
         self.splitter = splitter
 
