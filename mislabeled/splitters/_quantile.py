@@ -6,7 +6,7 @@ from sklearn.utils.validation import _num_samples, check_scalar
 from ._base import BaseSplitter
 
 
-class ThresholdSplitter(BaseSplitter):
+class QuantileSplitter(BaseSplitter):
     """
     Parameters
     ----------

@@ -27,7 +27,7 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
-from mislabeled.splitters import GMMSplitter, OneVsRestSplitter, ThresholdSplitter
+from mislabeled.splitters import GMMSplitter, OneVsRestSplitter, QuantileSplitter
 
 detectors = [
     ConsensusDetector(
@@ -54,7 +54,7 @@ detectors = [
 
 splitters = [
     OneVsRestSplitter(GMMSplitter(GaussianMixture(n_components=2, random_state=1))),
-    OneVsRestSplitter(ThresholdSplitter(trust_proportion=0.5)),
+    OneVsRestSplitter(QuantileSplitter(trust_proportion=0.5)),
 ]
 
 
@@ -119,16 +119,16 @@ naive_complexity_detector = NaiveComplexityDetector(
 parametrize = parametrize_with_checks(
     [
         FilterClassifier(
-            naive_complexity_detector, ThresholdSplitter(), LogisticRegression()
+            naive_complexity_detector, QuantileSplitter(), LogisticRegression()
         ),
         SemiSupervisedClassifier(
             naive_complexity_detector,
-            ThresholdSplitter(),
+            QuantileSplitter(),
             SelfTrainingClassifier(LogisticRegression()),
         ),
         BiqualityClassifier(
             naive_complexity_detector,
-            ThresholdSplitter(),
+            QuantileSplitter(),
             TrAdaBoostClassifier(
                 DecisionTreeClassifier(max_depth=None),
                 n_estimators=10,

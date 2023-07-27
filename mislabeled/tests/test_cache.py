@@ -6,7 +6,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 from mislabeled.detect import ConsensusDetector
 from mislabeled.handle import FilterClassifier
-from mislabeled.splitters import ThresholdSplitter
+from mislabeled.splitters import QuantileSplitter
 
 from .utils import blobs_1_mislabeled
 
@@ -16,7 +16,7 @@ def test_caching():
 
     base_classifier = KNeighborsClassifier(n_neighbors=3)
     classifier_detect = ConsensusDetector(base_classifier)
-    splitter = ThresholdSplitter()
+    splitter = QuantileSplitter()
 
     grid_params = {"splitter__trust_proportion": np.linspace(0.1, 1, num=200)}
 
