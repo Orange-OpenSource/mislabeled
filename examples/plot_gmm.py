@@ -51,8 +51,11 @@ labels = gmm.predict(supervised_scores.reshape(-1, 1))
 plt.hist(
     [supervised_scores[labels == 0], supervised_scores[labels == 1]],
     histtype="barstacked",
+    label=["clean", "noisy"],
     bins=100,
 )
+plt.xlabel("Negative Cross-Entropy")
+plt.legend()
 plt.show()
 # %%
 # Clean, Hard and Noisy clusters
@@ -67,8 +70,11 @@ plt.hist(
         supervised_scores[labels == 2],
     ],
     histtype="barstacked",
+    label=["clean", "hard", "noisy"],
     bins=100,
 )
+plt.xlabel("Negative Cross-Entropy")
+plt.legend()
 plt.show()
 # %%
 detector_unsupervised = ConsensusDetector(
@@ -83,10 +89,14 @@ scores = np.stack((supervised_scores, unsupervised_scores), axis=1)
 gmm = GaussianMixture(n_components=2, random_state=1).fit(scores)
 labels = gmm.predict(scores)
 plt.scatter(scores[:, 0], scores[:, 1], c=labels)
+plt.title("GMM 2D Clusters")
+plt.xlabel("Negative Cross-Entropy")
+plt.ylabel("Negative Entropy")
 plt.show()
 
 # %%
-plt.scatter(scores[:, 0], scores[:, 1], c=y == y_noisy)
+plt.scatter(scores[:, 0], scores[:, 1], c=y != y_noisy)
+plt.title("Clean vs Noisy samples")
+plt.xlabel("Negative Cross-Entropy")
+plt.ylabel("Negative Entropy")
 plt.show()
-
-# %%
