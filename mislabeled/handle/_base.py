@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from copy import deepcopy
 
 from sklearn.base import BaseEstimator, ClassifierMixin, clone, MetaEstimatorMixin
 from sklearn.preprocessing import LabelEncoder
@@ -95,7 +94,7 @@ class BaseHandleClassifier(
         self.detector_ = clone(self.detector)
         trust_scores = _trust_score_cached(self.detector_, X, y)
 
-        self.splitter_ = deepcopy(self.splitter)
+        self.splitter_ = clone(self.splitter)
         trusted = self.splitter_.split(X, y, trust_scores)
 
         X, y, fit_params = self.handle(X, y, trusted)

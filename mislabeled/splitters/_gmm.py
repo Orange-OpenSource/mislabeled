@@ -1,8 +1,10 @@
+import math
 import warnings
 
 import numpy as np
 from sklearn.base import clone
 from sklearn.mixture import GaussianMixture
+from sklearn.mixture._base import BaseMixture
 from sklearn.utils.validation import _num_samples
 
 from ._base import BaseSplitter
@@ -31,10 +33,10 @@ class GMMSplitter(BaseSplitter):
         if self.estimator is None:
             self.estimator_ = GaussianMixture(n_components=2)
         else:
-            if not isinstance(self.estimator, GaussianMixture):
+            if not isinstance(self.estimator, BaseMixture):
                 raise ValueError(
                     "%s is not a subclass of %s"
-                    % (self.estimator.__class__.__name__, GaussianMixture.__name__)
+                    % (self.estimator.__class__.__name__, BaseMixture.__name__)
                 )
             self.estimator_ = clone(self.estimator)
 
@@ -51,7 +53,22 @@ class GMMSplitter(BaseSplitter):
 
         labels = self.estimator_.fit_predict(trust_scores)
 
-        trusted = np.zeros(n_samples, dtype=bool)
-        trusted[labels == np.argmax(self.estimator_.means_)] = True
+        means = self.estimator_.means_
+
+        # Check if learned components are too close to each other to really be different
+        if math.isclose(np.max(means), np.min(means)):
+            trusted = np.ones(n_samples, dtype=bool)
+        else:
+            trusted = np.zeros(n_samples, dtype=bool)
+            trusted[labels == np.argmax(means)] = True
+
+        print(
+            labels,
+            trusted,
+            means,
+            trust_scores,
+            self.estimator_.weights_,
+            math.isclose(np.max(means), np.min(means)),
+        )
 
         return trusted

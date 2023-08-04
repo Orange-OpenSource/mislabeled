@@ -1,3 +1,4 @@
+from functools import partial
 from itertools import product, starmap
 
 from bqlearn.tradaboost import TrAdaBoostClassifier
@@ -42,7 +43,7 @@ detectors = [
         n_jobs=-1,
     ),
     InputSensitivityDetector(LogisticRegression()),
-    KMMDetector(n_jobs=-1),
+    KMMDetector(n_jobs=-1, B=2),
     PDRDetector(LogisticRegression(), n_jobs=-1),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
     AUMDetector(GradientBoostingClassifier(n_estimators=10)),
@@ -53,58 +54,43 @@ detectors = [
 ]
 
 splitters = [
-    PerClassSplitter(GMMSplitter(GaussianMixture(n_components=2, random_state=1))),
+    PerClassSplitter(
+        GMMSplitter(
+            GaussianMixture(
+                n_components=2,
+                n_init=20,
+                random_state=1,
+            )
+        )
+    ),
     PerClassSplitter(QuantileSplitter(trust_proportion=0.5)),
+]
+
+handlers = [
+    partial(FilterClassifier, estimator=LogisticRegression()),
+    partial(
+        SemiSupervisedClassifier, estimator=SelfTrainingClassifier(LogisticRegression())
+    ),
+    partial(
+        BiqualityClassifier,
+        estimator=TrAdaBoostClassifier(
+            DecisionTreeClassifier(max_depth=None),
+            n_estimators=10,
+            random_state=1,
+        ),
+    ),
 ]
 
 
 @parametrize_with_checks(
     list(
         starmap(
-            lambda detector, splitter: FilterClassifier(
-                detector, splitter, LogisticRegression()
-            ),
-            product(detectors, splitters),
+            lambda detector, splitter, handler: handler(detector, splitter),
+            product(detectors, splitters, handlers),
         )
     )
 )
 def test_all_detectors_with_splitter(estimator, check):
-    return check(estimator)
-
-
-@parametrize_with_checks(
-    list(
-        starmap(
-            lambda detector, splitter: SemiSupervisedClassifier(
-                detector,
-                splitter,
-                SelfTrainingClassifier(LogisticRegression()),
-            ),
-            product(detectors, splitters),
-        )
-    )
-)
-def test_all_detectors_with_ssl(estimator, check):
-    return check(estimator)
-
-
-@parametrize_with_checks(
-    list(
-        starmap(
-            lambda detector, splitter: BiqualityClassifier(
-                detector,
-                splitter,
-                TrAdaBoostClassifier(
-                    DecisionTreeClassifier(max_depth=None),
-                    n_estimators=10,
-                    random_state=1,
-                ),
-            ),
-            product(detectors, splitters),
-        )
-    )
-)
-def test_all_detectors_with_bq(estimator, check):
     return check(estimator)
 
 
@@ -117,25 +103,12 @@ naive_complexity_detector = NaiveComplexityDetector(
 )
 
 parametrize = parametrize_with_checks(
-    [
-        FilterClassifier(
-            naive_complexity_detector, QuantileSplitter(), LogisticRegression()
-        ),
-        SemiSupervisedClassifier(
-            naive_complexity_detector,
-            QuantileSplitter(),
-            SelfTrainingClassifier(LogisticRegression()),
-        ),
-        BiqualityClassifier(
-            naive_complexity_detector,
-            QuantileSplitter(),
-            TrAdaBoostClassifier(
-                DecisionTreeClassifier(max_depth=None),
-                n_estimators=10,
-                random_state=1,
-            ),
-        ),
-    ]
+    list(
+        starmap(
+            lambda splitter, handler: handler(naive_complexity_detector, splitter),
+            product(splitters, handlers),
+        )
+    )
 )
 parametrize = parametrize.with_args(ids=[])
 

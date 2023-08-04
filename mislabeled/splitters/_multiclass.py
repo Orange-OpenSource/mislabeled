@@ -1,6 +1,5 @@
-from copy import deepcopy
-
 import numpy as np
+from sklearn.base import clone
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
@@ -15,7 +14,7 @@ class PerClassSplitter(BaseSplitter):
         n_samples = _num_samples(trust_scores)
         classes = np.unique(y)
 
-        self.splitters_ = [deepcopy(self.splitter) for _ in classes]
+        self.splitters_ = [clone(self.splitter) for _ in classes]
 
         trusted = np.zeros(n_samples, dtype=bool)
 
