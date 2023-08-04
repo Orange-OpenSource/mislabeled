@@ -63,7 +63,7 @@ splitters = [
             )
         )
     ),
-    PerClassSplitter(QuantileSplitter(trust_proportion=0.5)),
+    PerClassSplitter(QuantileSplitter(quantile=0.5)),
 ]
 
 handlers = [

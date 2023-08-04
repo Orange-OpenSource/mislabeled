@@ -53,7 +53,8 @@ class GMMSplitter(BaseSplitter):
 
         labels = self.estimator_.fit_predict(trust_scores)
 
-        means = self.estimator_.means_
+        # KEK
+        means = np.sum(self.estimator_.means_, axis=1)
 
         # Check if learned components are too close to each other to really be different
         if math.isclose(np.max(means), np.min(means)):
@@ -62,13 +63,4 @@ class GMMSplitter(BaseSplitter):
             trusted = np.zeros(n_samples, dtype=bool)
             trusted[labels == np.argmax(means)] = True
 
-        print(
-            labels,
-            trusted,
-            means,
-            trust_scores,
-            self.estimator_.weights_,
-            math.isclose(np.max(means), np.min(means)),
-        )
-
-        return trusted
+        return trusted.ravel()
