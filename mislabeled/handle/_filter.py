@@ -1,7 +1,4 @@
-import math
-
-import numpy as np
-from sklearn.utils.validation import _num_samples
+from sklearn.utils import safe_mask
 
 from ._base import BaseHandleClassifier
 
@@ -36,15 +33,8 @@ class FilterClassifier(BaseHandleClassifier):
         The classes seen at :meth:`fit`.
     """
 
-    def __init__(self, detector, estimator, *, trust_proportion=0.5, memory=None):
-        super().__init__(detector, estimator, memory=memory)
-        self.trust_proportion = trust_proportion
+    def __init__(self, detector, splitter, estimator, *, memory=None):
+        super().__init__(detector, splitter, estimator, memory=memory)
 
-    def handle(self, X, y, trust_scores):
-        n_samples = _num_samples(X)
-        indices_rank = np.argsort(trust_scores)[::-1]
-
-        # only keep most trusted examples
-        trusted = indices_rank[: math.ceil(n_samples * self.trust_proportion)]
-
-        return X[trusted], y[trusted], {}
+    def handle(self, X, y, trusted):
+        return X[safe_mask(X, trusted)], y[trusted], {}

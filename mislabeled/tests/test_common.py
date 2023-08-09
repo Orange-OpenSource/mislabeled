@@ -1,6 +1,10 @@
+from functools import partial
+from itertools import product, starmap
+
 from bqlearn.tradaboost import TrAdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.linear_model import LogisticRegression
+from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -24,6 +28,7 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
+from mislabeled.splitters import GMMSplitter, PerClassSplitter, QuantileSplitter
 
 detectors = [
     ConsensusDetector(
@@ -38,7 +43,7 @@ detectors = [
         n_jobs=-1,
     ),
     InputSensitivityDetector(LogisticRegression()),
-    KMMDetector(n_jobs=-1),
+    KMMDetector(n_jobs=-1, B=2),
     PDRDetector(LogisticRegression(), n_jobs=-1),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
     AUMDetector(GradientBoostingClassifier(n_estimators=10)),
@@ -48,54 +53,44 @@ detectors = [
     ),
 ]
 
+splitters = [
+    PerClassSplitter(
+        GMMSplitter(
+            GaussianMixture(
+                n_components=2,
+                n_init=20,
+                random_state=1,
+            )
+        )
+    ),
+    PerClassSplitter(QuantileSplitter(trust_proportion=0.5)),
+]
+
+handlers = [
+    partial(FilterClassifier, estimator=LogisticRegression()),
+    partial(
+        SemiSupervisedClassifier, estimator=SelfTrainingClassifier(LogisticRegression())
+    ),
+    partial(
+        BiqualityClassifier,
+        estimator=TrAdaBoostClassifier(
+            DecisionTreeClassifier(max_depth=None),
+            n_estimators=10,
+            random_state=1,
+        ),
+    ),
+]
+
 
 @parametrize_with_checks(
     list(
-        map(
-            lambda detector: FilterClassifier(
-                detector, LogisticRegression(), trust_proportion=0.8
-            ),
-            detectors,
+        starmap(
+            lambda detector, splitter, handler: handler(detector, splitter),
+            product(detectors, splitters, handlers),
         )
     )
 )
-def test_all_detectors_with_filter(estimator, check):
-    return check(estimator)
-
-
-@parametrize_with_checks(
-    list(
-        map(
-            lambda detector: SemiSupervisedClassifier(
-                detector,
-                SelfTrainingClassifier(LogisticRegression()),
-                trust_proportion=0.8,
-            ),
-            detectors,
-        )
-    )
-)
-def test_all_detectors_with_ssl(estimator, check):
-    return check(estimator)
-
-
-@parametrize_with_checks(
-    list(
-        map(
-            lambda detector: BiqualityClassifier(
-                detector,
-                TrAdaBoostClassifier(
-                    DecisionTreeClassifier(max_depth=None),
-                    n_estimators=10,
-                    random_state=1,
-                ),
-                trust_proportion=0.8,
-            ),
-            detectors,
-        )
-    )
-)
-def test_all_detectors_with_bq(estimator, check):
+def test_all_detectors_with_splitter(estimator, check):
     return check(estimator)
 
 
@@ -108,25 +103,12 @@ naive_complexity_detector = NaiveComplexityDetector(
 )
 
 parametrize = parametrize_with_checks(
-    [
-        FilterClassifier(
-            naive_complexity_detector, LogisticRegression(), trust_proportion=0.8
-        ),
-        SemiSupervisedClassifier(
-            naive_complexity_detector,
-            SelfTrainingClassifier(LogisticRegression()),
-            trust_proportion=0.8,
-        ),
-        BiqualityClassifier(
-            naive_complexity_detector,
-            TrAdaBoostClassifier(
-                DecisionTreeClassifier(max_depth=None),
-                n_estimators=10,
-                random_state=1,
-            ),
-            trust_proportion=0.8,
-        ),
-    ]
+    list(
+        starmap(
+            lambda splitter, handler: handler(naive_complexity_detector, splitter),
+            product(splitters, handlers),
+        )
+    )
 )
 parametrize = parametrize.with_args(ids=[])
 

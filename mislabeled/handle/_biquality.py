@@ -1,8 +1,3 @@
-import math
-
-import numpy as np
-from sklearn.utils.validation import _num_samples
-
 from ._base import BaseHandleClassifier
 
 
@@ -36,17 +31,8 @@ class BiqualityClassifier(BaseHandleClassifier):
         The classes seen at :meth:`fit`.
     """
 
-    def __init__(self, detector, estimator, *, trust_proportion=0.5, memory=None):
-        super().__init__(detector, estimator, memory=memory)
-        self.trust_proportion = trust_proportion
+    def __init__(self, detector, splitter, estimator, *, memory=None):
+        super().__init__(detector, splitter, estimator, memory=memory)
 
-    def handle(self, X, y, trust_scores):
-        n_samples = _num_samples(X)
-        indices_rank = np.argsort(trust_scores)[::-1]
-
-        # trusted, untrusted split
-        sample_quality = np.ones(n_samples)
-        untrusted = indices_rank[math.ceil(n_samples * self.trust_proportion) :]
-        sample_quality[untrusted] = 0
-
-        return X, y, dict(sample_quality=sample_quality)
+    def handle(self, X, y, trusted):
+        return X, y, dict(sample_quality=trusted.astype(int))

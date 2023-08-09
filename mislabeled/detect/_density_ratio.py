@@ -43,6 +43,7 @@ class BaseDensityRatioDetector(BaseEstimator, metaclass=ABCMeta):
         y = LabelEncoder().fit_transform(y)
         classes = np.unique(y)
         n_classes = len(classes)
+
         class_prior = np.bincount(y, minlength=n_classes) / n_samples
 
         def compute_density_ratio(self, X, c):
@@ -61,19 +62,18 @@ class BaseDensityRatioDetector(BaseEstimator, metaclass=ABCMeta):
         return score_samples
 
     @abstractmethod
-    def _density_ratio(self, X_c, X):
+    def _density_ratio(self, X, X_c):
         """Implement density ratio estimation.
 
         Warning: This method needs to be overridden by subclasses.
 
         Parameters
         ----------
-        X_c : array-like, shape (n_samples_c, n_features)
-            The samples of class c.
-
         X : array-like, shape (n_samples, n_features)
             The samples
 
+        X_c : array-like, shape (n_samples_c, n_features)
+            The samples of class c.
         Returns
         -------
         density_ratio : array-like of shape (n_samples_c,)
@@ -117,8 +117,8 @@ class PDRDetector(BaseDensityRatioDetector, MetaEstimatorMixin):
         self.estimator = estimator
         self.method = method
 
-    def _density_ratio(self, X_c, X):
-        return pdr(X_c, X, self.estimator, self.method)
+    def _density_ratio(self, X, X_c):
+        return pdr(X, X_c, self.estimator, self.method)
 
 
 class KMMDetector(BaseDensityRatioDetector):
@@ -208,11 +208,11 @@ class KMMDetector(BaseDensityRatioDetector):
         self.tol = tol
         self.batch_size = batch_size
 
-    def _density_ratio(self, X_c, X):
+    def _density_ratio(self, X, X_c):
         # TODO implement batching (or here true kmm ensembling) ...
         density_ratio = kmm(
-            X_c,
             X,
+            X_c,
             kernel=self.kernel,
             kernel_params=self.kernel_params,
             B=self.B,
