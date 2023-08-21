@@ -10,6 +10,7 @@ from ._adjust import adjusted_uncertainty
 from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy, jensen_shannon, weighted_jensen_shannon
 from ._margin import accuracy, hard_margin, soft_margin
+from ._regression import l2
 from .utils import check_array_prob
 
 
@@ -107,12 +108,12 @@ class _ThresholdUncertaintyScorer(_BaseScorer):
         )
 
         y_type = type_of_target(y)
-        if y_type not in ("binary", "multiclass"):
-            raise ValueError("{0} format is not supported".format(y_type))
 
         if is_regressor(clf):
             y_pred = method_caller(clf, "predict", X)
         else:
+            if y_type not in ("binary", "multiclass"):
+                raise ValueError("{0} format is not supported".format(y_type))
             try:
                 y_pred = method_caller(clf, "decision_function", X)
 
@@ -213,6 +214,9 @@ def make_uncertainty_scorer(
     return cls(uncertainty_func, sign, kwargs)
 
 
+l2_uncertainty_scorer = make_uncertainty_scorer(
+    l2, needs_threshold=True, greater_is_better=False
+)
 confidence_uncertainty_scorer = make_uncertainty_scorer(
     confidence, needs_threshold=True
 )
@@ -258,6 +262,7 @@ _UNCERTAINTY_SCORERS = dict(
     jensen_shannon=jensen_shannon_scorer,
     weighted_jensen_shannon=weighted_jensen_shannon_scorer,
     unsupervised_entropy=unsupervised_entropy_uncertainty_scorer,
+    l2=l2_uncertainty_scorer,
 )
 
 _UNCERTAINTIES = dict(
@@ -269,6 +274,7 @@ _UNCERTAINTIES = dict(
     entropy=entropy,
     jensen_shannon=jensen_shannon,
     weighted_jensen_shannon=weighted_jensen_shannon,
+    l2=l2,
 )
 
 for key, uncertainty in _UNCERTAINTIES.items():
