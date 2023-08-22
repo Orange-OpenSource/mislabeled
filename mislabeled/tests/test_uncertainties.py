@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect import ClassifierDetector
