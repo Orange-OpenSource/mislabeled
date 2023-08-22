@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.datasets import make_blobs, load_diabetes
+from sklearn.datasets import make_blobs
 from sklearn.kernel_approximation import RBFSampler
 
 
@@ -34,7 +34,7 @@ def blobs_1_outlier_y(n_samples=1000, seed=1):
 
     # project to higher dimension space
     X_p = RBFSampler(gamma="scale", n_components=20).fit_transform(X)
-    
+
     # sample random direction
     dir = np.random.normal(0, 1, size=(20))
     dir /= np.linalg.norm(dir)
