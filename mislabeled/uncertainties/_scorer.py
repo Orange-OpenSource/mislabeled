@@ -10,6 +10,7 @@ from ._adjust import adjusted_uncertainty
 from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy, jensen_shannon, weighted_jensen_shannon
 from ._margin import accuracy, hard_margin, soft_margin
+from ._regression import l2
 from .utils import check_array_prob
 
 
@@ -106,13 +107,12 @@ class _ThresholdUncertaintyScorer(_BaseScorer):
             kwargs=kwargs,
         )
 
-        y_type = type_of_target(y)
-        if y_type not in ("binary", "multiclass"):
-            raise ValueError("{0} format is not supported".format(y_type))
-
         if is_regressor(clf):
             y_pred = method_caller(clf, "predict", X)
         else:
+            y_type = type_of_target(y)
+            if y_type not in ("binary", "multiclass"):
+                raise ValueError("{0} format is not supported".format(y_type))
             try:
                 y_pred = method_caller(clf, "decision_function", X)
 
@@ -213,6 +213,9 @@ def make_uncertainty_scorer(
     return cls(uncertainty_func, sign, kwargs)
 
 
+l2_uncertainty_scorer = make_uncertainty_scorer(
+    l2, needs_threshold=True, greater_is_better=False
+)
 confidence_uncertainty_scorer = make_uncertainty_scorer(
     confidence, needs_threshold=True
 )
@@ -245,7 +248,7 @@ unsupervised_entropy_uncertainty_scorer = make_uncertainty_scorer(
     entropy, supervised=False, needs_proba=True
 )
 
-_UNCERTAINTY_SCORERS = dict(
+_UNCERTAINTY_SCORERS_CLASSIFICATION = dict(
     confidence=confidence_uncertainty_scorer,
     unsupervised_confidence=unsupervised_confidence_uncertainty_scorer,
     confidence_entropy_ratio=confidence_entropy_ratio_uncertainty_scorer,
@@ -260,6 +263,15 @@ _UNCERTAINTY_SCORERS = dict(
     unsupervised_entropy=unsupervised_entropy_uncertainty_scorer,
 )
 
+_UNCERTAINTY_SCORERS_REGRESSION = dict(
+    l2=l2_uncertainty_scorer,
+)
+
+_UNCERTAINTY_SCORERS = {
+    **_UNCERTAINTY_SCORERS_CLASSIFICATION,
+    **_UNCERTAINTY_SCORERS_REGRESSION,
+}
+
 _UNCERTAINTIES = dict(
     confidence=confidence,
     confidence_entropy_ratio=confidence_entropy_ratio,
@@ -269,10 +281,11 @@ _UNCERTAINTIES = dict(
     entropy=entropy,
     jensen_shannon=jensen_shannon,
     weighted_jensen_shannon=weighted_jensen_shannon,
+    l2=l2,
 )
 
 for key, uncertainty in _UNCERTAINTIES.items():
-    if key not in ["accuracy", "hard_margin", "weighted_jensen_shannon"]:
+    if key not in ["accuracy", "hard_margin", "weighted_jensen_shannon", "l2"]:
         _UNCERTAINTY_SCORERS["adjusted_" + key] = make_uncertainty_scorer(
             partial(adjusted_uncertainty, uncertainty), needs_proba=True
         )
