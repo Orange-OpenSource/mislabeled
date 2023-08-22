@@ -1,5 +1,6 @@
 import numpy as np
-from sklearn.datasets import make_blobs
+from sklearn.datasets import make_blobs, load_diabetes
+from sklearn.kernel_approximation import RBFSampler
 
 
 def blobs_1_mislabeled(n_classes, n_samples=1000, seed=1):
@@ -21,6 +22,30 @@ def blobs_1_mislabeled(n_classes, n_samples=1000, seed=1):
         index = np.random.choice(np.nonzero(y == c)[0])
         indices_mislabeled.append(index)
         y[index] = (y[index] + 1) % n_classes
+
+    return X, y, indices_mislabeled
+
+
+def blobs_1_outlier_y(n_samples=1000, seed=1):
+    # a simple regression task
+    np.random.seed(seed)
+
+    X = np.random.uniform(-1, 1, size=(n_samples, 10))
+
+    # project to higher dimension space
+    X_p = RBFSampler(gamma="scale", n_components=20).fit_transform(X)
+    
+    # sample random direction
+    dir = np.random.normal(0, 1, size=(20))
+    dir /= np.linalg.norm(dir)
+
+    # true target
+    y = X_p @ dir
+
+    # swap min and max values
+    indices_mislabeled = [np.argmin(y), np.argmax(y)]
+
+    y[indices_mislabeled] = y[indices_mislabeled[::-1]]
 
     return X, y, indices_mislabeled
 
