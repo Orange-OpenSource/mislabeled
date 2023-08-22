@@ -46,11 +46,26 @@ def norm(this_y):
 
 
 imax = X.shape[0]
-plt.scatter(X_emb[:imax, 0], X_emb[:imax, 1], c=cmap(norm(y[:imax])), alpha=0.8)
+plt.scatter(
+    X_emb[:imax, 0],
+    X_emb[:imax, 1],
+    c=y[:imax],
+    alpha=0.8,
+    vmin=y.min(),
+    vmax=y.max(),
+    cmap="YlGnBu",
+)
 
 for i in range(5):
     ind = indices[i]
-    scat = plt.scatter(X_emb[ind, 0], X_emb[ind, 1], color=cmap(norm(y[ind])))
+    scat = plt.scatter(
+        X_emb[ind, 0],
+        X_emb[ind, 1],
+        c=y[ind],
+        vmin=y.min(),
+        vmax=y.max(),
+        cmap="YlGnBu",
+    )
     c = plt.Circle(
         (X_emb[ind, 0], X_emb[ind, 1]), 10, alpha=0.5, fill=False, color="red"
     )
@@ -58,7 +73,7 @@ for i in range(5):
 
 plt.xlabel("First t-SNE dimension")
 plt.ylabel("Second t-SNE dimension")
-plt.colorbar(scat, label="Normalized price")
+plt.colorbar(scat, label="Price")
 plt.show()
 
 # %%
