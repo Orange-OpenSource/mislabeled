@@ -4,7 +4,6 @@ from functools import partial
 from sklearn.base import is_regressor
 from sklearn.metrics._scorer import _BaseScorer
 from sklearn.metrics._scorer import _PredictScorer as _PredictUncertaintyScorer
-from sklearn.svm import l1_min_c
 from sklearn.utils.multiclass import type_of_target
 
 from ._adjust import adjusted_uncertainty
