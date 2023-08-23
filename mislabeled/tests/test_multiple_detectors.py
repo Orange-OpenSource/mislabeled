@@ -26,8 +26,7 @@ def simple_split_test(n_classes, detectors, splitter):
 
     selected_untrusted = np.arange(n_samples)[~trusted]
 
-    assert set(indices_mislabeled).issubset(set(selected_untrusted))
-    assert len(set(selected_untrusted)) / n_samples < 0.05
+    assert set(indices_mislabeled) == set(selected_untrusted)
 
 
 @pytest.mark.parametrize("n_classes", [2, 5])
@@ -37,7 +36,7 @@ def simple_split_test(n_classes, detectors, splitter):
         [
             ClassifierDetector(
                 make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()),
-                uncertainty="entropy",
+                uncertainty="accuracy",
             ),
             ClassifierDetector(
                 make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()),
@@ -57,9 +56,11 @@ def simple_split_test(n_classes, detectors, splitter):
                 random_state=1,
             )
         ),
-        QuantileSplitter(quantile=0.01),
+        QuantileSplitter(),
     ],
     ids=_get_check_estimator_ids,
 )
 def test_splitters_with_multiple_scores(n_classes, detectors, splitter):
+    if isinstance(splitter, QuantileSplitter):
+        splitter.set_params(quantile=(n_classes * 1.75) / 1000)
     simple_split_test(n_classes, detectors, splitter)

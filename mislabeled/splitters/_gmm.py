@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.base import clone
 from sklearn.mixture import GaussianMixture
 from sklearn.mixture._base import BaseMixture
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils.validation import _num_samples
 
 from ._base import BaseSplitter
@@ -50,10 +51,11 @@ class GMMSplitter(BaseSplitter):
 
         if trust_scores.ndim == 1:
             trust_scores = trust_scores.reshape(-1, 1)
+        else:
+            trust_scores = MinMaxScaler().fit_transform(trust_scores)
 
         labels = self.estimator_.fit_predict(trust_scores)
 
-        # KEK
         means = np.sum(self.estimator_.means_, axis=1)
 
         # Check if learned components are too close to each other to really be different
