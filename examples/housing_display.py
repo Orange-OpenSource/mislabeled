@@ -4,29 +4,27 @@ import numpy as np
 from sklearn.datasets import fetch_california_housing
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.manifold import TSNE
 from sklearn.model_selection import RepeatedKFold
 
 from mislabeled.detect import ConsensusDetector
 
 # %%
 
-X, y = fetch_california_housing(return_X_y=True)
+dataset = fetch_california_housing()
+X, y = dataset.data, dataset.target
+feature_names = dataset.feature_names
 
-X = StandardScaler().fit_transform(X)
-
-clf = RandomForestRegressor()
-clf.fit(X, y)
+X_scale = StandardScaler().fit_transform(X)
 
 # %%
 
 detect = ConsensusDetector(
     estimator=RandomForestRegressor(),
-    cv=RepeatedKFold(n_splits=5, n_repeats=3),
+    cv=RepeatedKFold(n_splits=5, n_repeats=5),
     n_jobs=-1,
-    uncertainty="l2",
+    uncertainty="l1",
 )
-trust = detect.trust_score(X, y)
+trust = detect.trust_score(X_scale, y)
 # %%
 
 indices = np.argsort(trust)
@@ -34,45 +32,52 @@ plt.hist(trust)
 
 # %%
 
-X_emb = TSNE().fit_transform(X)
-# %%
+def lims(d, eps=0.25):
+    min_lim = np.percentile(d, eps)
+    max_lim = np.percentile(d, 100 - eps)
+
+    return min_lim - 0.1 * (max_lim - min_lim), max_lim + 0.1 * (max_lim - min_lim)
+
 
 plt.figure(figsize=(6, 5))
 cmap = plt.get_cmap("YlGnBu")
 
-
-def norm(this_y):
-    return (this_y - y.min()) / (y.max() - y.min())
-
+i1 = 0
+i2 = 5
 
 imax = X.shape[0]
 plt.scatter(
-    X_emb[:imax, 0],
-    X_emb[:imax, 1],
+    X[:imax, i1],
+    X[:imax, i2],
     c=y[:imax],
     alpha=0.8,
     vmin=y.min(),
     vmax=y.max(),
     cmap="YlGnBu",
+    s=10,
 )
 
-for i in range(5):
+for i in range(6):
     ind = indices[i]
     scat = plt.scatter(
-        X_emb[ind, 0],
-        X_emb[ind, 1],
+        X[ind, i1],
+        X[ind, i2],
         c=y[ind],
         vmin=y.min(),
         vmax=y.max(),
         cmap="YlGnBu",
+        s=10,
     )
-    c = plt.Circle(
-        (X_emb[ind, 0], X_emb[ind, 1]), 10, alpha=0.5, fill=False, color="red"
+    c = plt.plot(
+        X[ind, i1], X[ind, i2], "bo", markersize=15, fillstyle="none", color="red"
     )
-    plt.gca().add_patch(c)
 
-plt.xlabel("First t-SNE dimension")
-plt.ylabel("Second t-SNE dimension")
+eps = 0.25
+plt.xlim(*lims(X[:, i1]))
+plt.ylim(*lims(X[:, i2]))
+
+plt.xlabel(feature_names[i1])
+plt.ylabel(feature_names[i2])
 plt.colorbar(scat, label="Price")
 plt.show()
 

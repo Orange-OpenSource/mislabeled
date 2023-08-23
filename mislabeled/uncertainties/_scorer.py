@@ -4,13 +4,14 @@ from functools import partial
 from sklearn.base import is_regressor
 from sklearn.metrics._scorer import _BaseScorer
 from sklearn.metrics._scorer import _PredictScorer as _PredictUncertaintyScorer
+from sklearn.svm import l1_min_c
 from sklearn.utils.multiclass import type_of_target
 
 from ._adjust import adjusted_uncertainty
 from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy, jensen_shannon, weighted_jensen_shannon
 from ._margin import accuracy, hard_margin, soft_margin
-from ._regression import l2
+from ._regression import l1, l2
 from .utils import check_array_prob
 
 
@@ -213,6 +214,9 @@ def make_uncertainty_scorer(
     return cls(uncertainty_func, sign, kwargs)
 
 
+l1_uncertainty_scorer = make_uncertainty_scorer(
+    l1, needs_threshold=True, greater_is_better=False
+)
 l2_uncertainty_scorer = make_uncertainty_scorer(
     l2, needs_threshold=True, greater_is_better=False
 )
@@ -264,6 +268,7 @@ _UNCERTAINTY_SCORERS_CLASSIFICATION = dict(
 )
 
 _UNCERTAINTY_SCORERS_REGRESSION = dict(
+    l1=l1_uncertainty_scorer,
     l2=l2_uncertainty_scorer,
 )
 
@@ -281,6 +286,7 @@ _UNCERTAINTIES = dict(
     entropy=entropy,
     jensen_shannon=jensen_shannon,
     weighted_jensen_shannon=weighted_jensen_shannon,
+    l1=l1,
     l2=l2,
 )
 
