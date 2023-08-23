@@ -32,6 +32,7 @@ plt.hist(trust)
 
 # %%
 
+
 def lims(d, eps=0.25):
     min_lim = np.percentile(d, eps)
     max_lim = np.percentile(d, 100 - eps)
