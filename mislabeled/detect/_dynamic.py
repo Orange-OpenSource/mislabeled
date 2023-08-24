@@ -43,14 +43,14 @@ class DynamicDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
         estimator,
         uncertainty,
         adjust,
-        aggregate,
+        aggregator,
         *,
         staging=False,
         method="predict",
     ):
         super().__init__(uncertainty=uncertainty, adjust=adjust)
         self.estimator = estimator
-        self.aggregate = aggregate
+        self.aggregator = aggregator
         self.staging = staging
         self.method = method
 
@@ -132,7 +132,7 @@ class DynamicDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
         self.n_iter_ = len(self.uncertainties_)
         self.uncertainties_ = np.stack(self.uncertainties_, axis=1)
 
-        return self.aggregate_uncertainties(self.uncertainties_)
+        return self.aggregate(self.uncertainties_)
 
 
 class ForgettingDetector(DynamicDetector):

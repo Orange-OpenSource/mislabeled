@@ -25,14 +25,14 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
         estimator,
         uncertainty="accuracy",
         adjust=False,
-        aggregate="sum",
+        aggregator="mean",
         *,
         cv=None,
         n_jobs=None,
     ):
         super().__init__(uncertainty=uncertainty, adjust=adjust)
         self.estimator = estimator
-        self.aggregate = aggregate
+        self.aggregator = aggregator
         self.cv = cv
         self.n_jobs = n_jobs
 
@@ -78,4 +78,4 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
                 estimator, X[safe_mask(X, test)], y[test]
             )
 
-        return self.aggregate_uncertainties(consensus)
+        return self.aggregate(consensus)

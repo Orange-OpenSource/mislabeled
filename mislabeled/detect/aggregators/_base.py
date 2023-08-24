@@ -20,17 +20,17 @@ class ForgettingAggregator(Aggregator):
 
 
 class AggregatorMixin:
-    _required_parameters = ["aggregate"]
+    _required_parameters = ["aggregator"]
 
-    def aggregate_uncertainties(self, uncertainties):
-        if isinstance(self.aggregate, str):
-            self.aggregator = _AGGREGATORS[self.aggregate]
+    def aggregate(self, uncertainties):
+        if isinstance(self.aggregator, str):
+            aggregator = _AGGREGATORS[self.aggregator]
         elif callable(self.aggregate):
-            self.aggregator = self.aggregator
+            aggregator = self.aggregator
         else:
             raise ValueError(f"{self.aggregator} is not an aggregator")
 
-        return self.aggregator(uncertainties)
+        return aggregator(uncertainties)
 
 
 _AGGREGATORS = dict(
