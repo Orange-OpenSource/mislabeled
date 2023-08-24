@@ -2,7 +2,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import fetch_california_housing
-from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RepeatedKFold
 
@@ -14,17 +13,15 @@ dataset = fetch_california_housing()
 X, y = dataset.data, dataset.target
 feature_names = dataset.feature_names
 
-X_scale = StandardScaler().fit_transform(X)
-
 # %%
 
 detect = ConsensusDetector(
     estimator=RandomForestRegressor(),
     cv=RepeatedKFold(n_splits=5, n_repeats=5),
     n_jobs=-1,
-    uncertainty="l1",
+    uncertainty="l2",
 )
-trust = detect.trust_score(X_scale, y)
+trust = detect.trust_score(X, y)
 # %%
 
 indices = np.argsort(trust)
