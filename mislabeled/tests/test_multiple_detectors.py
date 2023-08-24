@@ -17,7 +17,7 @@ def simple_split_test(n_classes, detectors, splitter):
     # should be easily detected by every detection method
     X, y, indices_mislabeled = blobs_1_mislabeled(n_classes)
 
-    trust_scores = map(lambda detector: detector.trust_score(X, y), detectors)
+    trust_scores = list(map(lambda detector: detector.trust_score(X, y), detectors))
     trust_scores = np.column_stack(trust_scores)
 
     trusted = splitter.split(X, y, trust_scores)
