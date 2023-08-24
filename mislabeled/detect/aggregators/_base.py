@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from functools import partial
+
 import numpy as np
 
 
@@ -19,7 +20,6 @@ class ForgettingAggregator(Aggregator):
 
 
 class AggregatorMixin:
-
     _required_parameters = ["aggregate"]
 
     def aggregate_uncertainties(self, uncertainties):

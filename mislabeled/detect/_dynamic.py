@@ -6,10 +6,10 @@ from sklearn.base import clone, MetaEstimatorMixin
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
+from mislabeled.detect.aggregators import AggregatorMixin
 from mislabeled.detect.base import BaseDetector
 from mislabeled.uncertainties import adjusted_uncertainty
 from mislabeled.uncertainties._scorer import _UNCERTAINTIES
-from mislabeled.detect.aggregators import AggregatorMixin
 
 
 class BaseDynamicDetector(
