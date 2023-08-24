@@ -20,7 +20,7 @@ class QuantileSplitter(BaseSplitter):
     """
     Parameters
     ----------
-    trust_proportion: float, default=0.5
+    quantile: float, default=0.5
     """
 
     def __init__(self, quantile=0.5):
