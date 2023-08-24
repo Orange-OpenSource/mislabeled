@@ -1,5 +1,4 @@
 import copy
-from abc import ABCMeta, abstractmethod
 
 import numpy as np
 from sklearn.base import clone, MetaEstimatorMixin
@@ -12,9 +11,7 @@ from mislabeled.uncertainties import adjusted_uncertainty
 from mislabeled.uncertainties._scorer import _UNCERTAINTIES
 
 
-class BaseDynamicDetector(
-    BaseDetector, MetaEstimatorMixin, AggregatorMixin, metaclass=ABCMeta
-):
+class DynamicDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
     """Detector based on training dynamics.
 
     Parameters
@@ -138,7 +135,7 @@ class BaseDynamicDetector(
         return self.aggregate_uncertainties(self.uncertainties_)
 
 
-class ForgettingDetector(BaseDynamicDetector):
+class ForgettingDetector(DynamicDetector):
     """Detector based on forgetting events.
 
     Parameters
@@ -183,7 +180,7 @@ class ForgettingDetector(BaseDynamicDetector):
         )
 
 
-class AUMDetector(BaseDynamicDetector):
+class AUMDetector(DynamicDetector):
     """Detector based on the area under the margin.
 
     Parameters
