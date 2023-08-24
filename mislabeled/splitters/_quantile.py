@@ -6,11 +6,9 @@ from sklearn.utils.validation import _num_features, check_scalar
 from ._base import BaseSplitter
 
 
-# Copy Pasted from :
-# https://gitlab.tech.orange/temporal-data-tools-and-libraries/blinded/-/blob/main/blinded/composite.py
 def _compute_multivariate_quantile(quantile, n_features):
-    """Compute the confidence level for each features (under the
-    independance hypothesis) given the global confidence level.
+    """Compute the quantile for each features under the
+    independance hypothesis given the global quantile.
 
     http://www.utc.fr/~boudaoud/pub/JESA-CPI.htm
     """

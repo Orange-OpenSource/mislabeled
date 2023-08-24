@@ -58,11 +58,7 @@ class GMMSplitter(BaseSplitter):
 
         means = np.sum(self.estimator_.means_, axis=1)
 
-        # Check if learned components are too close to each other to really be different
-        if math.isclose(np.max(means), np.min(means)):
-            trusted = np.ones(n_samples, dtype=bool)
-        else:
-            trusted = np.zeros(n_samples, dtype=bool)
-            trusted[labels == np.argmax(means)] = True
+        trusted = np.zeros(n_samples, dtype=bool)
+        trusted[labels == np.argmax(means)] = True
 
         return trusted.ravel()
