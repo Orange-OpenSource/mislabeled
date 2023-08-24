@@ -4,10 +4,11 @@ from sklearn.model_selection import check_cv, cross_validate
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
+from mislabeled.detect.aggregators import AggregatorMixin
 from mislabeled.detect.base import BaseDetector
 
 
-class ConsensusDetector(BaseDetector, MetaEstimatorMixin):
+class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -24,12 +25,14 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin):
         estimator,
         uncertainty="accuracy",
         adjust=False,
+        aggregate="sum",
         *,
         cv=None,
         n_jobs=None,
     ):
         super().__init__(uncertainty=uncertainty, adjust=adjust)
         self.estimator = estimator
+        self.aggregate = aggregate
         self.cv = cv
         self.n_jobs = n_jobs
 
@@ -75,4 +78,4 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin):
                 estimator, X[safe_mask(X, test)], y[test]
             )
 
-        return np.nanmean(consensus, axis=1)
+        return self.aggregate_uncertainties(consensus)

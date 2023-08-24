@@ -34,8 +34,8 @@ class AggregatorMixin:
 
 
 _AGGREGATORS = dict(
-    mean=partial(np.mean, axis=1),
-    sum=partial(np.sum, axis=1),
-    var=partial(np.var, axis=1),
+    mean=partial(np.nanmean, axis=1),
+    sum=partial(np.nansum, axis=1),
+    var=partial(np.nanvar, axis=1),
     forgetting=ForgettingAggregator(),
 )
