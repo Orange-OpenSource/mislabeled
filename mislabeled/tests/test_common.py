@@ -43,7 +43,7 @@ detectors = [
         n_jobs=-1,
     ),
     InputSensitivityDetector(LogisticRegression()),
-    KMMDetector(n_jobs=-1, B=2),
+    KMMDetector(kernel="linear", n_jobs=-1, B=2),
     PDRDetector(LogisticRegression(), n_jobs=-1),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
     AUMDetector(GradientBoostingClassifier(n_estimators=10)),
@@ -63,7 +63,7 @@ splitters = [
             )
         )
     ),
-    PerClassSplitter(QuantileSplitter(trust_proportion=0.5)),
+    PerClassSplitter(QuantileSplitter(quantile=0.5)),
 ]
 
 handlers = [

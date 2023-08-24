@@ -11,8 +11,6 @@ class FilterClassifier(BaseHandleClassifier):
 
     classifier: object
 
-    trust_proportion: float, default=0.5
-
     memory : str or object with the joblib.Memory interface, default=None
         Used to cache the fitted transformers of the pipeline. By default,
         no caching is performed. If a string is given, it is the path to
