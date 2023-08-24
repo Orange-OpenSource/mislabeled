@@ -9,9 +9,12 @@ from sklearn.utils.validation import _check_response_method
 from mislabeled.detect.base import BaseDetector
 from mislabeled.uncertainties import adjusted_uncertainty
 from mislabeled.uncertainties._scorer import _UNCERTAINTIES
+from mislabeled.detect.aggregators import AggregatorMixin
 
 
-class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
+class BaseDynamicDetector(
+    BaseDetector, MetaEstimatorMixin, AggregatorMixin, metaclass=ABCMeta
+):
     """Detector based on training dynamics.
 
     Parameters
@@ -39,10 +42,18 @@ class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
     """
 
     def __init__(
-        self, estimator, uncertainty, adjust, *, staging=False, method="predict"
+        self,
+        estimator,
+        uncertainty,
+        adjust,
+        aggregate,
+        *,
+        staging=False,
+        method="predict",
     ):
         super().__init__(uncertainty=uncertainty, adjust=adjust)
         self.estimator = estimator
+        self.aggregate = aggregate
         self.staging = staging
         self.method = method
 
@@ -124,11 +135,7 @@ class BaseDynamicDetector(BaseDetector, MetaEstimatorMixin, metaclass=ABCMeta):
         self.n_iter_ = len(self.uncertainties_)
         self.uncertainties_ = np.stack(self.uncertainties_, axis=1)
 
-        return self.aggregate(self.uncertainties_)
-
-    @abstractmethod
-    def aggregate(self, uncertainties):
-        """"""
+        return self.aggregate_uncertainties(self.uncertainties_)
 
 
 class ForgettingDetector(BaseDynamicDetector):
@@ -167,12 +174,13 @@ class ForgettingDetector(BaseDynamicDetector):
 
     def __init__(self, estimator, *, staging=False):
         super().__init__(
-            estimator, "accuracy", False, staging=staging, method="predict"
+            estimator,
+            "accuracy",
+            False,
+            "forgetting",
+            staging=staging,
+            method="predict",
         )
-
-    def aggregate(self, uncertainties):
-        forgetting_events = np.diff(uncertainties, axis=1, prepend=0) < 0
-        return self.n_iter_ - forgetting_events.sum(axis=1)
 
 
 class AUMDetector(BaseDynamicDetector):
@@ -213,9 +221,7 @@ class AUMDetector(BaseDynamicDetector):
             estimator,
             "soft_margin",
             False,
+            "sum",
             staging=staging,
             method="decision_function",
         )
-
-    def aggregate(self, uncertainties):
-        return uncertainties.sum(axis=1)
