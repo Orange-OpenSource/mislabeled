@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from sklearn.utils.validation import _num_features, check_scalar
 
@@ -13,7 +15,7 @@ def _compute_multivariate_quantile(quantile, n_features):
     http://www.utc.fr/~boudaoud/pub/JESA-CPI.htm
     """
 
-    return 1 - np.power(1 - quantile, 1 / n_features)
+    return 1 - math.pow(1 - quantile, 1 / n_features)
 
 
 class QuantileSplitter(BaseSplitter):
