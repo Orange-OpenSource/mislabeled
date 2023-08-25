@@ -23,9 +23,9 @@ class AggregatorMixin:
     _required_parameters = ["aggregator"]
 
     def aggregate(self, uncertainties):
-        if isinstance(self.aggregator, str):
+        if isinstance(self.aggregator, str) and (self.aggregator in _AGGREGATORS):
             aggregator = _AGGREGATORS[self.aggregator]
-        elif callable(self.aggregate):
+        elif callable(self.aggregator):
             aggregator = self.aggregator
         else:
             raise ValueError(f"{self.aggregator} is not an aggregator")
