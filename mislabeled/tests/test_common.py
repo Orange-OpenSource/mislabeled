@@ -20,6 +20,7 @@ from mislabeled.detect import (
     InputSensitivityDetector,
     KMMDetector,
     NaiveComplexityDetector,
+    RANSACDetector,
     OutlierDetector,
     PDRDetector,
 )
@@ -51,6 +52,7 @@ detectors = [
         GradientBoostingClassifier(n_estimators=10),
         staging=True,
     ),
+    RANSACDetector(LogisticRegression())
 ]
 
 splitters = [

@@ -1,11 +1,18 @@
 import numpy as np
 from sklearn.base import is_classifier, MetaEstimatorMixin
-from sklearn.model_selection import check_cv, cross_validate
+from sklearn.model_selection import (
+    check_cv,
+    cross_validate,
+    ShuffleSplit,
+    StratifiedShuffleSplit,
+)
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
 from mislabeled.detect.aggregators import AggregatorMixin
+from mislabeled.detect.aggregators._base import Aggregator
 from mislabeled.detect.base import BaseDetector
+from mislabeled.splitters import QuantileSplitter
 
 
 class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
@@ -28,12 +35,14 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
         aggregator="mean",
         *,
         cv=None,
+        eval="test",
         n_jobs=None,
     ):
         super().__init__(uncertainty=uncertainty, adjust=adjust)
         self.estimator = estimator
         self.aggregator = aggregator
         self.cv = cv
+        self.eval = eval
         self.n_jobs = n_jobs
 
     def trust_score(self, X, y):
@@ -71,11 +80,66 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
             return_estimator=True,
             return_indices=True,
         )
-        estimators, tests = scores["estimator"], scores["indices"]["test"]
+
+        estimators = scores["estimator"]
+
+        if self.eval == "train" or self.eval == "test":
+            evals = scores["indices"][self.eval]
+        elif self.eval == "all":
+            evals = scores["indices"]["train"] + scores["indices"]["test"]
+        else:
+            raise ValueError(f"{self.eval} not in ['train', 'test', 'all']")
+
         # TODO: parallel
-        for i, (estimator, test) in enumerate(zip(estimators, tests)):
-            consensus[test, i] = self.uncertainty_scorer_(
-                estimator, X[safe_mask(X, test)], y[test]
+        for i, (estimator, eval) in enumerate(zip(estimators, evals)):
+            consensus[eval, i] = self.uncertainty_scorer_(
+                estimator, X[safe_mask(X, eval)], y[eval]
             )
 
         return self.aggregate(consensus)
+
+
+class RANSACAggregator(Aggregator):
+    def __init__(self, splitter):
+        self.splitter = splitter
+
+    def aggregate(self, uncertainties):
+        best_error = np.inf
+        best_iter = 0
+
+        for i in range(uncertainties.shape[1]):
+            trusted = self.splitter.split(None, None, uncertainties[:, i])
+            error = np.sum(uncertainties[trusted, i])
+
+            if error < best_error:
+                best_iter = i
+
+        return uncertainties[:, best_iter]
+
+
+class RANSACDetector(ConsensusDetector):
+    def __init__(
+        self,
+        estimator,
+        uncertainty="entropy",
+        adjust=False,
+        splitter=QuantileSplitter(quantile=0.5),
+        *,
+        min_samples=None,
+        max_trials=100,
+        n_jobs=None,
+    ):
+        super().__init__(
+            estimator=estimator,
+            uncertainty=uncertainty,
+            adjust=adjust,
+            aggregator=RANSACAggregator(splitter=splitter),
+            cv=(StratifiedShuffleSplit if is_classifier(estimator) else ShuffleSplit)(
+                n_splits=max_trials, train_size=min_samples
+            ),
+            eval="all",
+            n_jobs=n_jobs,
+        )
+        self.splitter = splitter
+        self.min_samples = min_samples
+        self.max_trials = max_trials

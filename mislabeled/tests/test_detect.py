@@ -17,6 +17,7 @@ from mislabeled.detect import (
     AUMDetector,
     ClassifierDetector,
     ConsensusDetector,
+    RANSACDetector,
     DecisionTreeComplexityDetector,
     ForgettingDetector,
     InfluenceDetector,
@@ -74,6 +75,7 @@ def simple_detect_test(n_classes, detector):
             ),
             staging=True,
         ),
+        RANSACDetector(LogisticRegression())
     ],
     ids=_get_check_estimator_ids,
 )
