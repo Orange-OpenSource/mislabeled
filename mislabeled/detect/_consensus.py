@@ -1,3 +1,5 @@
+from itertools import starmap
+
 import numpy as np
 from sklearn.base import is_classifier, MetaEstimatorMixin
 from sklearn.model_selection import (
@@ -86,7 +88,10 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
         if self.eval == "train" or self.eval == "test":
             evals = scores["indices"][self.eval]
         elif self.eval == "all":
-            evals = scores["indices"]["train"] + scores["indices"]["test"]
+            evals = starmap(
+                lambda train, test: np.concatenate((train, test)),
+                zip(scores["indices"]["train"], scores["indices"]["test"]),
+            )
         else:
             raise ValueError(f"{self.eval} not in ['train', 'test', 'all']")
 
@@ -128,6 +133,7 @@ class RANSACDetector(ConsensusDetector):
         min_samples=None,
         max_trials=100,
         n_jobs=None,
+        random_state=None,
     ):
         super().__init__(
             estimator=estimator,
@@ -135,7 +141,7 @@ class RANSACDetector(ConsensusDetector):
             adjust=adjust,
             aggregator=RANSACAggregator(splitter=splitter),
             cv=(StratifiedShuffleSplit if is_classifier(estimator) else ShuffleSplit)(
-                n_splits=max_trials, train_size=min_samples
+                n_splits=max_trials, train_size=min_samples, random_state=random_state
             ),
             eval="all",
             n_jobs=n_jobs,
@@ -143,3 +149,4 @@ class RANSACDetector(ConsensusDetector):
         self.splitter = splitter
         self.min_samples = min_samples
         self.max_trials = max_trials
+        self.random_state = random_state

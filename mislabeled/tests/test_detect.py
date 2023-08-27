@@ -17,7 +17,6 @@ from mislabeled.detect import (
     AUMDetector,
     ClassifierDetector,
     ConsensusDetector,
-    RANSACDetector,
     DecisionTreeComplexityDetector,
     ForgettingDetector,
     InfluenceDetector,
@@ -26,6 +25,7 @@ from mislabeled.detect import (
     NaiveComplexityDetector,
     OutlierDetector,
     PDRDetector,
+    RANSACDetector,
 )
 
 from .utils import blobs_1_mislabeled
@@ -75,7 +75,7 @@ def simple_detect_test(n_classes, detector):
             ),
             staging=True,
         ),
-        RANSACDetector(LogisticRegression())
+        RANSACDetector(LogisticRegression()),
     ],
     ids=_get_check_estimator_ids,
 )

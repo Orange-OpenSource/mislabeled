@@ -20,9 +20,9 @@ from mislabeled.detect import (
     InputSensitivityDetector,
     KMMDetector,
     NaiveComplexityDetector,
-    RANSACDetector,
     OutlierDetector,
     PDRDetector,
+    RANSACDetector,
 )
 from mislabeled.handle import (
     BiqualityClassifier,
@@ -52,7 +52,9 @@ detectors = [
         GradientBoostingClassifier(n_estimators=10),
         staging=True,
     ),
-    RANSACDetector(LogisticRegression())
+    RANSACDetector(
+        LogisticRegression(), min_samples=0.2, max_trials=5, n_jobs=-1, random_state=1
+    ),
 ]
 
 splitters = [
