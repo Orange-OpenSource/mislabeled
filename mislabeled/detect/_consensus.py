@@ -118,6 +118,7 @@ class RANSACAggregator(Aggregator):
 
             if error < best_error:
                 best_iter = i
+                best_error = error
 
         return uncertainties[:, best_iter]
 
