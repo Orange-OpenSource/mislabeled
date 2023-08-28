@@ -20,6 +20,7 @@ from mislabeled.detect import (
     InputSensitivityDetector,
     NaiveComplexityDetector,
     OutlierDetector,
+    RANSACDetector,
 )
 from mislabeled.handle import (
     BiqualityClassifier,
@@ -46,6 +47,9 @@ detectors = [
     ForgettingDetector(
         GradientBoostingClassifier(n_estimators=10),
         staging=True,
+    ),
+    RANSACDetector(
+        LogisticRegression(), min_samples=0.2, max_trials=5, n_jobs=-1, random_state=1
     ),
 ]
 
