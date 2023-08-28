@@ -1,8 +1,7 @@
 from ._classifier import ClassifierDetector
 from ._complexity import DecisionTreeComplexityDetector, NaiveComplexityDetector
 from ._consensus import ConsensusDetector
-from ._density_ratio import KMMDetector, PDRDetector
-from ._dynamic import AUMDetector, DynamicDetector, ForgettingDetector
+from ._dynamic import AUMDetector, ForgettingDetector
 from ._influence import InfluenceDetector
 from ._input_sensitivity import InputSensitivityDetector
 from ._outlier import OutlierDetector
@@ -14,8 +13,6 @@ __all__ = [
     "ClassifierDetector",
     "OutlierDetector",
     "InputSensitivityDetector",
-    "KMMDetector",
-    "PDRDetector",
     "NaiveComplexityDetector",
     "DecisionTreeComplexityDetector",
     "ForgettingDetector",

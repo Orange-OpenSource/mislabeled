@@ -18,10 +18,8 @@ from mislabeled.detect import (
     ForgettingDetector,
     InfluenceDetector,
     InputSensitivityDetector,
-    KMMDetector,
     NaiveComplexityDetector,
     OutlierDetector,
-    PDRDetector,
 )
 from mislabeled.handle import (
     BiqualityClassifier,
@@ -43,8 +41,6 @@ detectors = [
         n_jobs=-1,
     ),
     InputSensitivityDetector(LogisticRegression()),
-    KMMDetector(kernel="linear", n_jobs=-1, B=2),
-    PDRDetector(LogisticRegression(), n_jobs=-1),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
     AUMDetector(GradientBoostingClassifier(n_estimators=10)),
     ForgettingDetector(

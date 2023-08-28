@@ -8,8 +8,10 @@ from sklearn.ensemble import (
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import _get_check_estimator_ids
 
@@ -21,10 +23,8 @@ from mislabeled.detect import (
     ForgettingDetector,
     InfluenceDetector,
     InputSensitivityDetector,
-    KMMDetector,
     NaiveComplexityDetector,
     OutlierDetector,
-    PDRDetector,
 )
 
 from .utils import blobs_1_mislabeled
@@ -58,9 +58,17 @@ def simple_detect_test(n_classes, detector):
         InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=10),
         InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=5.5),
         OutlierDetector(IsolationForest(), n_jobs=-1),
-        KMMDetector(n_jobs=-1, kernel_params=dict(gamma=0.001)),
-        PDRDetector(
-            make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()), n_jobs=-1
+        # KMM
+        OutlierDetector(
+            OneClassSVM(kernel="rbf", gamma=0.1),
+            n_jobs=-1,
+        ),
+        # PDR
+        ClassifierDetector(
+            make_pipeline(
+                RBFSampler(gamma="scale"),
+                OneVsRestClassifier(LogisticRegression(), n_jobs=-1),
+            )
         ),
         DecisionTreeComplexityDetector(),
         AUMDetector(GradientBoostingClassifier(max_depth=1), staging=True),
