@@ -58,10 +58,12 @@ def simple_detect_test(n_classes, detector):
         InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=10),
         InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=5.5),
         OutlierDetector(IsolationForest(), n_jobs=-1),
+        # KMM
         OutlierDetector(
-            OneClassSVM(kernel="rbf", nu=0.1),
+            OneClassSVM(kernel="rbf", gamma=0.1),
             n_jobs=-1,
         ),
+        # PDR
         ClassifierDetector(
             make_pipeline(
                 RBFSampler(gamma="scale"),
