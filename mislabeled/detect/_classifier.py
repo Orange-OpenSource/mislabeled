@@ -1,9 +1,9 @@
-from sklearn.base import clone, MetaEstimatorMixin
+from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 
-from mislabeled.detect.base import BaseDetector
+from mislabeled.uncertainties import check_uncertainty
 
 
-class ClassifierDetector(BaseDetector, MetaEstimatorMixin):
+class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -16,7 +16,8 @@ class ClassifierDetector(BaseDetector, MetaEstimatorMixin):
     """
 
     def __init__(self, estimator, uncertainty="soft_margin", adjust=False):
-        super().__init__(uncertainty=uncertainty, adjust=adjust)
+        self.uncertainty = uncertainty
+        self.adjust = adjust
         self.estimator = estimator
 
     def trust_score(self, X, y):
@@ -38,7 +39,6 @@ class ClassifierDetector(BaseDetector, MetaEstimatorMixin):
         X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
 
         self.estimator_ = clone(self.estimator)
-
         self.estimator_.fit(X, y)
-        self.uncertainty_scorer_ = self._make_uncertainty_scorer()
+        self.uncertainty_scorer_ = check_uncertainty(self.uncertainty, self.adjust)
         return self.uncertainty_scorer_(self.estimator_, X, y)
