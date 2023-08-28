@@ -11,7 +11,7 @@ from sklearn.model_selection import (
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
-from mislabeled.detect.aggregators import AggregatorMixin, Aggregator
+from mislabeled.detect.aggregators import Aggregator, AggregatorMixin
 from mislabeled.detect.base import BaseDetector
 from mislabeled.splitters import QuantileSplitter
 
