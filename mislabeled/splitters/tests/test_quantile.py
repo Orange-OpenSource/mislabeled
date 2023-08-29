@@ -9,8 +9,9 @@ def test_multivariate_quantile_with_independent_scores_equals_univariate_quantil
     quantile,
 ):
     splitter = QuantileSplitter(quantile=quantile)
-    np.random.seed(1)
-    scores = np.random.randn(1000, 2)
+
+    rng = np.random.RandomState(42)
+    scores = rng.randn(1000, 2)
 
     np.testing.assert_array_almost_equal(
         np.bincount(splitter.split(None, None, scores)),

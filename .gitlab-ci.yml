@@ -32,6 +32,13 @@ test:
   needs: [quality]
   image: $PYTHON_IMAGE
   script:
+    - make test
+  parallel: !reference [.parallel,parallel]
+
+coverage:
+  stage: quality
+  image: 'python:3.9'
+  script:
     - make test-coverage
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
@@ -41,7 +48,6 @@ test:
         coverage_format: cobertura
         path: coverage.xml
       junit: junit.xml
-  parallel: !reference [.parallel,parallel]
 
 # test-doc:
 #   stage: test
