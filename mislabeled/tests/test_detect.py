@@ -1,10 +1,6 @@
 import numpy as np
 import pytest
-from sklearn.ensemble import (
-    GradientBoostingClassifier,
-    HistGradientBoostingClassifier,
-    IsolationForest,
-)
+from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import RepeatedStratifiedKFold
@@ -53,10 +49,12 @@ def simple_detect_test(n_classes, detector):
         ),
         InfluenceDetector(RBFSampler(gamma="scale", n_components=100)),
         ClassifierDetector(
-            make_pipeline(RBFSampler(gamma="scale"), LogisticRegression())
+            make_pipeline(
+                RBFSampler(gamma="scale", n_components=100), LogisticRegression()
+            )
         ),
-        InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=10),
-        InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=5.5),
+        InputSensitivityDetector(GradientBoostingClassifier(), n_directions=10),
+        InputSensitivityDetector(GradientBoostingClassifier(), n_directions=5.5),
         OutlierDetector(IsolationForest(), n_jobs=-1),
         # KMM
         OutlierDetector(
@@ -66,7 +64,7 @@ def simple_detect_test(n_classes, detector):
         # PDR
         ClassifierDetector(
             make_pipeline(
-                RBFSampler(gamma="scale"),
+                RBFSampler(gamma="scale", n_components=100),
                 OneVsRestClassifier(LogisticRegression(), n_jobs=-1),
             )
         ),

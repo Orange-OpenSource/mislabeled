@@ -14,12 +14,12 @@ def blobs_1_mislabeled(n_classes, n_samples=1000, seed=1):
         random_state=seed,
     )
 
-    np.random.seed(seed)
+    rng = np.random.RandomState(seed)
 
     # picks one example of each class, and flips its label to the next class
     indices_mislabeled = []
     for c in range(n_classes):
-        index = np.random.choice(np.nonzero(y == c)[0])
+        index = rng.choice(np.nonzero(y == c)[0])
         indices_mislabeled.append(index)
         y[index] = (y[index] + 1) % n_classes
 
@@ -28,15 +28,15 @@ def blobs_1_mislabeled(n_classes, n_samples=1000, seed=1):
 
 def blobs_1_outlier_y(n_samples=1000, seed=1):
     # a simple regression task
-    np.random.seed(seed)
+    rng = np.random.RandomState(seed)
 
-    X = np.random.uniform(-1, 1, size=(n_samples, 10))
+    X = rng.uniform(-1, 1, size=(n_samples, 10))
 
     # project to higher dimension space
     X_p = RBFSampler(gamma="scale", n_components=20).fit_transform(X)
 
     # sample random direction
-    dir = np.random.normal(0, 1, size=(20))
+    dir = rng.normal(0, 1, size=(20))
     dir /= np.linalg.norm(dir)
 
     # true target
@@ -53,6 +53,7 @@ def blobs_1_outlier_y(n_samples=1000, seed=1):
 def blobs_1_ood(n_outliers, n_classes, n_samples=1000, seed=1):
     # a simple task with `n_classes` blobs of each class and
     # another outlier small blob
+    rng = np.random.RandomState(seed)
 
     list_n_samples = [int(n_samples / n_classes)] * n_classes
     list_n_samples.append(n_outliers)
@@ -64,6 +65,6 @@ def blobs_1_ood(n_outliers, n_classes, n_samples=1000, seed=1):
         random_state=seed,
     )
     indices_ood = np.flatnonzero(y == n_classes).tolist()
-    y[y == n_classes] = np.random.choice(n_classes, size=n_outliers)
+    y[y == n_classes] = rng.choice(n_classes, size=n_outliers)
 
     return X, y, indices_ood

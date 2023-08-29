@@ -1,12 +1,12 @@
 from functools import partial
 from itertools import product, starmap
 
-from bqlearn.tradaboost import TrAdaBoostClassifier
-from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
+from bqlearn.ea import EasyADAPT
+from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.semi_supervised import SelfTrainingClassifier
+from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
@@ -28,23 +28,21 @@ from mislabeled.handle import (
 )
 from mislabeled.splitters import GMMSplitter, PerClassSplitter, QuantileSplitter
 
+seed = 42
+
 detectors = [
-    ConsensusDetector(
-        LogisticRegression(),
-        cv=RepeatedStratifiedKFold(n_splits=3, n_repeats=10, random_state=1),
-        n_jobs=-1,
-    ),
+    ConsensusDetector(LogisticRegression(), cv=3),
     InfluenceDetector(),
     ClassifierDetector(LogisticRegression()),
-    OutlierDetector(
-        IsolationForest(n_estimators=20, n_jobs=-1, random_state=1),
-        n_jobs=-1,
-    ),
+    OutlierDetector(OneClassSVM(kernel="linear"), n_jobs=-1),
     InputSensitivityDetector(LogisticRegression()),
-    DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=1)),
-    AUMDetector(GradientBoostingClassifier(n_estimators=10)),
+    DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=seed)),
+    AUMDetector(
+        GradientBoostingClassifier(max_depth=1, n_estimators=5, random_state=seed),
+        staging=True,
+    ),
     ForgettingDetector(
-        GradientBoostingClassifier(n_estimators=10),
+        GradientBoostingClassifier(max_depth=1, n_estimators=5, random_state=seed),
         staging=True,
     ),
 ]
@@ -54,8 +52,8 @@ splitters = [
         GMMSplitter(
             GaussianMixture(
                 n_components=2,
-                n_init=20,
-                random_state=1,
+                max_iter=10,
+                random_state=seed,
             )
         )
     ),
@@ -65,15 +63,12 @@ splitters = [
 handlers = [
     partial(FilterClassifier, estimator=LogisticRegression()),
     partial(
-        SemiSupervisedClassifier, estimator=SelfTrainingClassifier(LogisticRegression())
+        SemiSupervisedClassifier,
+        estimator=SelfTrainingClassifier(LogisticRegression(), max_iter=2),
     ),
     partial(
         BiqualityClassifier,
-        estimator=TrAdaBoostClassifier(
-            DecisionTreeClassifier(max_depth=None),
-            n_estimators=10,
-            random_state=1,
-        ),
+        estimator=EasyADAPT(LogisticRegression()),
     ),
 ]
 
@@ -95,7 +90,9 @@ def complexity_decision_trees(dt_classifier):
 
 
 naive_complexity_detector = NaiveComplexityDetector(
-    DecisionTreeClassifier(random_state=1), complexity_decision_trees
+    DecisionTreeClassifier(random_state=seed),
+    complexity_decision_trees,
+    n_jobs=-1,
 )
 
 parametrize = parametrize_with_checks(
