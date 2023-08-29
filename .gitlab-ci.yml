@@ -36,8 +36,7 @@ test:
   parallel: !reference [.parallel,parallel]
 
 coverage:
-  stage: test
-  needs: [quality]
+  stage: quality
   image: 'python:3.9'
   script:
     - make test-coverage
