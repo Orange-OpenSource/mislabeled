@@ -1,17 +1,16 @@
 import copy
 
 import numpy as np
-from sklearn.base import clone, MetaEstimatorMixin
+from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
-from mislabeled.detect.aggregators import AggregatorMixin
-from mislabeled.detect.base import BaseDetector
-from mislabeled.uncertainties import adjusted_uncertainty
+from mislabeled.detect.aggregators import Aggregator, AggregatorMixin
+from mislabeled.uncertainties import adjusted_uncertainty, check_uncertainty
 from mislabeled.uncertainties._scorer import _UNCERTAINTIES
 
 
-class DynamicDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
+class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
     """Detector based on training dynamics.
 
     Parameters
@@ -48,7 +47,8 @@ class DynamicDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
         staging=False,
         method="predict",
     ):
-        super().__init__(uncertainty=uncertainty, adjust=adjust)
+        self.uncertainty = uncertainty
+        self.adjust = adjust
         self.estimator = estimator
         self.aggregator = aggregator
         self.staging = staging
@@ -120,8 +120,7 @@ class DynamicDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
             self.iter_param_ = filtered_iter_params[0]
             self.max_iter_ = estimator_params.get(self.iter_param_)
 
-            self.uncertainty_scorer_ = self._make_uncertainty_scorer()
-
+            self.uncertainty_scorer_ = check_uncertainty(self.uncertainty, self.adjust)
             self.uncertainties_ = []
             for i in range(0, self.max_iter_):
                 self.estimator_.set_params(**{f"{self.iter_param_}": i + 1})
@@ -133,6 +132,12 @@ class DynamicDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
         self.uncertainties_ = np.stack(self.uncertainties_, axis=1)
 
         return self.aggregate(self.uncertainties_)
+
+
+class ForgettingAggregator(Aggregator):
+    def aggregate(self, uncertainties):
+        forgetting_events = np.diff(uncertainties, axis=1, prepend=0) < 0
+        return -forgetting_events.sum(axis=1)
 
 
 class ForgettingDetector(DynamicDetector):
@@ -174,7 +179,7 @@ class ForgettingDetector(DynamicDetector):
             estimator,
             "accuracy",
             False,
-            "forgetting",
+            ForgettingAggregator(),
             staging=staging,
             method="predict",
         )

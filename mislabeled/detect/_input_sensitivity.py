@@ -1,13 +1,13 @@
 import numbers
 
 import numpy as np
-from sklearn.base import clone, MetaEstimatorMixin
+from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 from sklearn.dummy import check_random_state
 
-from mislabeled.detect.base import BaseDetector
+from mislabeled.uncertainties import check_uncertainty
 
 
-class InputSensitivityDetector(BaseDetector, MetaEstimatorMixin):
+class InputSensitivityDetector(BaseEstimator, MetaEstimatorMixin):
     """Detects likely mislabeled examples based on local smoothness of an overfitted
     classifier. Smoothness is measured using an estimate of the gradients around
     candidate examples using finite differences.
@@ -43,7 +43,8 @@ class InputSensitivityDetector(BaseDetector, MetaEstimatorMixin):
         n_directions=10,
         random_state=0,
     ):
-        super().__init__(uncertainty=uncertainty, adjust=adjust)
+        self.uncertainty = uncertainty
+        self.adjust = adjust
         self.estimator = estimator
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -80,23 +81,21 @@ class InputSensitivityDetector(BaseDetector, MetaEstimatorMixin):
         self.estimator_ = clone(self.estimator)
         self.estimator_.fit(X, y)
 
-        self.uncertainty_scorer_ = self._make_uncertainty_scorer()
+        self.uncertainty_scorer_ = check_uncertainty(self.uncertainty, self.adjust)
 
         diffs = []
+
+        uncertainties = self.uncertainty_scorer_(self.estimator_, X, y)
 
         for _ in range(n_directions):
             # prepare vectors for finite differences
             delta_x = random_state.normal(0, 1, size=(n, d))
             delta_x /= np.linalg.norm(delta_x, axis=1, keepdims=True)
             vecs_end = X + self.epsilon * delta_x
-            vecs_start = X
 
             # compute finite differences
             diffs.append(
-                (
-                    self.uncertainty_scorer_(self.estimator_, vecs_end, y)
-                    - self.uncertainty_scorer_(self.estimator_, vecs_start, y)
-                )
+                (self.uncertainty_scorer_(self.estimator_, vecs_end, y) - uncertainties)
                 / self.epsilon
             )
         diffs = np.array(diffs).T

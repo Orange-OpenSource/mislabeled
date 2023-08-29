@@ -13,19 +13,13 @@ class Aggregator(metaclass=ABCMeta):
         return self.aggregate(uncertainties)
 
 
-class ForgettingAggregator(Aggregator):
-    def aggregate(self, uncertainties):
-        forgetting_events = np.diff(uncertainties, axis=1, prepend=0) < 0
-        return -forgetting_events.sum(axis=1)
-
-
 class AggregatorMixin:
     _required_parameters = ["aggregator"]
 
     def aggregate(self, uncertainties):
-        if isinstance(self.aggregator, str):
+        if isinstance(self.aggregator, str) and (self.aggregator in _AGGREGATORS):
             aggregator = _AGGREGATORS[self.aggregator]
-        elif callable(self.aggregate):
+        elif callable(self.aggregator):
             aggregator = self.aggregator
         else:
             raise ValueError(f"{self.aggregator} is not an aggregator")
@@ -37,5 +31,4 @@ _AGGREGATORS = dict(
     mean=partial(np.nanmean, axis=1),
     sum=partial(np.nansum, axis=1),
     var=partial(np.nanvar, axis=1),
-    forgetting=ForgettingAggregator(),
 )

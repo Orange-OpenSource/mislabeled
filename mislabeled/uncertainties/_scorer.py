@@ -261,9 +261,9 @@ _UNCERTAINTY_SCORERS_CLASSIFICATION = dict(
     unsupervised_hard_margin=unsupervised_hard_margin_uncertainty_scorer,
     accuracy=accuracy_uncertainty_scorer,
     entropy=entropy_uncertainty_scorer,
+    unsupervised_entropy=unsupervised_entropy_uncertainty_scorer,
     jensen_shannon=jensen_shannon_scorer,
     weighted_jensen_shannon=weighted_jensen_shannon_scorer,
-    unsupervised_entropy=unsupervised_entropy_uncertainty_scorer,
 )
 
 _UNCERTAINTY_SCORERS_REGRESSION = dict(
@@ -349,7 +349,7 @@ def get_uncertainty_scorer_names():
     return sorted(_UNCERTAINTY_SCORERS.keys())
 
 
-def check_uncertainty(uncertainty):
+def check_uncertainty(uncertainty, adjust):
     """Determine uncertainty_scorer from user options.
 
     Parameters
@@ -359,14 +359,25 @@ def check_uncertainty(uncertainty):
         a uncertainty_scorer callable object / function with signature
         ``uncertainty_scorer(estimator, X, y)``.
 
+    adjust : boolean
+        Adjust uncertainty to take into account class biais of the underlying
+        classifier
+
     Returns
     -------
     uncertainty : callable
         A uncertainty_scorer callable object / function with signature
         ``uncertainty_scorer(estimator, X, y)``.
     """
+    if adjust:
+        if isinstance(uncertainty, str):
+            uncertainty = "adjusted_" + uncertainty
+        else:
+            raise ValueError("Can't auto-adjust a non string uncertainty")
+
     if isinstance(uncertainty, str):
         return get_uncertainty_scorer(uncertainty)
+
     if callable(uncertainty):
         # Heuristic to ensure user has not passed an uncertainty
         module = getattr(uncertainty, "__module__", None)
@@ -384,5 +395,6 @@ def check_uncertainty(uncertainty):
                 " uncertainty_scorer." % uncertainty
             )
         return get_uncertainty_scorer(uncertainty)
+
     else:
         raise TypeError(f"${uncertainty} not supported")
