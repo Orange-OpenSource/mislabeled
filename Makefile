@@ -16,12 +16,12 @@ format:
 # Run tests for the library
 
 test:
-	pytest -n auto --dist loadfile -s -v mislabeled
+	pytest -n logical --dist loadfile -s -v mislabeled
 
 # Run code coverage
 
 test-coverage:
-	pytest --cov --cov-report term --cov-report xml --junitxml=junit.xml -n auto --dist loadfile -s -v mislabeled
+	pytest --cov --cov-report term --cov-report xml --junitxml=junit.xml -n logical --dist loadfile -s -v mislabeled
 
 # Check that docs can build
 
