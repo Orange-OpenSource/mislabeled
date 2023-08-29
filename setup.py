@@ -8,7 +8,7 @@ from setuptools import find_packages, setup
 
 DISTNAME = "mislabeled"
 DESCRIPTION = "Detect mislabeled examples in machine learning datasets"
-with codecs.open("README.rst", encoding="utf-8-sig") as f:
+with codecs.open("README.md", encoding="utf-8-sig") as f:
     LONG_DESCRIPTION = f.read()
 MAINTAINER = "T. George"
 MAINTAINER_EMAIL = "tfjgeorge@gmail.com"

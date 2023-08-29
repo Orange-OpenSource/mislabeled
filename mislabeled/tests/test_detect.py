@@ -18,11 +18,12 @@ from mislabeled.detect import (
     DecisionTreeComplexityDetector,
     ForgettingDetector,
     InfluenceDetector,
-    InputSensitivityDetector,
     NaiveComplexityDetector,
     OutlierDetector,
     RANSACDetector,
+    VoGDetector,
 )
+from mislabeled.uncertainties import InputSensitivityScorer
 
 from .utils import blobs_1_mislabeled
 
@@ -53,8 +54,9 @@ def simple_detect_test(n_classes, detector):
                 RBFSampler(gamma="scale", n_components=100), LogisticRegression()
             )
         ),
-        InputSensitivityDetector(GradientBoostingClassifier(), n_directions=10),
-        InputSensitivityDetector(GradientBoostingClassifier(), n_directions=5.5),
+        ClassifierDetector(
+            GradientBoostingClassifier(), InputSensitivityScorer("soft_margin", False)
+        ),
         OutlierDetector(IsolationForest(n_estimators=20, random_state=1)),
         # KMM
         OutlierDetector(OneClassSVM(kernel="rbf", gamma=0.1)),
@@ -78,6 +80,18 @@ def simple_detect_test(n_classes, detector):
             staging=True,
         ),
         RANSACDetector(LogisticRegression(), max_trials=10),
+        VoGDetector(
+            GradientBoostingClassifier(
+                max_depth=None,
+                n_estimators=100,
+                subsample=0.3,
+                random_state=1,
+                init="zero",
+            ),
+            random_state=1,
+            n_jobs=-1,
+            n_directions=20,
+        ),
     ],
     ids=_get_check_estimator_ids,
 )

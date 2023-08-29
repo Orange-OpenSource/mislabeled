@@ -17,7 +17,6 @@ from mislabeled.detect import (
     DecisionTreeComplexityDetector,
     ForgettingDetector,
     InfluenceDetector,
-    InputSensitivityDetector,
     NaiveComplexityDetector,
     OutlierDetector,
     RANSACDetector,
@@ -28,6 +27,7 @@ from mislabeled.handle import (
     SemiSupervisedClassifier,
 )
 from mislabeled.splitters import GMMSplitter, PerClassSplitter, QuantileSplitter
+from mislabeled.uncertainties import InputSensitivityScorer
 
 seed = 42
 
@@ -35,8 +35,11 @@ detectors = [
     ConsensusDetector(LogisticRegression(), cv=3),
     InfluenceDetector(),
     ClassifierDetector(LogisticRegression()),
+    ClassifierDetector(
+        GradientBoostingClassifier(n_estimators=5, random_state=seed),
+        InputSensitivityScorer("soft_margin", False, random_state=seed),
+    ),
     OutlierDetector(OneClassSVM(kernel="linear")),
-    InputSensitivityDetector(LogisticRegression()),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=seed)),
     AUMDetector(
         GradientBoostingClassifier(max_depth=1, n_estimators=5, random_state=seed),

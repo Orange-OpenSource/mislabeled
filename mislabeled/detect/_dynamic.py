@@ -6,7 +6,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
 from mislabeled.detect.aggregators import Aggregator, AggregatorMixin
-from mislabeled.uncertainties import adjusted_uncertainty, check_uncertainty
+from mislabeled.uncertainties import (
+    adjusted_uncertainty,
+    check_uncertainty,
+    InputSensitivityScorer,
+)
 from mislabeled.uncertainties._scorer import _UNCERTAINTIES
 
 
@@ -79,10 +83,11 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
             estimator = self.estimator
 
         self.estimator_ = clone(estimator)
-        # Can't work at the "uncertainty_scorer" level because of staged version
-        self.uncertainty_ = copy.deepcopy(_UNCERTAINTIES[self.uncertainty])
 
         if self.staging:
+            # Can't work at the "uncertainty_scorer" level because of staged version
+            uncertainty_ = copy.deepcopy(_UNCERTAINTIES[self.uncertainty])
+
             self.method_ = _check_response_method(
                 self.estimator_, f"staged_{self.method}"
             )
@@ -91,7 +96,7 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
 
             self.uncertainties_ = []
             for y_pred in self.method_(X):
-                uncertainties = self.uncertainty_(y, y_pred)
+                uncertainties = uncertainty_(y, y_pred)
                 if self.adjust:
                     uncertainties = adjusted_uncertainty(uncertainties, y, y_pred)
                 self.uncertainties_.append(uncertainties)
@@ -149,9 +154,6 @@ class ForgettingDetector(DynamicDetector):
         The estimator used to measure the complexity. It is required
         that the `estimator` supports iterative learning with `warm_start`.
 
-    max_iter : int, default=100
-        Maximum number of iterations.
-
     staging : bool, default=False
         Uses staged predictions if `estimator` supports it.
 
@@ -194,9 +196,6 @@ class AUMDetector(DynamicDetector):
         The estimator used to measure the complexity. It is required
         that the `estimator` supports iterative learning with `warm_start`.
 
-    max_iter : int, default=100
-        Maximum number of iterations.
-
     staging : bool, default=False
         Uses staged predictions if `estimator` supports it.
 
@@ -227,3 +226,63 @@ class AUMDetector(DynamicDetector):
             staging=staging,
             method="decision_function",
         )
+
+
+class VoGDetector(DynamicDetector):
+    """Detector based on variance of gradients.
+
+    Parameters
+    ----------
+    estimator : object
+        The estimator used to measure the complexity. It is required
+        that the `estimator` supports iterative learning with `warm_start`.
+
+    staging : bool, default=False
+        Uses staged predictions if `estimator` supports it.
+
+    Attributes
+    ----------
+    estimator_ : classifier
+        The fitted estimator.
+
+    y_preds_ : ndarray, shape (n_samples, n_iter_)
+        The predictions of all iterations of the classifier during :meth:`fit`.
+
+    n_iter_ : int
+        Number of iterations of the boosting process.
+
+    References
+    ----------
+    .. [1] Agarwal, Chirag, Daniel D'souza, and Sara Hooker.
+    "Estimating example difficulty using variance of gradients."
+    CVPR 2022.
+    """
+
+    def __init__(
+        self,
+        estimator,
+        *,
+        epsilon=0.1,
+        n_directions=10,
+        random_state=None,
+        n_jobs=None,
+    ):
+        super().__init__(
+            estimator,
+            InputSensitivityScorer(
+                uncertainty="confidence",
+                adjust=False,
+                epsilon=epsilon,
+                n_directions=n_directions,
+                random_state=random_state,
+                n_jobs=n_jobs,
+            ),
+            False,
+            "var",
+            staging=False,
+            method="decision_function",
+        )
+        self.epsilon = epsilon
+        self.n_directions = n_directions
+        self.random_state = random_state
+        self.n_jobs = n_jobs
