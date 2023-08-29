@@ -1,7 +1,6 @@
 from itertools import starmap
 
 import numpy as np
-
 from sklearn.base import BaseEstimator, is_classifier, MetaEstimatorMixin
 from sklearn.model_selection import (
     check_cv,
@@ -13,7 +12,6 @@ from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
 from mislabeled.detect.aggregators import Aggregator, AggregatorMixin
-from mislabeled.detect.base import BaseDetector
 from mislabeled.splitters import QuantileSplitter
 from mislabeled.uncertainties import check_uncertainty
 

@@ -5,7 +5,7 @@ from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
-from mislabeled.detect.aggregators import AggregatorMixin
+from mislabeled.detect.aggregators import Aggregator, AggregatorMixin
 from mislabeled.uncertainties import adjusted_uncertainty, check_uncertainty
 from mislabeled.uncertainties._scorer import _UNCERTAINTIES
 
@@ -134,6 +134,12 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
         return self.aggregate(self.uncertainties_)
 
 
+class ForgettingAggregator(Aggregator):
+    def aggregate(self, uncertainties):
+        forgetting_events = np.diff(uncertainties, axis=1, prepend=0) < 0
+        return -forgetting_events.sum(axis=1)
+
+
 class ForgettingDetector(DynamicDetector):
     """Detector based on forgetting events.
 
@@ -173,7 +179,7 @@ class ForgettingDetector(DynamicDetector):
             estimator,
             "accuracy",
             False,
-            "forgetting",
+            ForgettingAggregator(),
             staging=staging,
             method="predict",
         )
