@@ -35,7 +35,7 @@ detectors = [
     ConsensusDetector(LogisticRegression(), cv=3),
     InfluenceDetector(),
     ClassifierDetector(LogisticRegression()),
-    OutlierDetector(OneClassSVM(kernel="linear"), n_jobs=-1),
+    OutlierDetector(OneClassSVM(kernel="linear")),
     InputSensitivityDetector(LogisticRegression()),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=seed)),
     AUMDetector(
@@ -46,9 +46,7 @@ detectors = [
         GradientBoostingClassifier(max_depth=1, n_estimators=5, random_state=seed),
         staging=True,
     ),
-    RANSACDetector(
-        LogisticRegression(), min_samples=0.2, max_trials=5, n_jobs=-1, random_state=1
-    ),
+    RANSACDetector(LogisticRegression(), min_samples=0.2, max_trials=5, random_state=1),
 ]
 
 splitters = [
@@ -94,9 +92,7 @@ def complexity_decision_trees(dt_classifier):
 
 
 naive_complexity_detector = NaiveComplexityDetector(
-    DecisionTreeClassifier(random_state=seed),
-    complexity_decision_trees,
-    n_jobs=-1,
+    DecisionTreeClassifier(random_state=seed), complexity_decision_trees
 )
 
 parametrize = parametrize_with_checks(

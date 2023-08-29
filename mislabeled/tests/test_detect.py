@@ -46,7 +46,6 @@ def simple_detect_test(n_classes, detector):
         ConsensusDetector(
             KNeighborsClassifier(n_neighbors=3),
             cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
-            n_jobs=-1,
         ),
         InfluenceDetector(RBFSampler(gamma="scale", n_components=100)),
         ClassifierDetector(
@@ -56,17 +55,14 @@ def simple_detect_test(n_classes, detector):
         ),
         InputSensitivityDetector(GradientBoostingClassifier(), n_directions=10),
         InputSensitivityDetector(GradientBoostingClassifier(), n_directions=5.5),
-        OutlierDetector(IsolationForest(), n_jobs=-1),
+        OutlierDetector(IsolationForest(n_estimators=20, random_state=1)),
         # KMM
-        OutlierDetector(
-            OneClassSVM(kernel="rbf", gamma=0.1),
-            n_jobs=-1,
-        ),
+        OutlierDetector(OneClassSVM(kernel="rbf", gamma=0.1)),
         # PDR
         ClassifierDetector(
             make_pipeline(
                 RBFSampler(gamma="scale", n_components=100),
-                OneVsRestClassifier(LogisticRegression(), n_jobs=-1),
+                OneVsRestClassifier(LogisticRegression()),
             )
         ),
         DecisionTreeComplexityDetector(),
@@ -81,7 +77,7 @@ def simple_detect_test(n_classes, detector):
             ),
             staging=True,
         ),
-        RANSACDetector(LogisticRegression()),
+        RANSACDetector(LogisticRegression(), max_trials=10),
     ],
     ids=_get_check_estimator_ids,
 )
@@ -93,5 +89,7 @@ def test_detectors(n_classes, detector):
 def test_naive_complexity_detector(n_classes):
     simple_detect_test(
         n_classes,
-        NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
+        NaiveComplexityDetector(
+            DecisionTreeClassifier(), lambda x: x.get_n_leaves(), n_jobs=1
+        ),
     )
