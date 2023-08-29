@@ -112,6 +112,6 @@ class InputSensitivityScorer:
         uncertainties -= uncertainty(estimator, X, y).reshape(-1, 1)
         uncertainties /= self.epsilon
 
-        m = np.sum(uncertainties**2, axis=1)
+        sensitivity = np.sum(uncertainties**2, axis=1)
 
-        return m.max() - m
+        return sensitivity.max() - sensitivity

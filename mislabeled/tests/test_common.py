@@ -35,10 +35,6 @@ detectors = [
     ConsensusDetector(LogisticRegression(), cv=3),
     InfluenceDetector(),
     ClassifierDetector(LogisticRegression()),
-    ClassifierDetector(
-        GradientBoostingClassifier(n_estimators=5, random_state=seed),
-        InputSensitivityScorer("soft_margin", False, random_state=seed),
-    ),
     OutlierDetector(OneClassSVM(kernel="linear")),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=seed)),
     AUMDetector(
@@ -94,15 +90,21 @@ def complexity_decision_trees(dt_classifier):
     return dt_classifier.get_n_leaves()
 
 
-naive_complexity_detector = NaiveComplexityDetector(
-    DecisionTreeClassifier(random_state=seed), complexity_decision_trees
-)
+other_detectors = [
+    NaiveComplexityDetector(
+        DecisionTreeClassifier(random_state=seed), complexity_decision_trees
+    ),
+    ClassifierDetector(
+        GradientBoostingClassifier(n_estimators=5, random_state=seed),
+        InputSensitivityScorer("soft_margin", False, random_state=seed),
+    ),
+]
 
 parametrize = parametrize_with_checks(
     list(
         starmap(
-            lambda splitter, handler: handler(naive_complexity_detector, splitter),
-            product(splitters, handlers),
+            lambda detector, splitter, handler: handler(detector, splitter),
+            product(other_detectors, splitters, handlers),
         )
     )
 )

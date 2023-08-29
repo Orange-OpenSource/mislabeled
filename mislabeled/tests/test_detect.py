@@ -54,9 +54,6 @@ def simple_detect_test(n_classes, detector):
                 RBFSampler(gamma="scale", n_components=100), LogisticRegression()
             )
         ),
-        ClassifierDetector(
-            GradientBoostingClassifier(), InputSensitivityScorer("soft_margin", False)
-        ),
         OutlierDetector(IsolationForest(n_estimators=20, random_state=1)),
         # KMM
         OutlierDetector(OneClassSVM(kernel="rbf", gamma=0.1)),
@@ -100,10 +97,16 @@ def test_detectors(n_classes, detector):
 
 
 @pytest.mark.parametrize("n_classes", [2, 5])
-def test_naive_complexity_detector(n_classes):
-    simple_detect_test(
-        n_classes,
+@pytest.mark.parametrize(
+    "detector",
+    [
         NaiveComplexityDetector(
             DecisionTreeClassifier(), lambda x: x.get_n_leaves(), n_jobs=1
         ),
-    )
+        ClassifierDetector(
+            GradientBoostingClassifier(), InputSensitivityScorer("soft_margin", False)
+        ),
+    ],
+)
+def test_naive_complexity_detector(n_classes, detector):
+    simple_detect_test(n_classes, detector)
