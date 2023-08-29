@@ -85,19 +85,17 @@ class InputSensitivityDetector(BaseEstimator, MetaEstimatorMixin):
 
         diffs = []
 
+        uncertainties = self.uncertainty_scorer_(self.estimator_, X, y)
+
         for _ in range(n_directions):
             # prepare vectors for finite differences
             delta_x = random_state.normal(0, 1, size=(n, d))
             delta_x /= np.linalg.norm(delta_x, axis=1, keepdims=True)
             vecs_end = X + self.epsilon * delta_x
-            vecs_start = X
 
             # compute finite differences
             diffs.append(
-                (
-                    self.uncertainty_scorer_(self.estimator_, vecs_end, y)
-                    - self.uncertainty_scorer_(self.estimator_, vecs_start, y)
-                )
+                (self.uncertainty_scorer_(self.estimator_, vecs_end, y) - uncertainties)
                 / self.epsilon
             )
         diffs = np.array(diffs).T

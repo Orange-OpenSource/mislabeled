@@ -1,15 +1,13 @@
 import numpy as np
 import pytest
-from sklearn.ensemble import (
-    GradientBoostingClassifier,
-    HistGradientBoostingClassifier,
-    IsolationForest,
-)
+from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import _get_check_estimator_ids
 
@@ -21,10 +19,9 @@ from mislabeled.detect import (
     ForgettingDetector,
     InfluenceDetector,
     InputSensitivityDetector,
-    KMMDetector,
     NaiveComplexityDetector,
     OutlierDetector,
-    PDRDetector,
+    RANSACDetector,
 )
 
 from .utils import blobs_1_mislabeled
@@ -49,18 +46,24 @@ def simple_detect_test(n_classes, detector):
         ConsensusDetector(
             KNeighborsClassifier(n_neighbors=3),
             cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
-            n_jobs=-1,
         ),
         InfluenceDetector(RBFSampler(gamma="scale", n_components=100)),
         ClassifierDetector(
-            make_pipeline(RBFSampler(gamma="scale"), LogisticRegression())
+            make_pipeline(
+                RBFSampler(gamma="scale", n_components=100), LogisticRegression()
+            )
         ),
-        InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=10),
-        InputSensitivityDetector(HistGradientBoostingClassifier(), n_directions=5.5),
-        OutlierDetector(IsolationForest(), n_jobs=-1),
-        KMMDetector(n_jobs=-1, kernel_params=dict(gamma=0.001)),
-        PDRDetector(
-            make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()), n_jobs=-1
+        InputSensitivityDetector(GradientBoostingClassifier(), n_directions=10),
+        InputSensitivityDetector(GradientBoostingClassifier(), n_directions=5.5),
+        OutlierDetector(IsolationForest(n_estimators=20, random_state=1)),
+        # KMM
+        OutlierDetector(OneClassSVM(kernel="rbf", gamma=0.1)),
+        # PDR
+        ClassifierDetector(
+            make_pipeline(
+                RBFSampler(gamma="scale", n_components=100),
+                OneVsRestClassifier(LogisticRegression()),
+            )
         ),
         DecisionTreeComplexityDetector(),
         AUMDetector(GradientBoostingClassifier(max_depth=1), staging=True),
@@ -74,6 +77,7 @@ def simple_detect_test(n_classes, detector):
             ),
             staging=True,
         ),
+        RANSACDetector(LogisticRegression(), max_trials=10),
     ],
     ids=_get_check_estimator_ids,
 )
@@ -85,5 +89,7 @@ def test_detectors(n_classes, detector):
 def test_naive_complexity_detector(n_classes):
     simple_detect_test(
         n_classes,
-        NaiveComplexityDetector(DecisionTreeClassifier(), lambda x: x.get_n_leaves()),
+        NaiveComplexityDetector(
+            DecisionTreeClassifier(), lambda x: x.get_n_leaves(), n_jobs=1
+        ),
     )

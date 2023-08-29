@@ -25,7 +25,7 @@ class NaiveComplexityDetector(BaseEstimator, MetaEstimatorMixin):
         <n_jobs>` for more details.
     """
 
-    def __init__(self, estimator, get_complexity, *, n_jobs=-1):
+    def __init__(self, estimator, get_complexity, *, n_jobs=None):
         self.estimator = estimator
         self.get_complexity = get_complexity
 

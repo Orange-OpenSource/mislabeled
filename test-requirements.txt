@@ -3,5 +3,6 @@ isort
 black
 pytest
 pytest-xdist
+psutil
 coverage
 pytest-cov
