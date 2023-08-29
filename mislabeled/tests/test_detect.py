@@ -104,7 +104,10 @@ def test_detectors(n_classes, detector):
             DecisionTreeClassifier(), lambda x: x.get_n_leaves(), n_jobs=1
         ),
         ClassifierDetector(
-            GradientBoostingClassifier(), InputSensitivityScorer("soft_margin", False)
+            GradientBoostingClassifier(),
+            InputSensitivityScorer(
+                "soft_margin", False, n_directions=20, n_jobs=-1, random_state=1
+            ),
         ),
     ],
 )
