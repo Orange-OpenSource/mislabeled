@@ -1,7 +1,7 @@
 from itertools import starmap
 
 import numpy as np
-from sklearn.base import is_classifier, MetaEstimatorMixin
+from sklearn.base import BaseEstimator, is_classifier, MetaEstimatorMixin
 from sklearn.model_selection import (
     check_cv,
     cross_validate,
@@ -12,11 +12,11 @@ from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
 from mislabeled.detect.aggregators import Aggregator, AggregatorMixin
-from mislabeled.detect.base import BaseDetector
 from mislabeled.splitters import QuantileSplitter
+from mislabeled.uncertainties import check_uncertainty
 
 
-class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
+class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -39,7 +39,8 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
         evalset="test",
         n_jobs=None,
     ):
-        super().__init__(uncertainty=uncertainty, adjust=adjust)
+        self.uncertainty = uncertainty
+        self.adjust = adjust
         self.estimator = estimator
         self.aggregator = aggregator
         self.cv = cv
@@ -70,8 +71,7 @@ class ConsensusDetector(BaseDetector, MetaEstimatorMixin, AggregatorMixin):
 
         consensus = np.empty((n_samples, self.cv_.get_n_splits(X, y)))
         consensus.fill(np.nan)
-        self.uncertainty_scorer_ = self._make_uncertainty_scorer()
-
+        self.uncertainty_scorer_ = check_uncertainty(self.uncertainty, self.adjust)
         scores = cross_validate(
             self.estimator,
             X,
