@@ -27,7 +27,7 @@ from mislabeled.handle import (
     SemiSupervisedClassifier,
 )
 from mislabeled.splitters import GMMSplitter, PerClassSplitter, QuantileSplitter
-from mislabeled.uncertainties import InputSensitivityScorer
+from mislabeled.uncertainties import FiniteDiffSensitivity
 
 seed = 42
 
@@ -96,7 +96,7 @@ other_detectors = [
     ),
     ClassifierDetector(
         GradientBoostingClassifier(n_estimators=5, random_state=seed),
-        InputSensitivityScorer("soft_margin", False, random_state=seed),
+        FiniteDiffSensitivity("soft_margin", False, random_state=seed),
     ),
 ]
 

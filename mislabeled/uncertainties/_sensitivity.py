@@ -8,7 +8,7 @@ from sklearn.dummy import check_random_state
 from mislabeled.uncertainties import check_uncertainty
 
 
-class InputSensitivityScorer:
+class FiniteDiffSensitivity:
     """Detects likely mislabeled examples based on local smoothness of an overfitted
     classifier. Smoothness is measured using an estimate of the gradients around
     candidate examples using finite differences.

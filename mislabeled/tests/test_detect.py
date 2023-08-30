@@ -23,7 +23,7 @@ from mislabeled.detect import (
     RANSACDetector,
     VoGDetector,
 )
-from mislabeled.uncertainties import InputSensitivityScorer
+from mislabeled.uncertainties import FiniteDiffSensitivity
 
 from .utils import blobs_1_mislabeled
 
@@ -105,7 +105,7 @@ def test_detectors(n_classes, detector):
         ),
         ClassifierDetector(
             GradientBoostingClassifier(),
-            InputSensitivityScorer(
+            FiniteDiffSensitivity(
                 "soft_margin", False, n_directions=20, n_jobs=-1, random_state=1
             ),
         ),

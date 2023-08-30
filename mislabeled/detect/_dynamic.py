@@ -9,7 +9,7 @@ from mislabeled.detect.aggregators import Aggregator, AggregatorMixin
 from mislabeled.uncertainties import (
     adjusted_uncertainty,
     check_uncertainty,
-    InputSensitivityScorer,
+    FiniteDiffSensitivity,
 )
 from mislabeled.uncertainties._scorer import _UNCERTAINTIES
 
@@ -269,7 +269,7 @@ class VoGDetector(DynamicDetector):
     ):
         super().__init__(
             estimator,
-            InputSensitivityScorer(
+            FiniteDiffSensitivity(
                 uncertainty="confidence",
                 adjust=False,
                 epsilon=epsilon,

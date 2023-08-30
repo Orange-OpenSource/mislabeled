@@ -39,16 +39,18 @@ disp = DecisionBoundaryDisplay.from_estimator(
     mlp, X, response_method="predict", ax=ax[0]
 )
 ax[0].scatter(X[:, 0], X[:, 1], c=y)
-ax[0].set_xlabel("Feature1")
-ax[0].set_ylabel("Feature1")
+ax[0].set_xlabel("Feature 1")
+ax[0].set_ylabel("Feature 2")
 ax[0].set_title("Toy Dataset trained decision boundary")
 
 vog_scores = vog.trust_score(X, y)
 p = mlp.predict_proba(X)[:, 1]
-dist_to_decision_boundary = np.abs(-np.log((1 / (p + 1e-8)) - 1))
+dist_to_decision_boundary = np.abs(np.log((1 / (p + 1e-8)) - 1))
 
 ax[1].scatter(vog_scores, dist_to_decision_boundary, c=y)
 ax[1].set_xlabel("VoG scores")
 ax[1].set_ylabel("Distances to Hyperplane")
 ax[1].set_title("Distance vs VoG score")
 plt.show()
+
+# %%
