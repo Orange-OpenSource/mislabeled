@@ -11,7 +11,7 @@ from sklearn.model_selection import (
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
-from mislabeled.detect.aggregators import Aggregator, AggregatorMixin
+from mislabeled.aggregators import Aggregator, AggregatorMixin
 from mislabeled.splitters import QuantileSplitter
 from mislabeled.uncertainties import check_uncertainty
 
@@ -69,8 +69,6 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
 
         self.cv_ = check_cv(self.cv, y, classifier=is_classifier(self.estimator))
 
-        consensus = np.empty((n_samples, self.cv_.get_n_splits(X, y)))
-        consensus.fill(np.nan)
         self.uncertainty_scorer_ = check_uncertainty(self.uncertainty, self.adjust)
         scores = cross_validate(
             self.estimator,
@@ -94,11 +92,21 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
         else:
             raise ValueError(f"{self.evalset} not in ['train', 'test', 'all']")
 
+        consensus = []
+
         # TODO: parallel
-        for i, (estimator, evalset) in enumerate(zip(estimators, evalsets)):
-            consensus[evalset, i] = self.uncertainty_scorer_(
+        for _, (estimator, evalset) in enumerate(zip(estimators, evalsets)):
+            uncertainties = self.uncertainty_scorer_(
                 estimator, X[safe_mask(X, evalset)], y[evalset]
             )
+            shape = list(uncertainties.shape)
+            shape[0] = n_samples
+            uncertainties_expanded = np.empty(tuple(shape))
+            uncertainties_expanded.fill(np.nan)
+            uncertainties_expanded[evalset] = uncertainties
+            consensus.append(uncertainties_expanded)
+
+        consensus = np.stack(consensus, axis=-1)
 
         return self.aggregate(consensus)
 

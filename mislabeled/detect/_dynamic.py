@@ -5,7 +5,7 @@ from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
-from mislabeled.detect.aggregators import Aggregator, AggregatorMixin
+from mislabeled.aggregators import Aggregator, AggregatorMixin
 from mislabeled.uncertainties import (
     adjusted_uncertainty,
     check_uncertainty,
@@ -134,7 +134,7 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
                 self.uncertainties_.append(uncertainties)
 
         self.n_iter_ = len(self.uncertainties_)
-        self.uncertainties_ = np.stack(self.uncertainties_, axis=1)
+        self.uncertainties_ = np.stack(self.uncertainties_, axis=-1)
 
         return self.aggregate(self.uncertainties_)
 
@@ -228,6 +228,11 @@ class AUMDetector(DynamicDetector):
         )
 
 
+class VoGAggregator(Aggregator):
+    def aggregate(self, uncertainties):
+        return np.mean(np.var(uncertainties, axis=-1), axis=-1)
+
+
 class VoGDetector(DynamicDetector):
     """Detector based on variance of gradients.
 
@@ -272,13 +277,14 @@ class VoGDetector(DynamicDetector):
             FiniteDiffSensitivity(
                 uncertainty="confidence",
                 adjust=False,
+                aggregator=lambda x: x,
                 epsilon=epsilon,
                 n_directions=n_directions,
                 random_state=random_state,
                 n_jobs=n_jobs,
             ),
             False,
-            "var",
+            VoGAggregator(),
             staging=False,
             method="decision_function",
         )

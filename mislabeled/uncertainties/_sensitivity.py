@@ -5,10 +5,11 @@ import numpy as np
 from joblib import delayed, Parallel
 from sklearn.dummy import check_random_state
 
+from mislabeled.aggregators import AggregatorMixin
 from mislabeled.uncertainties import check_uncertainty
 
 
-class FiniteDiffSensitivity:
+class FiniteDiffSensitivity(AggregatorMixin):
     """Detects likely mislabeled examples based on local smoothness of an overfitted
     classifier. Smoothness is measured using an estimate of the gradients around
     candidate examples using finite differences.
@@ -38,6 +39,7 @@ class FiniteDiffSensitivity:
         self,
         uncertainty,
         adjust,
+        aggregator="sum",
         *,
         epsilon=1e-1,
         n_directions=10,
@@ -46,6 +48,7 @@ class FiniteDiffSensitivity:
     ):
         self.uncertainty = uncertainty
         self.adjust = adjust
+        self.aggregator = aggregator
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.random_state = random_state
@@ -111,7 +114,8 @@ class FiniteDiffSensitivity:
 
         uncertainties -= uncertainty(estimator, X, y).reshape(-1, 1)
         uncertainties /= self.epsilon
+        uncertainties **= 2
 
-        sensitivity = np.sum(uncertainties**2, axis=1)
+        sensitivity = self.aggregate(uncertainties)
 
         return sensitivity.max() - sensitivity
