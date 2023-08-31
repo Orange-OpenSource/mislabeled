@@ -105,17 +105,17 @@ class FiniteDiffSensitivity(AggregatorMixin):
         random_state = check_random_state(self.random_state)
         seeds = random_state.randint(np.iinfo(np.int32).max, size=n_directions)
 
-        uncertainties = np.column_stack(
+        uncertainties = np.stack(
             Parallel(n_jobs=self.n_jobs)(
                 delayed(compute_delta_uncertainty)(uncertainty, estimator, X, y, seed)
                 for seed in seeds
-            )
+            ),
+            axis=-1,
         )
 
         uncertainties -= uncertainty(estimator, X, y).reshape(-1, 1)
         uncertainties /= self.epsilon
-        uncertainties **= 2
 
         sensitivity = self.aggregate(uncertainties)
 
-        return sensitivity.max() - sensitivity
+        return sensitivity

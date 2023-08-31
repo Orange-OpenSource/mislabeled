@@ -230,7 +230,8 @@ class AUMDetector(DynamicDetector):
 
 class VoGAggregator(Aggregator):
     def aggregate(self, uncertainties):
-        return np.mean(np.var(uncertainties, axis=-1), axis=-1)
+        aggregates = np.mean(np.var(uncertainties, axis=-1), axis=-1)
+        return aggregates.max() - aggregates
 
 
 class VoGDetector(DynamicDetector):
