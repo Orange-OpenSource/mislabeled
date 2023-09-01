@@ -385,6 +385,7 @@ def check_uncertainty(uncertainty, adjust):
             hasattr(module, "startswith")
             and module.startswith("mislabeled.uncertainties.")
             and not module.startswith("mislabeled.uncertainties._scorer")
+            and not module.startswith("mislabeled.uncertainties._sensitivity")
             and not module.startswith("mislabeled.uncertainties.tests.")
         ):
             raise ValueError(

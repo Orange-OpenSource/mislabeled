@@ -8,6 +8,7 @@ from ._scorer import (
     get_uncertainty_scorer_names,
     make_uncertainty_scorer,
 )
+from ._sensitivity import FiniteDiffSensitivity
 from ._weight import confidence_normalization, entropy_normalization
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "get_uncertainty_scorer",
     "get_uncertainty_scorer_names",
     "check_uncertainty",
+    "FiniteDiffSensitivity",
 ]

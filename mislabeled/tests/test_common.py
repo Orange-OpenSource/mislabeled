@@ -17,7 +17,6 @@ from mislabeled.detect import (
     DecisionTreeComplexityDetector,
     ForgettingDetector,
     InfluenceDetector,
-    InputSensitivityDetector,
     NaiveComplexityDetector,
     OutlierDetector,
     RANSACDetector,
@@ -28,6 +27,7 @@ from mislabeled.handle import (
     SemiSupervisedClassifier,
 )
 from mislabeled.splitters import GMMSplitter, PerClassSplitter, QuantileSplitter
+from mislabeled.uncertainties import FiniteDiffSensitivity
 
 seed = 42
 
@@ -36,7 +36,6 @@ detectors = [
     InfluenceDetector(),
     ClassifierDetector(LogisticRegression()),
     OutlierDetector(OneClassSVM(kernel="linear")),
-    InputSensitivityDetector(LogisticRegression()),
     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=seed)),
     AUMDetector(
         GradientBoostingClassifier(max_depth=1, n_estimators=5, random_state=seed),
@@ -91,15 +90,21 @@ def complexity_decision_trees(dt_classifier):
     return dt_classifier.get_n_leaves()
 
 
-naive_complexity_detector = NaiveComplexityDetector(
-    DecisionTreeClassifier(random_state=seed), complexity_decision_trees
-)
+other_detectors = [
+    NaiveComplexityDetector(
+        DecisionTreeClassifier(random_state=seed), complexity_decision_trees
+    ),
+    ClassifierDetector(
+        GradientBoostingClassifier(n_estimators=5, random_state=seed),
+        FiniteDiffSensitivity("soft_margin", False, random_state=seed),
+    ),
+]
 
 parametrize = parametrize_with_checks(
     list(
         starmap(
-            lambda splitter, handler: handler(naive_complexity_detector, splitter),
-            product(splitters, handlers),
+            lambda detector, splitter, handler: handler(detector, splitter),
+            product(other_detectors, splitters, handlers),
         )
     )
 )

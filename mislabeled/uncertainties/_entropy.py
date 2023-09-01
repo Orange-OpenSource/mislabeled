@@ -119,8 +119,8 @@ def jensen_shannon(y_true, y_prob, *, labels=None):
 
     References
     ----------
-    .. [1] Zhang, Yiliang, et al. "Combating noisy-labeled and imbalanced data\
-        by two stage bi-dimensional sample selection." arXiv preprint (2022).
+    .. [1] Zhang, Yiliang, et al. "Label-Noise Learning with Intrinsically
+    Long-Tailed Data." ICCV 2023.
     """
     y_prob = check_array_prob(y_prob)
 
