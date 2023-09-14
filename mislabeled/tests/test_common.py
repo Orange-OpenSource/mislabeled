@@ -26,7 +26,7 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
-from mislabeled.splitters import GMMSplitter, PerClassSplitter, QuantileSplitter
+from mislabeled.split import GMMSplitter, PerClassSplitter, QuantileSplitter
 from mislabeled.uncertainties import FiniteDiffSensitivity
 
 seed = 42

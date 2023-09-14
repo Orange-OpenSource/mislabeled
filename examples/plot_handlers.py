@@ -17,7 +17,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from mislabeled.detect import ConsensusDetector
-from mislabeled.splitters import QuantileSplitter
+from mislabeled.split import QuantileSplitter
 
 seed = 2
 

@@ -7,7 +7,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.utils.estimator_checks import _get_check_estimator_ids
 
 from mislabeled.detect import ClassifierDetector
-from mislabeled.splitters import GMMSplitter, QuantileSplitter
+from mislabeled.split import GMMSplitter, QuantileSplitter
 
 from .utils import blobs_1_mislabeled
 

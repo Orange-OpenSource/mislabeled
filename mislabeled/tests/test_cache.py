@@ -6,7 +6,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 from mislabeled.detect import ConsensusDetector
 from mislabeled.handle import FilterClassifier
-from mislabeled.splitters import QuantileSplitter
+from mislabeled.split import QuantileSplitter
 
 from .utils import blobs_1_mislabeled
 

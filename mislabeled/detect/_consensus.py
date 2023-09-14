@@ -12,7 +12,7 @@ from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
 from mislabeled.aggregators import Aggregator, AggregatorMixin
-from mislabeled.splitters import QuantileSplitter
+from mislabeled.split import QuantileSplitter
 from mislabeled.uncertainties import check_uncertainty
 
 
