@@ -36,11 +36,11 @@ def simple_split_test(n_classes, detectors, splitter):
         [
             ClassifierDetector(
                 make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()),
-                uncertainty="accuracy",
+                probe="accuracy",
             ),
             ClassifierDetector(
                 make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()),
-                uncertainty="soft_margin",
+                probe="soft_margin",
             ),
         ]
     ],

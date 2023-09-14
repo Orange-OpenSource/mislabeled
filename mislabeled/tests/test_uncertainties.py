@@ -6,9 +6,9 @@ from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect import ClassifierDetector
 from mislabeled.probe._scorer import (
-    _UNCERTAINTY_SCORERS,
-    _UNCERTAINTY_SCORERS_CLASSIFICATION,
-    _UNCERTAINTY_SCORERS_REGRESSION,
+    _PROBE_SCORERS,
+    _PROBE_SCORERS_CLASSIFICATION,
+    _PROBE_SCORERS_REGRESSION,
 )
 
 from .utils import blobs_1_mislabeled, blobs_1_ood, blobs_1_outlier_y
@@ -52,41 +52,41 @@ def simple_ood_test(n_classes, n_outliers, detector):
 
 @pytest.mark.parametrize("n_classes", [2, 5])
 @pytest.mark.parametrize(
-    "uncertainty_scorer",
+    "probe_scorer",
     filter(
         lambda name: "unsupervised" not in name,
-        _UNCERTAINTY_SCORERS_CLASSIFICATION.keys(),
+        _PROBE_SCORERS_CLASSIFICATION.keys(),
     ),
 )
-def test_supervised_uncertainties_classif(n_classes, uncertainty_scorer):
+def test_supervised_pro_classif(n_classes, probe_scorer):
     detector = ClassifierDetector(
         make_pipeline(RBFSampler(gamma="scale", n_components=200), LogisticRegression())
     )
-    detector.set_params(uncertainty=_UNCERTAINTY_SCORERS[uncertainty_scorer])
+    detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
     simple_detect_test(n_classes, detector)
 
 
 @pytest.mark.parametrize("n_classes", [2])
 @pytest.mark.parametrize("n_outliers", [5, 10, 30])
 @pytest.mark.parametrize(
-    "uncertainty_scorer",
-    filter(lambda name: "unsupervised" in name, _UNCERTAINTY_SCORERS.keys()),
+    "probe_scorer",
+    filter(lambda name: "unsupervised" in name, _PROBE_SCORERS.keys()),
 )
-def test_unsupervised_uncertainties(n_classes, n_outliers, uncertainty_scorer):
+def test_unsupervised_pro(n_classes, n_outliers, probe_scorer):
     detector = ClassifierDetector(
         make_pipeline(RBFSampler(gamma="scale", n_components=200), LogisticRegression())
     )
-    detector.set_params(uncertainty=_UNCERTAINTY_SCORERS[uncertainty_scorer])
+    detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
     simple_ood_test(n_classes, n_outliers, detector)
 
 
 @pytest.mark.parametrize(
-    "uncertainty_scorer",
-    _UNCERTAINTY_SCORERS_REGRESSION.keys(),
+    "probe_scorer",
+    _PROBE_SCORERS_REGRESSION.keys(),
 )
-def test_supervised_uncertainties_regr(uncertainty_scorer):
+def test_supervised_pro_regr(probe_scorer):
     detector = ClassifierDetector(
         make_pipeline(RBFSampler(gamma="scale", n_components=200), LinearRegression())
     )
-    detector.set_params(uncertainty=_UNCERTAINTY_SCORERS[uncertainty_scorer])
+    detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
     simple_regression_detect_test(detector)

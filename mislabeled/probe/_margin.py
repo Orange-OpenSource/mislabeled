@@ -47,7 +47,7 @@ def soft_margin(y_true, y_pred, *, supervised=True, labels=None):
         Predicted logits or probabilities.
 
     supervised : boolean, default=True
-        Use the supervised or unsupervised uncertainty.
+        Use the supervised or unsupervised probe.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
@@ -106,7 +106,7 @@ def hard_margin(y_true, y_pred, *, supervised=True, labels=None):
         Predicted logits or probabilities.
 
     supervised : boolean, default=True
-        Use the supervised or unsupervised uncertainty.
+        Use the supervised or unsupervised probe.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically

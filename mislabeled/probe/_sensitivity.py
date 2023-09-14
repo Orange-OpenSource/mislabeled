@@ -6,7 +6,7 @@ from joblib import delayed, Parallel
 from sklearn.dummy import check_random_state
 
 from mislabeled.aggregators import AggregatorMixin
-from mislabeled.probe import check_uncertainty
+from mislabeled.probe import check_probe
 
 
 class FiniteDiffSensitivity(AggregatorMixin):
@@ -37,7 +37,7 @@ class FiniteDiffSensitivity(AggregatorMixin):
 
     def __init__(
         self,
-        uncertainty,
+        probe,
         adjust,
         aggregator="sum",
         *,
@@ -46,7 +46,7 @@ class FiniteDiffSensitivity(AggregatorMixin):
         random_state=None,
         n_jobs=None,
     ):
-        self.uncertainty = uncertainty
+        self.probe = probe
         self.adjust = adjust
         self.aggregator = aggregator
         self.epsilon = epsilon
@@ -92,30 +92,30 @@ class FiniteDiffSensitivity(AggregatorMixin):
             # treat as float
             n_directions = math.ceil(self.n_directions * X.shape[1])
 
-        def compute_delta_uncertainty(uncertainty, estimator, X, y, random_state):
+        def compute_delta_probe(probe, estimator, X, y, random_state):
             n_samples, n_features = X.shape
             random_state = check_random_state(random_state)
             X_delta = random_state.normal(0, 1, size=(n_samples, n_features))
             X_delta *= self.epsilon / np.linalg.norm(X_delta, axis=1, keepdims=True)
             X_delta += X
-            return uncertainty(estimator, X_delta, y)
+            return probe(estimator, X_delta, y)
 
-        uncertainty = check_uncertainty(self.uncertainty, self.adjust)
+        probe = check_probe(self.probe, self.adjust)
 
         random_state = check_random_state(self.random_state)
         seeds = random_state.randint(np.iinfo(np.int32).max, size=n_directions)
 
-        uncertainties = np.stack(
+        probe_scores = np.stack(
             Parallel(n_jobs=self.n_jobs)(
-                delayed(compute_delta_uncertainty)(uncertainty, estimator, X, y, seed)
+                delayed(compute_delta_probe)(probe, estimator, X, y, seed)
                 for seed in seeds
             ),
             axis=-1,
         )
 
-        uncertainties -= uncertainty(estimator, X, y).reshape(-1, 1)
-        uncertainties /= self.epsilon
+        probe_scores -= probe(estimator, X, y).reshape(-1, 1)
+        probe_scores /= self.epsilon
 
-        sensitivity = self.aggregate(uncertainties)
+        sensitivity = self.aggregate(probe_scores)
 
         return sensitivity

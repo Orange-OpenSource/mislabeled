@@ -13,7 +13,7 @@ from sklearn.utils.validation import _num_samples
 
 from mislabeled.aggregators import Aggregator, AggregatorMixin
 from mislabeled.split import QuantileSplitter
-from mislabeled.probe import check_uncertainty
+from mislabeled.probe import check_probe
 
 
 class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
@@ -31,7 +31,7 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
     def __init__(
         self,
         estimator,
-        uncertainty="accuracy",
+        probe="accuracy",
         adjust=False,
         aggregator="mean",
         *,
@@ -39,7 +39,7 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
         evalset="test",
         n_jobs=None,
     ):
-        self.uncertainty = uncertainty
+        self.probe = probe
         self.adjust = adjust
         self.estimator = estimator
         self.aggregator = aggregator
@@ -69,7 +69,7 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
 
         self.cv_ = check_cv(self.cv, y, classifier=is_classifier(self.estimator))
 
-        self.uncertainty_scorer_ = check_uncertainty(self.uncertainty, self.adjust)
+        self.probe_scorer_ = check_probe(self.probe, self.adjust)
         scores = cross_validate(
             self.estimator,
             X,
@@ -96,15 +96,15 @@ class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
 
         # TODO: parallel
         for _, (estimator, evalset) in enumerate(zip(estimators, evalsets)):
-            uncertainties = self.uncertainty_scorer_(
+            probed_scores = self.probe_scorer_(
                 estimator, X[safe_mask(X, evalset)], y[evalset]
             )
-            shape = list(uncertainties.shape)
+            shape = list(probed_scores.shape)
             shape[0] = n_samples
-            uncertainties_expanded = np.empty(tuple(shape))
-            uncertainties_expanded.fill(np.nan)
-            uncertainties_expanded[evalset] = uncertainties
-            consensus.append(uncertainties_expanded)
+            probed_scores_expanded = np.empty(tuple(shape))
+            probed_scores_expanded.fill(np.nan)
+            probed_scores_expanded[evalset] = probed_scores
+            consensus.append(probed_scores_expanded)
 
         consensus = np.stack(consensus, axis=-1)
 
@@ -115,26 +115,26 @@ class RANSACAggregator(Aggregator):
     def __init__(self, splitter):
         self.splitter = splitter
 
-    def aggregate(self, uncertainties):
+    def aggregate(self, probes):
         best_error = np.inf
         best_iter = 0
 
-        for i in range(uncertainties.shape[1]):
-            trusted = self.splitter.split(None, None, uncertainties[:, i])
-            error = np.sum(uncertainties[trusted, i])
+        for i in range(probes.shape[1]):
+            trusted = self.splitter.split(None, None, probes[:, i])
+            error = np.sum(probes[trusted, i])
 
             if error < best_error:
                 best_iter = i
                 best_error = error
 
-        return uncertainties[:, best_iter]
+        return probes[:, best_iter]
 
 
 class RANSACDetector(ConsensusDetector):
     def __init__(
         self,
         estimator,
-        uncertainty="entropy",
+        probe="entropy",
         adjust=False,
         splitter=QuantileSplitter(quantile=0.5),
         *,
@@ -145,7 +145,7 @@ class RANSACDetector(ConsensusDetector):
     ):
         super().__init__(
             estimator=estimator,
-            uncertainty=uncertainty,
+            probe=probe,
             adjust=adjust,
             aggregator=RANSACAggregator(splitter=splitter),
             cv=(StratifiedShuffleSplit if is_classifier(estimator) else ShuffleSplit)(

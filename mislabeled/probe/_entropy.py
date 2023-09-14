@@ -36,7 +36,7 @@ def entropy(y_true, y_prob, *, supervised=True, labels=None):
         to be that of the positive class.
 
     supervised : boolean, default=True
-        Use the supervised or unsupervised uncertainty.
+        Use the supervised or unsupervised probe.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
@@ -105,7 +105,7 @@ def jensen_shannon(y_true, y_prob, *, labels=None):
         to be that of the positive class.
 
     supervised : boolean, default=True
-        Use the supervised or unsupervised uncertainty.
+        Use the supervised or unsupervised probe.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
@@ -164,7 +164,7 @@ def weighted_jensen_shannon(y_true, y_prob, *, labels=None):
         Predicted logits or probabilities.
 
     supervised : boolean, default=True
-        Use the supervised or unsupervised uncertainty.
+        Use the supervised or unsupervised probe.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically

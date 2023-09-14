@@ -10,17 +10,17 @@ from sklearn.utils.validation import _check_sample_weight
 from .utils import check_array_prob
 
 
-def weighted_uncertainty(uncertainty, sample_weight, y_true, y_pred, **kwargs):
+def weighted_probe(probe, sample_weight, y_true, y_pred, **kwargs):
     sample_weight = _check_sample_weight(sample_weight, y_pred)
 
-    return sample_weight * uncertainty(y_true, y_pred, **kwargs)
+    return sample_weight * probe(y_true, y_pred, **kwargs)
 
 
-def entropy_normalization(uncertainty, y_true, y_prob, **kwargs):
+def entropy_normalization(probe, y_true, y_prob, **kwargs):
     from ._entropy import entropy
 
-    return weighted_uncertainty(
-        uncertainty,
+    return weighted_probe(
+        probe,
         -1 / entropy(None, y_prob, supervised=False),
         y_true,
         y_prob,
@@ -28,7 +28,7 @@ def entropy_normalization(uncertainty, y_true, y_prob, **kwargs):
     )
 
 
-def confidence_normalization(uncertainty, y_true, y_prob, labels=None, **kwargs):
+def confidence_normalization(probe, y_true, y_prob, labels=None, **kwargs):
     from ._confidence import confidence
 
     y_prob = check_array_prob(y_prob)
@@ -58,4 +58,4 @@ def confidence_normalization(uncertainty, y_true, y_prob, labels=None, **kwargs)
         / confidence(y_true, y_prob_avg[y_encoded], labels=labels),
     )
 
-    return weighted_uncertainty(uncertainty, sample_weight, y_true, y_prob, **kwargs)
+    return weighted_probe(probe, sample_weight, y_true, y_prob, **kwargs)

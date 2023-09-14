@@ -9,7 +9,7 @@ from sklearn.utils.multiclass import unique_labels
 from .utils import check_array_prob
 
 
-def adjusted_uncertainty(uncertainty, y_true, y_prob, labels=None):
+def adjusted_probe(probe, y_true, y_prob, labels=None):
     y_prob = check_array_prob(y_prob)
     check_consistent_length(y_prob, y_true)
 
@@ -34,4 +34,4 @@ def adjusted_uncertainty(uncertainty, y_true, y_prob, labels=None):
     y_prob_adjusted += y_prob_avg.max(axis=1, keepdims=True)[y_encoded]
     y_prob_adjusted /= y_prob_adjusted.sum(axis=1, keepdims=True)
 
-    return uncertainty(y_true, y_prob_adjusted, labels=labels)
+    return probe(y_true, y_prob_adjusted, labels=labels)
