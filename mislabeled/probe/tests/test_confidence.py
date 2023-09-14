@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.metrics.tests.test_classification import make_prediction
 
-from mislabeled.uncertainties import confidence
+from mislabeled.probe import confidence
 
 
 def test_proba_self_confidence_is_borned():

@@ -5,7 +5,7 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect import ClassifierDetector
-from mislabeled.uncertainties._scorer import (
+from mislabeled.probe._scorer import (
     _UNCERTAINTY_SCORERS,
     _UNCERTAINTY_SCORERS_CLASSIFICATION,
     _UNCERTAINTY_SCORERS_REGRESSION,

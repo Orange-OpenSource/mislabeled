@@ -1,6 +1,6 @@
 from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 
-from mislabeled.uncertainties import check_uncertainty
+from mislabeled.probe import check_uncertainty
 
 
 class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):

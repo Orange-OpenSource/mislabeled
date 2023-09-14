@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.metrics.tests.test_classification import make_prediction
 
-from mislabeled.uncertainties import soft_margin
+from mislabeled.probe import soft_margin
 
 
 def test_proba_soft_margin_is_borned():

@@ -6,12 +6,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
 from mislabeled.aggregators import Aggregator, AggregatorMixin
-from mislabeled.uncertainties import (
+from mislabeled.probe import (
     adjusted_uncertainty,
     check_uncertainty,
     FiniteDiffSensitivity,
 )
-from mislabeled.uncertainties._scorer import _UNCERTAINTIES
+from mislabeled.probe._scorer import _UNCERTAINTIES
 
 
 class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):

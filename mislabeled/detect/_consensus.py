@@ -13,7 +13,7 @@ from sklearn.utils.validation import _num_samples
 
 from mislabeled.aggregators import Aggregator, AggregatorMixin
 from mislabeled.split import QuantileSplitter
-from mislabeled.uncertainties import check_uncertainty
+from mislabeled.probe import check_uncertainty
 
 
 class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):

@@ -4,7 +4,7 @@ from pytest import raises, warns
 from scipy.special import softmax
 from sklearn.metrics.tests.test_classification import make_prediction
 
-from mislabeled.uncertainties import (
+from mislabeled.probe import (
     confidence,
     confidence_entropy_ratio,
     entropy,

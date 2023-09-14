@@ -6,7 +6,7 @@ from joblib import delayed, Parallel
 from sklearn.dummy import check_random_state
 
 from mislabeled.aggregators import AggregatorMixin
-from mislabeled.uncertainties import check_uncertainty
+from mislabeled.probe import check_uncertainty
 
 
 class FiniteDiffSensitivity(AggregatorMixin):

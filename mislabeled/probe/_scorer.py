@@ -300,7 +300,7 @@ def get_uncertainty_scorer(uncertainty):
     """Get a uncertainty_scorer from string.
 
     Read more in the :ref:`User Guide <uncertainty_parameter>`.
-    :func:`~mislabeled.uncertainties.get_uncertainty_scorer_names`
+    :func:`~mislabeled.probe.get_uncertainty_scorer_names`
     can be used to retrieve the names of all available uncertainty_scorers.
 
     Parameters
@@ -326,7 +326,7 @@ def get_uncertainty_scorer(uncertainty):
         except KeyError:
             raise ValueError(
                 "%r is not a valid uncertainty value. "
-                "Use mislabeled.uncertainties.get_uncertainty_scorer_names() "
+                "Use mislabeled.probe.get_uncertainty_scorer_names() "
                 "to get valid options." % uncertainty
             )
     else:
@@ -338,7 +338,7 @@ def get_uncertainty_scorer_names():
     """Get the names of all available uncertainty_scorers.
 
     These names can be passed to
-    :func:`~mislabeled.uncertainties.get_uncertainty_scorer` to
+    :func:`~mislabeled.probe.get_uncertainty_scorer` to
     retrieve the uncertainty_scorer object.
 
     Returns
@@ -383,10 +383,10 @@ def check_uncertainty(uncertainty, adjust):
         module = getattr(uncertainty, "__module__", None)
         if (
             hasattr(module, "startswith")
-            and module.startswith("mislabeled.uncertainties.")
-            and not module.startswith("mislabeled.uncertainties._scorer")
-            and not module.startswith("mislabeled.uncertainties._sensitivity")
-            and not module.startswith("mislabeled.uncertainties.tests.")
+            and module.startswith("mislabeled.probe.")
+            and not module.startswith("mislabeled.probe._scorer")
+            and not module.startswith("mislabeled.probe._sensitivity")
+            and not module.startswith("mislabeled.probe.tests.")
         ):
             raise ValueError(
                 "uncertainty value %r looks like it is an uncertainty function rather"
