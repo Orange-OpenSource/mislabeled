@@ -6,11 +6,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
 from mislabeled.aggregators import Aggregator, AggregatorMixin
-from mislabeled.probe import (
-    adjusted_probe,
-    check_probe,
-    FiniteDiffSensitivity,
-)
+from mislabeled.probe import adjusted_probe, check_probe, FiniteDiffSensitivity
 from mislabeled.probe._scorer import _PROBES
 
 

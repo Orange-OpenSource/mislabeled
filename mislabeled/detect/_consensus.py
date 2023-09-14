@@ -12,8 +12,8 @@ from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
 from mislabeled.aggregators import Aggregator, AggregatorMixin
-from mislabeled.split import QuantileSplitter
 from mislabeled.probe import check_probe
+from mislabeled.split import QuantileSplitter
 
 
 class ConsensusDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
