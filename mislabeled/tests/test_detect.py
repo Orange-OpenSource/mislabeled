@@ -25,6 +25,8 @@ from mislabeled.detect import (
 )
 from mislabeled.probe import FiniteDiffSensitivity
 
+from mislabeled.detectv2 import Detector, IndependentEnsemble, ProgressiveEnsemble
+
 from .utils import blobs_1_mislabeled
 
 
@@ -94,6 +96,35 @@ def simple_detect_test(n_classes, detector):
 )
 def test_detectors(n_classes, detector):
     simple_detect_test(n_classes, detector)
+
+
+detectors = {
+    "ConsensusConsistency": Detector(
+        ensemble=IndependentEnsemble(
+            RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
+            KNeighborsClassifier(n_neighbors=3),
+        ),
+        probe="accuracy",
+        aggregate="mean_oob",
+    ),
+    "AUM": Detector(
+        ensemble=ProgressiveEnsemble(GradientBoostingClassifier(max_depth=1)),
+        probe="margin",
+        aggregate="sum",
+    ),
+    "Forgetting": Detector(
+        ensemble=ProgressiveEnsemble(GradientBoostingClassifier(max_depth=1)),
+        probe="accuracy",
+        aggregate="change_count",
+    ),
+}
+
+
+def test_detectv2():
+    n_classes = 2
+
+    for k, detector in detectors.items():
+        simple_detect_test(n_classes, detector)
 
 
 @pytest.mark.parametrize("n_classes", [2, 5])
