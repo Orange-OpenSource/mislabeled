@@ -1,7 +1,7 @@
 from functools import partial
 from itertools import product, starmap
 
-from bqlearn.ea import EasyADAPT
+from bqlearn.plugin import PluginCorrection
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.mixture import GaussianMixture
@@ -70,7 +70,7 @@ handlers = [
     ),
     partial(
         BiqualityClassifier,
-        estimator=make_pipeline(EasyADAPT(), LogisticRegression()),
+        estimator=PluginCorrection(LogisticRegression()),
     ),
 ]
 
