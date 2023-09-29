@@ -1,7 +1,7 @@
 from functools import partial
 from itertools import product, starmap
 
-from bqlearn.plugin import PluginCorrection
+from bqlearn.tradaboost import TrAdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.mixture import GaussianMixture
@@ -69,7 +69,7 @@ handlers = [
     ),
     partial(
         BiqualityClassifier,
-        estimator=PluginCorrection(LogisticRegression()),
+        estimator=TrAdaBoostClassifier(LogisticRegression(), n_estimators=1),
     ),
 ]
 
