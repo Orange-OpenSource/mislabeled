@@ -23,7 +23,7 @@ from mislabeled.detect import (
     RANSACDetector,
     VoGDetector,
 )
-from mislabeled.uncertainties import FiniteDiffSensitivity
+from mislabeled.probe import FiniteDiffSensitivity
 
 from .utils import blobs_1_mislabeled
 

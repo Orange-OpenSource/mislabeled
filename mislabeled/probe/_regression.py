@@ -2,7 +2,7 @@ import numpy as np
 
 
 def l2(y_true, y_pred):
-    """L2 distance for uncertainty scoring between continuous variables
+    """L2 distance for probe scoring between continuous variables
 
     Parameters
     ----------
@@ -28,7 +28,7 @@ def l2(y_true, y_pred):
 
 
 def l1(y_true, y_pred):
-    """L1 distance for uncertainty scoring between continuous variables
+    """L1 distance for probe scoring between continuous variables
 
     Parameters
     ----------

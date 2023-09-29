@@ -7,7 +7,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.utils.estimator_checks import _get_check_estimator_ids
 
 from mislabeled.detect import ClassifierDetector
-from mislabeled.splitters import GMMSplitter, QuantileSplitter
+from mislabeled.split import GMMSplitter, QuantileSplitter
 
 from .utils import blobs_1_mislabeled
 
@@ -36,11 +36,11 @@ def simple_split_test(n_classes, detectors, splitter):
         [
             ClassifierDetector(
                 make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()),
-                uncertainty="accuracy",
+                probe="accuracy",
             ),
             ClassifierDetector(
                 make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()),
-                uncertainty="soft_margin",
+                probe="soft_margin",
             ),
         ]
     ],

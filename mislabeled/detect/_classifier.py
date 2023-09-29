@@ -1,6 +1,6 @@
 from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
 
-from mislabeled.uncertainties import check_uncertainty
+from mislabeled.probe import check_probe
 
 
 class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
@@ -15,8 +15,8 @@ class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, estimator, uncertainty="soft_margin", adjust=False):
-        self.uncertainty = uncertainty
+    def __init__(self, estimator, probe="soft_margin", adjust=False):
+        self.probe = probe
         self.adjust = adjust
         self.estimator = estimator
 
@@ -40,5 +40,5 @@ class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
 
         self.estimator_ = clone(self.estimator)
         self.estimator_.fit(X, y)
-        self.uncertainty_scorer_ = check_uncertainty(self.uncertainty, self.adjust)
-        return self.uncertainty_scorer_(self.estimator_, X, y)
+        self.probe_scorer_ = check_probe(self.probe, self.adjust)
+        return self.probe_scorer_(self.estimator_, X, y)

@@ -40,7 +40,7 @@ def confidence(y_true, y_pred, *, k=1, supervised=True, labels=None):
         Returns the k-th self-confidence.
 
     supervised : boolean, default=True
-        Use the supervised or unsupervised uncertainty.
+        Use the supervised or unsupervised probe.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically
@@ -171,7 +171,7 @@ def confidence_entropy_ratio(y_true, y_prob, *, supervised=True, labels=None):
         Predicted logits or probabilities.
 
     supervised : boolean, default=True
-        Use the supervised or unsupervised uncertainty.
+        Use the supervised or unsupervised probe.
 
     labels : array-like of shape (n_classes), default=None
         List of labels. They need to be in ordered lexicographically

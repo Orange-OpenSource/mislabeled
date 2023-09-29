@@ -27,7 +27,7 @@ clf.fit(X, y).score(X, y)
 # %%
 detector = ConsensusDetector(
     clf,
-    uncertainty="entropy",
+    probe="entropy",
     cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=1),
     n_jobs=-1,
 )
@@ -79,7 +79,7 @@ plt.show()
 # %%
 detector_unsupervised = ConsensusDetector(
     clf,
-    uncertainty="unsupervised_entropy",
+    probe="unsupervised_entropy",
     cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=1),
     n_jobs=-1,
 )

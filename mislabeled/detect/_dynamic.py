@@ -6,12 +6,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
 from mislabeled.aggregators import Aggregator, AggregatorMixin
-from mislabeled.uncertainties import (
-    adjusted_uncertainty,
-    check_uncertainty,
-    FiniteDiffSensitivity,
-)
-from mislabeled.uncertainties._scorer import _UNCERTAINTIES
+from mislabeled.probe import adjusted_probe, check_probe, FiniteDiffSensitivity
+from mislabeled.probe._scorer import _PROBES
 
 
 class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
@@ -44,14 +40,14 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
     def __init__(
         self,
         estimator,
-        uncertainty,
+        probe,
         adjust,
         aggregator,
         *,
         staging=False,
         method="predict",
     ):
-        self.uncertainty = uncertainty
+        self.probe = probe
         self.adjust = adjust
         self.estimator = estimator
         self.aggregator = aggregator
@@ -85,8 +81,8 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
         self.estimator_ = clone(estimator)
 
         if self.staging:
-            # Can't work at the "uncertainty_scorer" level because of staged version
-            uncertainty_ = copy.deepcopy(_UNCERTAINTIES[self.uncertainty])
+            # Can't work at the "probe_scorer" level because of staged version
+            probe_ = copy.deepcopy(_PROBES[self.probe])
 
             self.method_ = _check_response_method(
                 self.estimator_, f"staged_{self.method}"
@@ -94,12 +90,12 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
 
             self.estimator_.fit(X, y)
 
-            self.uncertainties_ = []
+            self.probe_scores_ = []
             for y_pred in self.method_(X):
-                uncertainties = uncertainty_(y, y_pred)
+                probe_scores = probe_(y, y_pred)
                 if self.adjust:
-                    uncertainties = adjusted_uncertainty(uncertainties, y, y_pred)
-                self.uncertainties_.append(uncertainties)
+                    probe_scores = adjusted_probe(probe_scores, y, y_pred)
+                self.probe_scores_.append(probe_scores)
 
         else:
             if not hasattr(self.estimator_, "warm_start"):
@@ -125,23 +121,23 @@ class DynamicDetector(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
             self.iter_param_ = filtered_iter_params[0]
             self.max_iter_ = estimator_params.get(self.iter_param_)
 
-            self.uncertainty_scorer_ = check_uncertainty(self.uncertainty, self.adjust)
-            self.uncertainties_ = []
+            self.probe_scorer_ = check_probe(self.probe, self.adjust)
+            self.probe_scores_ = []
             for i in range(0, self.max_iter_):
                 self.estimator_.set_params(**{f"{self.iter_param_}": i + 1})
                 self.estimator_.fit(X, y)
-                uncertainties = self.uncertainty_scorer_(self.estimator_, X, y)
-                self.uncertainties_.append(uncertainties)
+                probe_scores = self.probe_scorer_(self.estimator_, X, y)
+                self.probe_scores_.append(probe_scores)
 
-        self.n_iter_ = len(self.uncertainties_)
-        self.uncertainties_ = np.stack(self.uncertainties_, axis=-1)
+        self.n_iter_ = len(self.probe_scores_)
+        self.probe_scores_ = np.stack(self.probe_scores_, axis=-1)
 
-        return self.aggregate(self.uncertainties_)
+        return self.aggregate(self.probe_scores_)
 
 
 class ForgettingAggregator(Aggregator):
-    def aggregate(self, uncertainties):
-        forgetting_events = np.diff(uncertainties, axis=1, prepend=0) < 0
+    def aggregate(self, probe_scores):
+        forgetting_events = np.diff(probe_scores, axis=1, prepend=0) < 0
         return -forgetting_events.sum(axis=1)
 
 
@@ -229,8 +225,8 @@ class AUMDetector(DynamicDetector):
 
 
 class VoGAggregator(Aggregator):
-    def aggregate(self, uncertainties):
-        aggregates = np.mean(np.var(uncertainties, axis=-1), axis=-1)
+    def aggregate(self, probe_scores):
+        aggregates = np.mean(np.var(probe_scores, axis=-1), axis=-1)
         return aggregates.max() - aggregates
 
 
@@ -276,7 +272,7 @@ class VoGDetector(DynamicDetector):
         super().__init__(
             estimator,
             FiniteDiffSensitivity(
-                uncertainty="confidence",
+                probe="confidence",
                 adjust=False,
                 aggregator=lambda x: x,
                 epsilon=epsilon,

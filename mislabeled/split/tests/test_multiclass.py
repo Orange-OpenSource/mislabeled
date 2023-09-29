@@ -3,7 +3,7 @@ import pytest
 from sklearn.neighbors import KNeighborsClassifier
 
 from mislabeled.detect import ConsensusDetector
-from mislabeled.splitters import PerClassSplitter, QuantileSplitter
+from mislabeled.split import PerClassSplitter, QuantileSplitter
 
 from ...tests.utils import blobs_1_mislabeled
 

@@ -19,7 +19,7 @@ detect = ConsensusDetector(
     estimator=RandomForestRegressor(),
     cv=RepeatedKFold(n_splits=5, n_repeats=5),
     n_jobs=-1,
-    uncertainty="l2",
+    probe="l2",
 )
 trust = detect.trust_score(X, y)
 # %%

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mislabeled.splitters import QuantileSplitter
+from mislabeled.split import QuantileSplitter
 
 
 @pytest.mark.parametrize("quantile", np.linspace(0.1, 0.9, num=5))
