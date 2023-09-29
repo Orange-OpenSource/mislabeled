@@ -5,6 +5,7 @@ from bqlearn.ea import EasyADAPT
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.mixture import GaussianMixture
+from sklearn.pipeline import make_pipeline
 from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
@@ -69,7 +70,7 @@ handlers = [
     ),
     partial(
         BiqualityClassifier,
-        estimator=EasyADAPT(LogisticRegression()),
+        estimator=make_pipeline(EasyADAPT(), LogisticRegression()),
     ),
 ]
 
