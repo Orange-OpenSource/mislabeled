@@ -115,7 +115,36 @@ detectors = {
     "Forgetting": Detector(
         ensemble=ProgressiveEnsemble(GradientBoostingClassifier(max_depth=1)),
         probe="accuracy",
-        aggregate="change_count",
+        aggregate="forget",
+    ),
+    "ConfidentLearning": Detector(
+        ensemble=IndependentEnsemble(
+            RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
+            KNeighborsClassifier(n_neighbors=3),
+        ),
+        probe="self_confidence",
+        aggregate="mean_oob",
+    ),
+    "VarianceOfGradients": Detector(
+        ensemble=ProgressiveEnsemble(
+            GradientBoostingClassifier(
+                max_depth=None,
+                n_estimators=100,
+                subsample=0.3,
+                random_state=1,
+                init="zero",
+            ),
+        ),
+        probe=FiniteDiffSensitivity(
+            probe="confidence",
+            adjust=False,
+            aggregator=lambda x: x,
+            epsilon=0.1,
+            n_directions=10,
+            random_state=None,
+            n_jobs=None,
+        ),
+        aggregate="mean_of_var",
     ),
 }
 

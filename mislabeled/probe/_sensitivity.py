@@ -5,7 +5,7 @@ import numpy as np
 from joblib import delayed, Parallel
 from sklearn.dummy import check_random_state
 
-from mislabeled.aggregators import AggregatorMixin
+from mislabeled.aggregate import AggregatorMixin
 from mislabeled.probe import check_probe
 
 
