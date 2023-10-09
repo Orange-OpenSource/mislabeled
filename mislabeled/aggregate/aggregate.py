@@ -28,14 +28,22 @@ class AggregatorMixin:
 
 
 def forget(x):
-    return ((x[:, 1:, :] - x[:, :-1, :]) == -1).sum(axes=(1, 2))
+    return ((x[:, 1:, :] - x[:, :-1, :]) == -1).sum(axis=(1, 2))
+
 
 def mean_of_var(x):
     return x.var(axis=1).mean(axis=1)
 
+
+def mean_oob(scores, masks):
+    return np.nansum(
+        (scores * masks) / np.nansum(masks, axis=1, keepdims=True), axis=(1, 2)
+    )
+
+
 _AGGREGATORS = dict(
     mean=partial(np.nanmean, axis=-1),
-    mean_oob=partial(np.nanmean, axis=-1),
+    mean_oob=mean_oob,
     sum=partial(np.nansum, axis=-1),
     var=partial(np.nanvar, axis=-1),
     forget=forget,
