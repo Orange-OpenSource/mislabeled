@@ -339,7 +339,7 @@ def get_probe_scorer_names():
     return sorted(_PROBE_SCORERS.keys())
 
 
-def check_probe(probe, adjust):
+def check_probe(probe, adjust=False):
     """Determine probe_scorer from user options.
 
     Parameters

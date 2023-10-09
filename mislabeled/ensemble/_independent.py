@@ -30,13 +30,11 @@ class IndependentEnsemble(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
 
     def __init__(
         self,
-        ensemble_strategy,
         base_model,
-        adjust=False,
+        ensemble_strategy,
         *,
         n_jobs=None,
     ):
-        self.adjust = adjust
         self.base_model = base_model
         self.ensemble_strategy = ensemble_strategy
         self.n_jobs = n_jobs
@@ -65,7 +63,7 @@ class IndependentEnsemble(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
             self.ensemble_strategy, y, classifier=is_classifier(self.base_model)
         )
 
-        self.probe_scorer_ = check_probe(probe, self.adjust)
+        self.probe_scorer_ = check_probe(probe)
         scores = cross_validate(
             self.base_model,
             X,
@@ -93,17 +91,17 @@ class IndependentEnsemble(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
         #     raise ValueError(f"{self.evalset} not in ['train', 'test', 'all']")
 
         # atm we only support a single probe here
-        probe_scores = np.full((n_samples, n_ensemble_members, 1), fill_value=np.nan)
+        probe_scores = np.full((n_samples, 1, n_ensemble_members), fill_value=np.nan)
         masks = np.zeros_like(probe_scores)
 
         # TODO: parallel
         for e, (estimator, indices_oob) in enumerate(
             zip(estimators, scores["indices"]["test"])
         ):
-            probe_scores[safe_mask(X, indices_oob), e, 0] = self.probe_scorer_(
+            probe_scores[safe_mask(X, indices_oob), 0, e] = self.probe_scorer_(
                 estimator, X[safe_mask(X, indices_oob)], y[indices_oob]
             )
 
-            masks[safe_mask(X, indices_oob), e, 0] = 1
+            masks[safe_mask(X, indices_oob), 0, e] = 1
 
         return probe_scores, masks

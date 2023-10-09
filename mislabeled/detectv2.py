@@ -1,15 +1,4 @@
-from sklearn.model_selection import RepeatedStratifiedKFold
-from functools import partial
 from mislabeled.aggregate import check_aggregate
-
-
-class ProgressiveEnsemble:
-    def __init__(self, base_model):
-        self.base_model = base_model
-
-    def probe_score(self, X, y, probe):
-        pass
-
 
 
 class Detector:
@@ -18,12 +7,11 @@ class Detector:
         self.ensemble = ensemble
         self.aggregate = aggregate
 
-
     def probe_score(self, X, y):
-        # returns: n x e x p 
+        # returns: n x p x e
         # n: #examples
-        # e: #ensemble members
         # p: #probes
+        # e: #ensemble members
         return self.ensemble.probe_score(X, y, self.probe)
 
     def trust_score(self, X, y):
