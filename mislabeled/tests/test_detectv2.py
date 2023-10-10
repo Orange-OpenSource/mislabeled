@@ -1,11 +1,14 @@
 import numpy as np
 import pytest
-from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.kernel_approximation import RBFSampler
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
 
 from mislabeled.detectv2 import Detector
-from mislabeled.ensemble import IndependentEnsemble, ProgressiveEnsemble
+from mislabeled.ensemble import IndependentEnsemble, ProgressiveEnsemble, SingleEnsemble
 from mislabeled.probe import FiniteDiffSensitivity
 
 from .utils import blobs_1_mislabeled
@@ -24,6 +27,15 @@ def simple_detect_test(n_classes, detector):
 
 
 detectors = {
+    "ClassifierDetector": Detector(
+        ensemble=SingleEnsemble(
+            make_pipeline(
+                RBFSampler(gamma="scale", n_components=100), LogisticRegression()
+            )
+        ),
+        probe="accuracy",
+        aggregate="sum",
+    ),
     "ConsensusConsistency": Detector(
         ensemble=IndependentEnsemble(
             KNeighborsClassifier(n_neighbors=3),

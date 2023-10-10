@@ -1,16 +1,15 @@
 import copy
 
 import numpy as np
-from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
+from sklearn.base import clone, BaseEstimator
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
-from mislabeled.aggregate import Aggregator, AggregatorMixin
-from mislabeled.probe import adjusted_probe, check_probe, FiniteDiffSensitivity
+from mislabeled.probe import check_probe
 from mislabeled.probe._scorer import _PROBES
 
 
-class ProgressiveEnsemble(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
+class ProgressiveEnsemble(BaseEstimator):
     """Detector based on training dynamics.
 
     Parameters

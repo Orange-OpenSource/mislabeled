@@ -1,9 +1,10 @@
-from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
+import numpy as np
+from sklearn.base import BaseEstimator, clone
 
 from mislabeled.probe import check_probe
 
 
-class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
+class SingleEnsemble(BaseEstimator):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -15,12 +16,10 @@ class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, estimator, probe="soft_margin", adjust=False):
-        self.probe = probe
-        self.adjust = adjust
-        self.estimator = estimator
+    def __init__(self, base_model):
+        self.base_model = base_model
 
-    def trust_score(self, X, y):
+    def probe_score(self, X, y, probe):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -36,9 +35,15 @@ class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
+        X, y = self._validate_data(X, y, accept_sparse=True)
 
-        self.estimator_ = clone(self.estimator)
-        self.estimator_.fit(X, y)
-        self.probe_scorer_ = check_probe(self.probe, self.adjust)
-        return self.probe_scorer_(self.estimator_, X, y)
+        self.base_model_ = clone(self.base_model)
+        self.base_model_.fit(X, y)
+        probe_scorer = check_probe(probe)
+        probe_scores = probe_scorer(self.base_model_, X, y)
+
+        if probe_scores.ndim == 1:
+            probe_scores = np.expand_dims(probe_scores, axis=(1,2))
+        
+        return probe_scores, np.ones_like(probe_scores)
+

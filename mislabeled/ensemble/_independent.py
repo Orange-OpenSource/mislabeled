@@ -1,22 +1,13 @@
-from itertools import starmap
-
 import numpy as np
-from sklearn.base import BaseEstimator, is_classifier, MetaEstimatorMixin
-from sklearn.model_selection import (
-    check_cv,
-    cross_validate,
-    ShuffleSplit,
-    StratifiedShuffleSplit,
-)
+from sklearn.base import is_classifier, BaseEstimator
+from sklearn.model_selection import check_cv, cross_validate
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
-from mislabeled.aggregate import Aggregator, AggregatorMixin
 from mislabeled.probe import check_probe
-from mislabeled.split import QuantileSplitter
 
 
-class IndependentEnsemble(BaseEstimator, MetaEstimatorMixin, AggregatorMixin):
+class IndependentEnsemble(BaseEstimator):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
