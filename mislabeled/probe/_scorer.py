@@ -375,6 +375,7 @@ def check_probe(probe, adjust=False):
             hasattr(module, "startswith")
             and module.startswith("mislabeled.probe.")
             and not module.startswith("mislabeled.probe._scorer")
+            and not module.startswith("mislabeled.probe._complexity")
             and not module.startswith("mislabeled.probe._sensitivity")
             and not module.startswith("mislabeled.probe.tests.")
         ):

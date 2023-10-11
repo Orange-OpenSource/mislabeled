@@ -6,10 +6,16 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.detectv2 import Detector
-from mislabeled.ensemble import IndependentEnsemble, ProgressiveEnsemble, SingleEnsemble
-from mislabeled.probe import FiniteDiffSensitivity
+from mislabeled.ensemble import (
+    IndependentEnsemble,
+    LeaveOneOut,
+    ProgressiveEnsemble,
+    SingleEnsemble,
+)
+from mislabeled.probe import Complexity, FiniteDiffSensitivity
 
 from .utils import blobs_1_mislabeled
 
@@ -27,7 +33,12 @@ def simple_detect_test(n_classes, detector):
 
 
 detectors = {
-    "ClassifierDetector": Detector(
+    "DecisionTreeComplexity": Detector(
+        ensemble=LeaveOneOut(DecisionTreeClassifier()),
+        probe=Complexity(complexity_proxy="n_leaves"),
+        aggregate="sum",
+    ),
+    "Classifier": Detector(
         ensemble=SingleEnsemble(
             make_pipeline(
                 RBFSampler(gamma="scale", n_components=100), LogisticRegression()

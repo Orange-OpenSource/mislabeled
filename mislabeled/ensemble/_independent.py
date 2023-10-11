@@ -1,6 +1,7 @@
 import numpy as np
-from sklearn.base import is_classifier, BaseEstimator
+from sklearn.base import BaseEstimator, is_classifier
 from sklearn.model_selection import check_cv, cross_validate
+from sklearn.model_selection import LeaveOneOut as LeaveOneOutCV
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
@@ -86,13 +87,69 @@ class IndependentEnsemble(BaseEstimator):
         masks = np.zeros_like(probe_scores)
 
         # TODO: parallel
-        for e, (estimator, indices_oob) in enumerate(
-            zip(estimators, scores["indices"]["test"])
+        for e, (estimator, indices_oob, indices_itb) in enumerate(
+            zip(estimators, scores["indices"]["test"], scores["indices"]["train"])
         ):
             probe_scores[safe_mask(X, indices_oob), 0, e] = self.probe_scorer_(
                 estimator, X[safe_mask(X, indices_oob)], y[indices_oob]
             )
 
-            masks[safe_mask(X, indices_oob), 0, e] = 1
+            masks[safe_mask(X, indices_itb), 0, e] = 1
+
+        return probe_scores, masks
+
+
+class LeaveOneOut(BaseEstimator):
+    """A template estimator to be used as a reference implementation.
+
+    For more information regarding how to build your own estimator, read more
+    in the :ref:`User Guide <user_guide>`.
+
+    Parameters
+    ----------
+    demo_param : str, default='demo_param'
+        A parameter used for demonstation of how to pass and store paramters.
+    """
+
+    def __init__(
+        self,
+        base_model,
+        *,
+        n_jobs=None,
+    ):
+        self.base_model = base_model
+        self.n_jobs = n_jobs
+
+    def probe_score(self, X, y, probe):
+        """A reference implementation of a fitting function.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape (n_samples, n_features)
+            The training input samples.
+        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
+            The target values (class labels in classification, real numbers in
+            regression).
+
+        Returns
+        -------
+        self : object
+            Returns self.
+        """
+        X, y = self._validate_data(X, y, accept_sparse=True)
+
+        self.probe_scorer_ = check_probe(probe)
+        scores = cross_validate(
+            self.base_model,
+            X,
+            y,
+            cv=LeaveOneOutCV(),
+            scoring=lambda est, X, y: self.probe_scorer_(est, X, y),
+            n_jobs=self.n_jobs,
+        )
+
+        probe_scores = np.expand_dims(np.diag(scores["test_score"]), axis=1)
+
+        masks = 1 * (probe_scores != 0)
 
         return probe_scores, masks

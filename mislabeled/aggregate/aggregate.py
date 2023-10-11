@@ -38,7 +38,7 @@ def mean_of_var(scores, masks):
 
 def mean_oob(scores, masks):
     return np.nansum(
-        (scores * masks) / np.nansum(masks, axis=2, keepdims=True), axis=(1, 2)
+        (scores * (1 - masks)) / np.nansum(masks, axis=2, keepdims=True), axis=(1, 2)
     )
 
 
