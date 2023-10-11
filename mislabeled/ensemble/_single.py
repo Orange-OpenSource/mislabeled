@@ -43,7 +43,6 @@ class SingleEnsemble(BaseEstimator):
         probe_scores = probe_scorer(self.base_model_, X, y)
 
         if probe_scores.ndim == 1:
-            probe_scores = np.expand_dims(probe_scores, axis=(1,2))
-        
-        return probe_scores, np.ones_like(probe_scores)
+            probe_scores = np.expand_dims(probe_scores, axis=(1, 2))
 
+        return probe_scores, np.ones_like(probe_scores)
