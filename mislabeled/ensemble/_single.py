@@ -44,5 +44,7 @@ class SingleEnsemble(BaseEstimator):
 
         if probe_scores.ndim == 1:
             probe_scores = np.expand_dims(probe_scores, axis=(1, 2))
+        elif probe_scores.ndim == 2:
+            probe_scores = np.expand_dims(probe_scores, axis=1)
 
         return probe_scores, np.ones_like(probe_scores)

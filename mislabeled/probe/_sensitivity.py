@@ -39,7 +39,6 @@ class FiniteDiffSensitivity(AggregatorMixin):
         self,
         probe,
         adjust,
-        aggregator="sum",
         *,
         epsilon=1e-1,
         n_directions=10,
@@ -48,7 +47,6 @@ class FiniteDiffSensitivity(AggregatorMixin):
     ):
         self.probe = probe
         self.adjust = adjust
-        self.aggregator = aggregator
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.random_state = random_state
@@ -116,6 +114,4 @@ class FiniteDiffSensitivity(AggregatorMixin):
         probe_scores -= probe(estimator, X, y).reshape(-1, 1)
         probe_scores /= self.epsilon
 
-        sensitivity = self.aggregate(probe_scores)
-
-        return sensitivity
+        return probe_scores

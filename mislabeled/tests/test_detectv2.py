@@ -38,6 +38,15 @@ detectors = {
         probe=Complexity(complexity_proxy="n_leaves"),
         aggregate="sum",
     ),
+    "FiniteDiffComplexity": Detector(
+        ensemble=SingleEnsemble(
+            GradientBoostingClassifier(),
+        ),
+        probe=FiniteDiffSensitivity(
+            "soft_margin", False, n_directions=20, n_jobs=-1, random_state=1
+        ),
+        aggregate="sum",
+    ),
     "Classifier": Detector(
         ensemble=SingleEnsemble(
             make_pipeline(
@@ -94,7 +103,6 @@ detectors = {
         probe=FiniteDiffSensitivity(
             probe="confidence",
             adjust=False,
-            aggregator=lambda x: x,
             epsilon=0.1,
             n_directions=20,
             random_state=None,
