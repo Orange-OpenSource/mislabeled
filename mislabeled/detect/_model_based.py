@@ -1,7 +1,8 @@
+from sklearn.base import BaseEstimator
 from mislabeled.aggregate import check_aggregate
 
 
-class Detector:
+class ModelBasedDetector(BaseEstimator):
     def __init__(self, ensemble, probe, aggregate):
         self.probe = probe
         self.ensemble = ensemble

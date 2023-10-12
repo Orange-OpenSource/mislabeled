@@ -1,6 +1,8 @@
 from functools import partial
 from itertools import product, starmap
 from sklearn.kernel_approximation import RBFSampler
+from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.neighbors import KNeighborsClassifier
 
 from sklearn.pipeline import make_pipeline
 
@@ -19,7 +21,7 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
-from mislabeled.probe import FiniteDiffSensitivity
+from mislabeled.probe import FiniteDiffSensitivity, Complexity
 from mislabeled.split import GMMSplitter, PerClassSplitter, QuantileSplitter
 
 from mislabeled.ensemble import (
@@ -37,7 +39,22 @@ detectors = [
         ensemble=SingleEnsemble(LogisticRegression()),
         probe="accuracy",
         aggregate="sum",
-    )
+    ),
+    ModelBasedDetector(
+        ensemble=IndependentEnsemble(
+            KNeighborsClassifier(n_neighbors=3),
+            RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=seed),
+        ),
+        probe="accuracy",
+        aggregate="mean_oob",
+    ),
+    ModelBasedDetector(
+        ensemble=ProgressiveEnsemble(
+            GradientBoostingClassifier(max_depth=1, random_state=seed)
+        ),
+        probe="soft_margin",
+        aggregate="sum",
+    ),
 ]
 
 #     ConsensusDetector(LogisticRegression(), cv=3),
@@ -94,17 +111,11 @@ def test_all_detectors_with_splitter(estimator, check):
     return check(estimator)
 
 
-def complexity_decision_trees(dt_classifier):
-    return dt_classifier.get_n_leaves()
-
-
 other_detectors = [
-    NaiveComplexityDetector(
-        DecisionTreeClassifier(random_state=seed), complexity_decision_trees
-    ),
-    ClassifierDetector(
-        GradientBoostingClassifier(n_estimators=5, random_state=seed),
-        FiniteDiffSensitivity("soft_margin", False, random_state=seed),
+    ModelBasedDetector(
+        ensemble=LeaveOneOut(DecisionTreeClassifier(random_state=seed)),
+        probe=Complexity(complexity_proxy="n_leaves"),
+        aggregate="sum",
     ),
 ]
 

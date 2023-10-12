@@ -29,7 +29,7 @@ class Complexity:
         complexity_proxy,
     ):
         if complexity_proxy == "n_leaves":
-            self._get_complexity = lambda estimator: estimator.get_n_leaves()
+            self._get_complexity = Complexity.complexity_n_leaves
         else:
             raise NotImplementedError
 
@@ -66,3 +66,6 @@ class Complexity:
         """
 
         return self._get_complexity(estimator)
+
+    def complexity_n_leaves(estimator):
+        return estimator.get_n_leaves()

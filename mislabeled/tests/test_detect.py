@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import LogisticRegression, RidgeClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -10,9 +10,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
-from mislabeled.detectv2 import Detector
-
-from mislabeled.detect import OutlierDetector
+from mislabeled.detect import OutlierDetector, ModelBasedDetector
 
 from mislabeled.ensemble import (
     IndependentEnsemble,
@@ -38,7 +36,7 @@ def simple_detect_test(n_classes, detector):
 
 
 detectors = {
-    "Influence": Detector(
+    "Influence": ModelBasedDetector(
         ensemble=SingleEnsemble(
             make_pipeline(
                 RBFSampler(gamma="scale", n_components=100), LogisticRegression()
@@ -47,7 +45,7 @@ detectors = {
         probe=Influence(),
         aggregate="sum",
     ),
-    "FiniteDiffComplexity": Detector(
+    "FiniteDiffComplexity": ModelBasedDetector(
         ensemble=SingleEnsemble(
             GradientBoostingClassifier(),
         ),
@@ -56,12 +54,12 @@ detectors = {
         ),
         aggregate="sum",
     ),
-    "DecisionTreeComplexity": Detector(
+    "DecisionTreeComplexity": ModelBasedDetector(
         ensemble=LeaveOneOut(DecisionTreeClassifier()),
         probe=Complexity(complexity_proxy="n_leaves"),
         aggregate="sum",
     ),
-    "FiniteDiffComplexity": Detector(
+    "FiniteDiffComplexity": ModelBasedDetector(
         ensemble=SingleEnsemble(
             GradientBoostingClassifier(),
         ),
@@ -70,7 +68,7 @@ detectors = {
         ),
         aggregate="sum",
     ),
-    "Classifier": Detector(
+    "Classifier": ModelBasedDetector(
         ensemble=SingleEnsemble(
             make_pipeline(
                 RBFSampler(gamma="scale", n_components=100), LogisticRegression()
@@ -79,7 +77,7 @@ detectors = {
         probe="accuracy",
         aggregate="sum",
     ),
-    "ConsensusConsistency": Detector(
+    "ConsensusConsistency": ModelBasedDetector(
         ensemble=IndependentEnsemble(
             KNeighborsClassifier(n_neighbors=3),
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
@@ -87,7 +85,7 @@ detectors = {
         probe="accuracy",
         aggregate="mean_oob",
     ),
-    "ConfidentLearning": Detector(
+    "ConfidentLearning": ModelBasedDetector(
         ensemble=IndependentEnsemble(
             KNeighborsClassifier(n_neighbors=3),
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
@@ -95,12 +93,12 @@ detectors = {
         probe="confidence",
         aggregate="mean_oob",
     ),
-    "AUM": Detector(
+    "AUM": ModelBasedDetector(
         ensemble=ProgressiveEnsemble(GradientBoostingClassifier(max_depth=1)),
         probe="soft_margin",
         aggregate="sum",
     ),
-    "Forgetting": Detector(
+    "Forgetting": ModelBasedDetector(
         ensemble=ProgressiveEnsemble(
             GradientBoostingClassifier(
                 max_depth=None,
@@ -113,7 +111,7 @@ detectors = {
         probe="accuracy",
         aggregate="forget",
     ),
-    "VarianceOfGradients": Detector(
+    "VarianceOfGradients": ModelBasedDetector(
         ensemble=ProgressiveEnsemble(
             GradientBoostingClassifier(
                 max_depth=None,
@@ -151,7 +149,7 @@ def test_detect(n_classes, detector):
         # KMM
         OutlierDetector(OneClassSVM(kernel="rbf", gamma=0.1)),
         # PDR
-        Detector(
+        ModelBasedDetector(
             ensemble=SingleEnsemble(
                 make_pipeline(
                     RBFSampler(gamma="scale", n_components=100),
