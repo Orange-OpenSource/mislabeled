@@ -1,5 +1,8 @@
 from functools import partial
 from itertools import product, starmap
+from sklearn.kernel_approximation import RBFSampler
+
+from sklearn.pipeline import make_pipeline
 
 from bqlearn.ea import EasyADAPT
 from sklearn.ensemble import GradientBoostingClassifier
@@ -10,17 +13,7 @@ from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
-from mislabeled.detect import (
-    AUMDetector,
-    ClassifierDetector,
-    ConsensusDetector,
-    DecisionTreeComplexityDetector,
-    ForgettingDetector,
-    InfluenceDetector,
-    NaiveComplexityDetector,
-    OutlierDetector,
-    RANSACDetector,
-)
+from mislabeled.detect import OutlierDetector, ModelBasedDetector
 from mislabeled.handle import (
     BiqualityClassifier,
     FilterClassifier,
@@ -29,24 +22,39 @@ from mislabeled.handle import (
 from mislabeled.probe import FiniteDiffSensitivity
 from mislabeled.split import GMMSplitter, PerClassSplitter, QuantileSplitter
 
+from mislabeled.ensemble import (
+    IndependentEnsemble,
+    LeaveOneOut,
+    ProgressiveEnsemble,
+    SingleEnsemble,
+)
+
+
 seed = 42
 
 detectors = [
-    ConsensusDetector(LogisticRegression(), cv=3),
-    InfluenceDetector(),
-    ClassifierDetector(LogisticRegression()),
-    OutlierDetector(OneClassSVM(kernel="linear")),
-    DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=seed)),
-    AUMDetector(
-        GradientBoostingClassifier(max_depth=1, n_estimators=5, random_state=seed),
-        staging=True,
-    ),
-    ForgettingDetector(
-        GradientBoostingClassifier(max_depth=1, n_estimators=5, random_state=seed),
-        staging=True,
-    ),
-    RANSACDetector(LogisticRegression(), min_samples=0.2, max_trials=5, random_state=1),
+    ModelBasedDetector(
+        ensemble=SingleEnsemble(LogisticRegression()),
+        probe="accuracy",
+        aggregate="sum",
+    )
 ]
+
+#     ConsensusDetector(LogisticRegression(), cv=3),
+#     InfluenceDetector(),
+#     ClassifierDetector(LogisticRegression()),
+#     OutlierDetector(OneClassSVM(kernel="linear")),
+#     DecisionTreeComplexityDetector(DecisionTreeClassifier(random_state=seed)),
+#     AUMDetector(
+#         GradientBoostingClassifier(max_depth=1, n_estimators=5, random_state=seed),
+#         staging=True,
+#     ),
+#     ForgettingDetector(
+#         GradientBoostingClassifier(max_depth=1, n_estimators=5, random_state=seed),
+#         staging=True,
+#     ),
+#     RANSACDetector(LogisticRegression(), min_samples=0.2, max_trials=5, random_state=1),
+# ]
 
 splitters = [
     PerClassSplitter(
