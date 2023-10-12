@@ -4,7 +4,7 @@ from sklearn.kernel_approximation import RBFSampler
 
 from sklearn.pipeline import make_pipeline
 
-from bqlearn.ea import EasyADAPT
+from bqlearn.baseline import make_baseline
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.mixture import GaussianMixture
@@ -77,7 +77,7 @@ handlers = [
     ),
     partial(
         BiqualityClassifier,
-        estimator=EasyADAPT(LogisticRegression()),
+        estimator=make_baseline(LogisticRegression(), "no_correction"),
     ),
 ]
 
