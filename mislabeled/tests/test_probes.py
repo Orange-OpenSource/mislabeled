@@ -4,7 +4,8 @@ from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.pipeline import make_pipeline
 
-from mislabeled.detect import ClassifierDetector
+from mislabeled.detect import ModelBasedDetector
+from mislabeled.ensemble import SingleEnsemble
 from mislabeled.probe._scorer import (
     _PROBE_SCORERS,
     _PROBE_SCORERS_CLASSIFICATION,
@@ -59,8 +60,14 @@ def simple_ood_test(n_classes, n_outliers, detector):
     ),
 )
 def test_supervised_pro_classif(n_classes, probe_scorer):
-    detector = ClassifierDetector(
-        make_pipeline(RBFSampler(gamma="scale", n_components=200), LogisticRegression())
+    detector = ModelBasedDetector(
+        ensemble=SingleEnsemble(
+            make_pipeline(
+                RBFSampler(gamma="scale", n_components=100), LogisticRegression()
+            )
+        ),
+        probe="accuracy",
+        aggregate="sum",
     )
     detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
     simple_detect_test(n_classes, detector)
@@ -73,8 +80,14 @@ def test_supervised_pro_classif(n_classes, probe_scorer):
     filter(lambda name: "unsupervised" in name, _PROBE_SCORERS.keys()),
 )
 def test_unsupervised_pro(n_classes, n_outliers, probe_scorer):
-    detector = ClassifierDetector(
-        make_pipeline(RBFSampler(gamma="scale", n_components=200), LogisticRegression())
+    detector = ModelBasedDetector(
+        ensemble=SingleEnsemble(
+            make_pipeline(
+                RBFSampler(gamma="scale", n_components=100), LogisticRegression()
+            )
+        ),
+        probe="accuracy",
+        aggregate="sum",
     )
     detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
     simple_ood_test(n_classes, n_outliers, detector)
@@ -85,8 +98,14 @@ def test_unsupervised_pro(n_classes, n_outliers, probe_scorer):
     _PROBE_SCORERS_REGRESSION.keys(),
 )
 def test_supervised_pro_regr(probe_scorer):
-    detector = ClassifierDetector(
-        make_pipeline(RBFSampler(gamma="scale", n_components=200), LinearRegression())
+    detector = ModelBasedDetector(
+        ensemble=SingleEnsemble(
+            make_pipeline(
+                RBFSampler(gamma="scale", n_components=100), LinearRegression()
+            )
+        ),
+        probe="accuracy",
+        aggregate="sum",
     )
     detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
     simple_regression_detect_test(detector)

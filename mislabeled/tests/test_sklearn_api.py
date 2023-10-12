@@ -111,6 +111,8 @@ def test_all_detectors_with_splitter(estimator, check):
     return check(estimator)
 
 
+# this requires a separate test because one of the instance attributes is a function,
+# which makes tests detect it as being non deterministic
 other_detectors = [
     ModelBasedDetector(
         ensemble=LeaveOneOut(DecisionTreeClassifier(random_state=seed)),
