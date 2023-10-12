@@ -1,14 +1,19 @@
 import numpy as np
 import pytest
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
 from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.detectv2 import Detector
+
+from mislabeled.detect import OutlierDetector
+
 from mislabeled.ensemble import (
     IndependentEnsemble,
     LeaveOneOut,
@@ -132,8 +137,31 @@ detectors = {
 }
 
 
-def test_detect():
-    for k, detector in detectors.items():
-        for n_classes in [2, 5]:
-            print(k)
-            simple_detect_test(n_classes, detector)
+@pytest.mark.parametrize("n_classes", [2, 5])
+@pytest.mark.parametrize("detector", detectors.values())
+def test_detect(n_classes, detector):
+    simple_detect_test(n_classes, detector)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+@pytest.mark.parametrize(
+    "detector",
+    [
+        OutlierDetector(IsolationForest(n_estimators=20, random_state=1)),
+        # KMM
+        OutlierDetector(OneClassSVM(kernel="rbf", gamma=0.1)),
+        # PDR
+        Detector(
+            ensemble=SingleEnsemble(
+                make_pipeline(
+                    RBFSampler(gamma="scale", n_components=100),
+                    OneVsRestClassifier(LogisticRegression()),
+                )
+            ),
+            probe="accuracy",
+            aggregate="sum",
+        ),
+    ],
+)
+def test_detect_outliers(n_classes, detector):
+    simple_detect_test(n_classes, detector)
