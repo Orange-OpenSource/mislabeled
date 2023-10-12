@@ -1,9 +1,8 @@
 import numpy as np
-from sklearn.base import BaseEstimator, clone
-from sklearn.utils.validation import _num_features
+from sklearn.pipeline import Pipeline
 
 
-class InfluenceDetector(BaseEstimator):
+class Influence:
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -15,11 +14,7 @@ class InfluenceDetector(BaseEstimator):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, transform=None, *, alpha=1.0):
-        self.alpha = alpha
-        self.transform = transform
-
-    def trust_score(self, X, y):
+    def __call__(self, estimator, X, y):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -35,17 +30,18 @@ class InfluenceDetector(BaseEstimator):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True)
 
-        if self.transform is not None:
-            transform = clone(self.transform)
-            X = transform.fit_transform(X)
+        if isinstance(estimator, Pipeline):
+            X = estimator[:-1].transform(X)
+            coef = estimator[-1].coef_
+        else:
+            coef = estimator.coef_
 
-        n_features = _num_features(X)
-
-        inv = np.linalg.inv(X.T @ X + np.identity(n_features) * self.alpha)
-        H = X @ inv @ X.T
-
-        m = (H * (y.reshape(-1, 1) == y.reshape(1, -1))).sum(axis=1)
-
-        return m
+        # binary case
+        if coef.shape[0] == 1:
+            H = np.dot(X, coef.T)
+            return H * np.expand_dims((y - 0.5), axis=1)
+        # multiclass case
+        else:
+            H = np.dot(X, coef.T)
+            return np.take_along_axis(H, np.expand_dims(y, axis=1), axis=1)

@@ -5,11 +5,10 @@ import numpy as np
 from joblib import delayed, Parallel
 from sklearn.dummy import check_random_state
 
-from mislabeled.aggregate import AggregatorMixin
 from mislabeled.probe import check_probe
 
 
-class FiniteDiffSensitivity(AggregatorMixin):
+class FiniteDiffSensitivity:
     """Detects likely mislabeled examples based on local smoothness of an overfitted
     classifier. Smoothness is measured using an estimate of the gradients around
     candidate examples using finite differences.

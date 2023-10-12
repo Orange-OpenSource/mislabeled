@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, RidgeClassifier
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
@@ -15,7 +15,7 @@ from mislabeled.ensemble import (
     ProgressiveEnsemble,
     SingleEnsemble,
 )
-from mislabeled.probe import Complexity, FiniteDiffSensitivity
+from mislabeled.probe import Complexity, FiniteDiffSensitivity, Influence
 
 from .utils import blobs_1_mislabeled
 
@@ -33,6 +33,24 @@ def simple_detect_test(n_classes, detector):
 
 
 detectors = {
+    "Influence": Detector(
+        ensemble=SingleEnsemble(
+            make_pipeline(
+                RBFSampler(gamma="scale", n_components=100), LogisticRegression()
+            )
+        ),
+        probe=Influence(),
+        aggregate="sum",
+    ),
+    "FiniteDiffComplexity": Detector(
+        ensemble=SingleEnsemble(
+            GradientBoostingClassifier(),
+        ),
+        probe=FiniteDiffSensitivity(
+            "soft_margin", False, n_directions=20, n_jobs=-1, random_state=1
+        ),
+        aggregate="sum",
+    ),
     "DecisionTreeComplexity": Detector(
         ensemble=LeaveOneOut(DecisionTreeClassifier()),
         probe=Complexity(complexity_proxy="n_leaves"),
@@ -96,6 +114,7 @@ detectors = {
                 max_depth=None,
                 n_estimators=100,
                 subsample=0.3,
+                learning_rate=0.2,
                 random_state=1,
                 init="zero",
             ),
@@ -114,7 +133,7 @@ detectors = {
 
 
 def test_detect():
-    for n_classes in [2, 5]:
-        for k, detector in detectors.items():
+    for k, detector in detectors.items():
+        for n_classes in [2, 5]:
             print(k)
             simple_detect_test(n_classes, detector)
