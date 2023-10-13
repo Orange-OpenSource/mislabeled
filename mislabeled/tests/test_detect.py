@@ -45,15 +45,6 @@ detectors = {
         probe=Influence(),
         aggregate="sum",
     ),
-    "FiniteDiffComplexity": ModelBasedDetector(
-        ensemble=SingleEnsemble(
-            GradientBoostingClassifier(),
-        ),
-        probe=FiniteDiffSensitivity(
-            "soft_margin", False, n_directions=20, n_jobs=-1, random_state=1
-        ),
-        aggregate="sum",
-    ),
     "DecisionTreeComplexity": ModelBasedDetector(
         ensemble=LeaveOneOut(DecisionTreeClassifier()),
         probe=Complexity(complexity_proxy="n_leaves"),

@@ -1,36 +1,30 @@
 from functools import partial
 from itertools import product, starmap
-from sklearn.kernel_approximation import RBFSampler
-from sklearn.model_selection import RepeatedStratifiedKFold
-from sklearn.neighbors import KNeighborsClassifier
-
-from sklearn.pipeline import make_pipeline
 
 from bqlearn.baseline import make_baseline
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.mixture import GaussianMixture
+from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.semi_supervised import SelfTrainingClassifier
-from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
-from mislabeled.detect import OutlierDetector, ModelBasedDetector
-from mislabeled.handle import (
-    BiqualityClassifier,
-    FilterClassifier,
-    SemiSupervisedClassifier,
-)
-from mislabeled.probe import FiniteDiffSensitivity, Complexity
-from mislabeled.split import GMMSplitter, PerClassSplitter, QuantileSplitter
-
+from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
     LeaveOneOut,
     ProgressiveEnsemble,
     SingleEnsemble,
 )
-
+from mislabeled.handle import (
+    BiqualityClassifier,
+    FilterClassifier,
+    SemiSupervisedClassifier,
+)
+from mislabeled.probe import Complexity
+from mislabeled.split import GMMSplitter, PerClassSplitter, QuantileSplitter
 
 seed = 42
 
