@@ -77,6 +77,18 @@ handlers = [
 ]
 
 
+@parametrize_with_checks(
+    list(
+        starmap(
+            lambda detector, splitter, handler: handler(detector, splitter),
+            product(detectors, splitters, handlers),
+        )
+    )
+)
+def test_all_detectors(estimator, check):
+    return check(estimator)
+
+
 # this requires a separate test because one of the instance attributes is a function,
 # which makes tests detect it as being non deterministic
 other_detectors = [
