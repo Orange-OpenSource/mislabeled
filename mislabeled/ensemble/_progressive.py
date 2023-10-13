@@ -8,10 +8,10 @@ from sklearn.utils.validation import _check_response_method
 from mislabeled.probe import check_probe
 from mislabeled.probe._scorer import _PROBES
 
-from ._base import AbstractEnsembling
+from ._base import AbstractEnsemble
 
 
-class ProgressiveEnsembling(AbstractEnsembling):
+class ProgressiveEnsemble(AbstractEnsemble):
     """Detector based on training dynamics.
 
     Parameters
@@ -47,7 +47,7 @@ class ProgressiveEnsembling(AbstractEnsembling):
         self.staging = staging
         self.method = method
 
-    def probe(self, base_model, X, y, probe):
+    def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
 
         Parameters

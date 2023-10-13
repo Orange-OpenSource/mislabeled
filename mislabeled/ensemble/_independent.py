@@ -6,10 +6,10 @@ from sklearn.utils.validation import _num_samples
 
 from mislabeled.probe import check_probe
 
-from ._base import AbstractEnsembling
+from ._base import AbstractEnsemble
 
 
-class IndependentEnsembling(AbstractEnsembling):
+class IndependentEnsemble(AbstractEnsemble):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -30,7 +30,7 @@ class IndependentEnsembling(AbstractEnsembling):
         self.ensemble_strategy = ensemble_strategy
         self.n_jobs = n_jobs
 
-    def probe(self, base_model, X, y, probe, in_the_bag=False):
+    def probe_model(self, base_model, X, y, probe, in_the_bag=False):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -96,7 +96,7 @@ class IndependentEnsembling(AbstractEnsembling):
         return probe_scores, masks
 
 
-class LOOEnsembling(IndependentEnsembling):
+class LeaveOneOutEnsemble(IndependentEnsemble):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more

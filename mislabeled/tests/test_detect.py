@@ -12,10 +12,10 @@ from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.detect import ModelBasedDetector, OutlierDetector
 from mislabeled.ensemble import (
-    IndependentEnsembling,
-    LOOEnsembling,
-    NoEnsembling,
-    ProgressiveEnsembling,
+    IndependentEnsemble,
+    LeaveOneOutEnsemble,
+    NoEnsemble,
+    ProgressiveEnsemble,
 )
 from mislabeled.probe import Complexity, FiniteDiffSensitivity, Influence
 
@@ -39,20 +39,20 @@ detectors = {
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100), LogisticRegression()
         ),
-        ensembling=NoEnsembling(),
+        ensemble=NoEnsemble(),
         probe=Influence(),
         aggregate="sum",
     ),
     "FiniteDiffComplexity": ModelBasedDetector(
         base_model=GradientBoostingClassifier(),
-        ensembling=NoEnsembling(),
+        ensemble=NoEnsemble(),
         probe=FiniteDiffSensitivity(
             "soft_margin", False, n_directions=20, n_jobs=-1, random_state=1
         ),
         aggregate="sum",
     ),
     "DecisionTreeComplexity": ModelBasedDetector(
-        ensembling=LOOEnsembling(),
+        ensemble=LeaveOneOutEnsemble(),
         base_model=DecisionTreeClassifier(),
         probe=Complexity(complexity_proxy="n_leaves"),
         aggregate="sum",
@@ -61,13 +61,13 @@ detectors = {
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100), LogisticRegression()
         ),
-        ensembling=NoEnsembling(),
+        ensemble=NoEnsemble(),
         probe="accuracy",
         aggregate="sum",
     ),
     "ConsensusConsistency": ModelBasedDetector(
         base_model=KNeighborsClassifier(n_neighbors=3),
-        ensembling=IndependentEnsembling(
+        ensemble=IndependentEnsemble(
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
         ),
         probe="accuracy",
@@ -75,7 +75,7 @@ detectors = {
     ),
     "ConfidentLearning": ModelBasedDetector(
         base_model=KNeighborsClassifier(n_neighbors=3),
-        ensembling=IndependentEnsembling(
+        ensemble=IndependentEnsemble(
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
         ),
         probe="confidence",
@@ -83,7 +83,7 @@ detectors = {
     ),
     "AUM": ModelBasedDetector(
         base_model=GradientBoostingClassifier(max_depth=1),
-        ensembling=ProgressiveEnsembling(),
+        ensemble=ProgressiveEnsemble(),
         probe="soft_margin",
         aggregate="sum",
     ),
@@ -95,7 +95,7 @@ detectors = {
             random_state=1,
             init="zero",
         ),
-        ensembling=ProgressiveEnsembling(),
+        ensemble=ProgressiveEnsemble(),
         probe="accuracy",
         aggregate="forget",
     ),
@@ -108,7 +108,7 @@ detectors = {
             random_state=1,
             init="zero",
         ),
-        ensembling=ProgressiveEnsembling(),
+        ensemble=ProgressiveEnsemble(),
         probe=FiniteDiffSensitivity(
             probe="confidence",
             adjust=False,
@@ -141,7 +141,7 @@ def test_detect(n_classes, detector):
                 RBFSampler(gamma="scale", n_components=100),
                 OneVsRestClassifier(LogisticRegression()),
             ),
-            ensembling=NoEnsembling(),
+            ensemble=NoEnsemble(),
             probe="accuracy",
             aggregate="sum",
         ),

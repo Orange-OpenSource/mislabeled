@@ -1,10 +1,10 @@
-from ._independent import IndependentEnsembling, LOOEnsembling
-from ._none import NoEnsembling
-from ._progressive import ProgressiveEnsembling
+from ._independent import IndependentEnsemble, LeaveOneOutEnsemble
+from ._no_ensemble import NoEnsemble
+from ._progressive import ProgressiveEnsemble
 
 __all__ = [
-    "IndependentEnsembling",
-    "ProgressiveEnsembling",
-    "NoEnsembling",
-    "LOOEnsembling",
+    "IndependentEnsemble",
+    "ProgressiveEnsemble",
+    "NoEnsemble",
+    "LeaveOneOutEnsemble",
 ]

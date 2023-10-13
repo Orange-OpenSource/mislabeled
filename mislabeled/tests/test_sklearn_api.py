@@ -13,10 +13,10 @@ from sklearn.utils.estimator_checks import parametrize_with_checks
 
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
-    IndependentEnsembling,
-    LOOEnsembling,
-    NoEnsembling,
-    ProgressiveEnsembling,
+    IndependentEnsemble,
+    LeaveOneOutEnsemble,
+    NoEnsemble,
+    ProgressiveEnsemble,
 )
 from mislabeled.handle import (
     BiqualityClassifier,
@@ -31,13 +31,13 @@ seed = 42
 detectors = [
     ModelBasedDetector(
         base_model=LogisticRegression(),
-        ensembling=NoEnsembling(),
+        ensemble=NoEnsemble(),
         probe="accuracy",
         aggregate="sum",
     ),
     ModelBasedDetector(
         base_model=KNeighborsClassifier(n_neighbors=3),
-        ensembling=IndependentEnsembling(
+        ensemble=IndependentEnsemble(
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=seed),
         ),
         probe="accuracy",
@@ -45,7 +45,7 @@ detectors = [
     ),
     ModelBasedDetector(
         base_model=GradientBoostingClassifier(max_depth=1, random_state=seed),
-        ensembling=ProgressiveEnsembling(),
+        ensemble=ProgressiveEnsemble(),
         probe="soft_margin",
         aggregate="sum",
     ),
@@ -94,7 +94,7 @@ def test_all_detectors_with_splitter(estimator, check):
 other_detectors = [
     ModelBasedDetector(
         base_model=DecisionTreeClassifier(random_state=seed),
-        ensembling=LOOEnsembling(),
+        ensemble=LeaveOneOutEnsemble(),
         probe=Complexity(complexity_proxy="n_leaves"),
         aggregate="sum",
     ),

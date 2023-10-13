@@ -7,7 +7,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.utils.estimator_checks import _get_check_estimator_ids
 
 from mislabeled.detect import ModelBasedDetector
-from mislabeled.ensemble import NoEnsembling
+from mislabeled.ensemble import NoEnsemble
 from mislabeled.split import GMMSplitter, QuantileSplitter
 
 from .utils import blobs_1_mislabeled
@@ -40,7 +40,7 @@ def simple_split_test(n_classes, detectors, splitter):
                     RBFSampler(gamma="scale", n_components=100),
                     LogisticRegression(),
                 ),
-                ensembling=NoEnsembling(),
+                ensemble=NoEnsemble(),
                 probe="accuracy",
                 aggregate="sum",
             ),
@@ -49,7 +49,7 @@ def simple_split_test(n_classes, detectors, splitter):
                     RBFSampler(gamma="scale", n_components=100),
                     LogisticRegression(),
                 ),
-                ensembling=NoEnsembling(),
+                ensemble=NoEnsemble(),
                 probe="soft_margin",
                 aggregate="sum",
             ),

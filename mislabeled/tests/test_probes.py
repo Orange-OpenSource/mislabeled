@@ -5,7 +5,7 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect import ModelBasedDetector
-from mislabeled.ensemble import NoEnsembling
+from mislabeled.ensemble import NoEnsemble
 from mislabeled.probe._scorer import (
     _PROBE_SCORERS,
     _PROBE_SCORERS_CLASSIFICATION,
@@ -64,7 +64,7 @@ def test_supervised_pro_classif(n_classes, probe_scorer):
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100), LogisticRegression()
         ),
-        ensembling=NoEnsembling(),
+        ensemble=NoEnsemble(),
         probe="accuracy",
         aggregate="sum",
     )
@@ -83,7 +83,7 @@ def test_unsupervised_pro(n_classes, n_outliers, probe_scorer):
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100), LogisticRegression()
         ),
-        ensembling=NoEnsembling(),
+        ensemble=NoEnsemble(),
         probe="accuracy",
         aggregate="sum",
     )
@@ -100,7 +100,7 @@ def test_supervised_pro_regr(probe_scorer):
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100), LinearRegression()
         ),
-        ensembling=NoEnsembling(),
+        ensemble=NoEnsemble(),
         probe="accuracy",
         aggregate="sum",
     )

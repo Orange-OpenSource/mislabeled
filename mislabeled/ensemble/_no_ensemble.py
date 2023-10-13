@@ -3,10 +3,10 @@ from sklearn.base import clone
 
 from mislabeled.probe import check_probe
 
-from ._base import AbstractEnsembling
+from ._base import AbstractEnsemble
 
 
-class NoEnsembling(AbstractEnsembling):
+class NoEnsemble(AbstractEnsemble):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -18,7 +18,7 @@ class NoEnsembling(AbstractEnsembling):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def probe(self, base_model, X, y, probe):
+    def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
 
         Parameters
