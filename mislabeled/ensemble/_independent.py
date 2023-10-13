@@ -46,8 +46,6 @@ class IndependentEnsembling(AbstractEnsembling):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True)
-
         n_samples = _num_samples(X)
 
         self.ensemble_strategy_ = check_cv(
@@ -115,4 +113,4 @@ class LOOEnsembling(IndependentEnsembling):
         *,
         n_jobs=None,
     ):
-        super().__init__(self, LeaveOneOut(), n_jobs=n_jobs)
+        super().__init__(LeaveOneOut(), n_jobs=n_jobs)

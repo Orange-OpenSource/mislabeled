@@ -34,8 +34,6 @@ class NoEnsembling(AbstractEnsembling):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True)
-
         base_model_ = clone(base_model)
         base_model_.fit(X, y)
         probe_scorer = check_probe(probe)

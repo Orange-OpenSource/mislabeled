@@ -15,7 +15,7 @@ class ModelBasedDetector(BaseEstimator):
         # n: #examples
         # p: #probes
         # e: #ensemble members
-        return self.ensembling.probe(self.estimator, X, y, self.probe)
+        return self.ensembling.probe(self.base_model, X, y, self.probe)
 
     def trust_score(self, X, y):
         probe_scores, masks = self.probe_score(X, y)

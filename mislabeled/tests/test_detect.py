@@ -57,14 +57,6 @@ detectors = {
         probe=Complexity(complexity_proxy="n_leaves"),
         aggregate="sum",
     ),
-    "FiniteDiffComplexity": ModelBasedDetector(
-        base_model=GradientBoostingClassifier(),
-        ensembling=NoEnsembling(),
-        probe=FiniteDiffSensitivity(
-            "soft_margin", False, n_directions=20, n_jobs=-1, random_state=1
-        ),
-        aggregate="sum",
-    ),
     "Classifier": ModelBasedDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100), LogisticRegression()

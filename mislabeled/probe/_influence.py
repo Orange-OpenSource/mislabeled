@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
 
 
 class Influence:
@@ -32,7 +32,7 @@ class Influence:
         """
 
         if isinstance(estimator, Pipeline):
-            X = estimator[:-1].transform(X)
+            X = make_pipeline(estimator[:-1]).transform(X)
             coef = estimator[-1].coef_
         else:
             coef = estimator.coef_

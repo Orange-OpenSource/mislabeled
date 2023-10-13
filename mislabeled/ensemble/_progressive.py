@@ -2,7 +2,7 @@ import copy
 
 import numpy as np
 from sklearn.base import clone
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.validation import _check_response_method
 
 from mislabeled.probe import check_probe
@@ -63,10 +63,9 @@ class ProgressiveEnsembling(AbstractEnsembling):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
 
         if isinstance(base_model, Pipeline):
-            X = base_model[:-1].fit_transform(X, y)
+            X = make_pipeline(base_model[:-1]).fit_transform(X, y)
             base_model = base_model[-1]
         else:
             base_model = base_model
