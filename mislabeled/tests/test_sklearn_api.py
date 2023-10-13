@@ -10,7 +10,6 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.semi_supervised import SelfTrainingClassifier
-from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
@@ -92,6 +91,8 @@ def test_all_detectors_with_splitter(estimator, check):
     return check(estimator)
 
 
+# this requires a separate test because one of the instance attributes is a function,
+# which makes tests detect it as being non deterministic
 other_detectors = [
     ModelBasedDetector(
         base_model=DecisionTreeClassifier(random_state=seed),
