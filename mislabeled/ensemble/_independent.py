@@ -52,18 +52,22 @@ class IndependentEnsemble(AbstractEnsemble):
             self.ensemble_strategy, y, classifier=is_classifier(base_model)
         )
 
+        def noscoring(estimator, X, y):
+            return 0
+
         self.probe_scorer_ = check_probe(probe)
-        scores = cross_validate(
+        results = cross_validate(
             base_model,
             X,
             y,
             cv=self.ensemble_strategy_,
             n_jobs=self.n_jobs,
+            scoring=noscoring,
             return_indices=True,
             return_estimator=True,
         )
 
-        estimators = scores["estimator"]
+        estimators = results["estimator"]
         n_ensemble_members = len(estimators)
 
         if in_the_bag:
@@ -85,7 +89,7 @@ class IndependentEnsemble(AbstractEnsemble):
 
         # TODO: parallel
         for e, (estimator, indices_oob, indices_itb) in enumerate(
-            zip(estimators, scores["indices"]["test"], scores["indices"]["train"])
+            zip(estimators, results["indices"]["test"], results["indices"]["train"])
         ):
             probe_scores[safe_mask(X, indices_oob), 0, e] = self.probe_scorer_(
                 estimator, X[safe_mask(X, indices_oob)], y[indices_oob]
@@ -96,7 +100,7 @@ class IndependentEnsemble(AbstractEnsemble):
         return probe_scores, masks
 
 
-class LeaveOneOutEnsemble(IndependentEnsemble):
+class LeaveOneOutEnsemble(AbstractEnsemble):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -113,4 +117,35 @@ class LeaveOneOutEnsemble(IndependentEnsemble):
         *,
         n_jobs=None,
     ):
-        super().__init__(LeaveOneOut(), n_jobs=n_jobs)
+        self.n_jobs = n_jobs
+
+    def probe_model(self, base_model, X, y, probe):
+        """A reference implementation of a fitting function.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape (n_samples, n_features)
+            The training input samples.
+        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
+            The target values (class labels in classification, real numbers in
+            regression).
+
+        Returns
+        -------
+        self : object
+            Returns self.
+        """
+        scores = cross_validate(
+            base_model,
+            X,
+            y,
+            cv=LeaveOneOut(),
+            scoring=check_probe(probe),
+            n_jobs=self.n_jobs,
+        )
+
+        probe_scores = np.expand_dims(np.diag(scores["test_score"]), axis=1)
+
+        masks = 1 * (probe_scores != 0)
+
+        return probe_scores, masks
