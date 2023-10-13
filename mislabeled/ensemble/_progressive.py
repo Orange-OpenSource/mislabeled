@@ -1,15 +1,17 @@
 import copy
 
 import numpy as np
-from sklearn.base import BaseEstimator, clone
-from sklearn.pipeline import Pipeline
+from sklearn.base import clone
+from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.validation import _check_response_method
 
 from mislabeled.probe import check_probe
 from mislabeled.probe._scorer import _PROBES
 
+from ._base import AbstractEnsemble
 
-class ProgressiveEnsemble(BaseEstimator):
+
+class ProgressiveEnsemble(AbstractEnsemble):
     """Detector based on training dynamics.
 
     Parameters
@@ -38,16 +40,14 @@ class ProgressiveEnsemble(BaseEstimator):
 
     def __init__(
         self,
-        base_model,
         *,
         staging=False,
         method="predict",
     ):
-        self.base_model = base_model
         self.staging = staging
         self.method = method
 
-    def probe_score(self, X, y, probe):
+    def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -63,25 +63,22 @@ class ProgressiveEnsemble(BaseEstimator):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
 
-        if isinstance(self.base_model, Pipeline):
-            X = self.base_model[:-1].fit_transform(X, y)
-            base_model = self.base_model[-1]
+        if isinstance(base_model, Pipeline):
+            X = make_pipeline(base_model[:-1]).fit_transform(X, y)
+            base_model = base_model[-1]
         else:
-            base_model = self.base_model
+            base_model = base_model
 
-        self.base_model_ = clone(base_model)
+        base_model_ = clone(base_model)
 
         if self.staging:
             # Can't work at the "probe_scorer" level because of staged version
             probe_ = copy.deepcopy(_PROBES[probe])
 
-            self.method_ = _check_response_method(
-                self.base_model_, f"staged_{self.method}"
-            )
+            self.method_ = _check_response_method(base_model_, f"staged_{self.method}")
 
-            self.base_model_.fit(X, y)
+            base_model_.fit(X, y)
 
             probe_scores = []
             for y_pred in self.method_(X):
@@ -89,15 +86,15 @@ class ProgressiveEnsemble(BaseEstimator):
                 probe_scores.append(probe_scores_iter)
 
         else:
-            if not hasattr(self.base_model_, "warm_start"):
+            if not hasattr(base_model_, "warm_start"):
                 raise ValueError(
                     "%s doesn't support iterative learning."
                     % base_model.__class__.__name__
                 )
 
-            self.base_model_.set_params(warm_start=True)
+            base_model_.set_params(warm_start=True)
 
-            base_model_params = self.base_model_.get_params()
+            base_model_params = base_model_.get_params()
             iter_params = ["n_estimators", "max_iter"]
             filtered_iter_params = [
                 iter_param
@@ -115,9 +112,9 @@ class ProgressiveEnsemble(BaseEstimator):
             self.probe_scorer_ = check_probe(probe)
             probe_scores = []
             for i in range(0, self.max_iter_):
-                self.base_model_.set_params(**{f"{self.iter_param_}": i + 1})
-                self.base_model_.fit(X, y)
-                probe_scores_iter = self.probe_scorer_(self.base_model_, X, y)
+                base_model_.set_params(**{f"{self.iter_param_}": i + 1})
+                base_model_.fit(X, y)
+                probe_scores_iter = self.probe_scorer_(base_model_, X, y)
                 if probe_scores_iter.ndim == 1:
                     probe_scores_iter = np.expand_dims(probe_scores_iter, axis=1)
                 probe_scores.append(probe_scores_iter)

@@ -15,8 +15,8 @@ def test_per_class_with_quantile_conserves_class_priors(n_classes):
     X, y, _ = blobs_1_mislabeled(n_classes=n_classes)
 
     classifier_detect = ModelBasedDetector(
+        base_model=KNeighborsClassifier(n_neighbors=3),
         ensemble=IndependentEnsemble(
-            KNeighborsClassifier(n_neighbors=3),
             StratifiedKFold(n_splits=5),
         ),
         probe="accuracy",

@@ -1,14 +1,15 @@
 import numpy as np
-from sklearn.base import BaseEstimator, is_classifier
-from sklearn.model_selection import check_cv, cross_validate
-from sklearn.model_selection import LeaveOneOut as LeaveOneOutCV
+from sklearn.base import is_classifier
+from sklearn.model_selection import check_cv, cross_validate, LeaveOneOut
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
 from mislabeled.probe import check_probe
 
+from ._base import AbstractEnsemble
 
-class IndependentEnsemble(BaseEstimator):
+
+class IndependentEnsemble(AbstractEnsemble):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -22,16 +23,14 @@ class IndependentEnsemble(BaseEstimator):
 
     def __init__(
         self,
-        base_model,
         ensemble_strategy,
         *,
         n_jobs=None,
     ):
-        self.base_model = base_model
         self.ensemble_strategy = ensemble_strategy
         self.n_jobs = n_jobs
 
-    def probe_score(self, X, y, probe, in_the_bag=False):
+    def probe_model(self, base_model, X, y, probe, in_the_bag=False):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -47,26 +46,28 @@ class IndependentEnsemble(BaseEstimator):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True)
-
         n_samples = _num_samples(X)
 
         self.ensemble_strategy_ = check_cv(
-            self.ensemble_strategy, y, classifier=is_classifier(self.base_model)
+            self.ensemble_strategy, y, classifier=is_classifier(base_model)
         )
 
+        def noscoring(estimator, X, y):
+            return 0
+
         self.probe_scorer_ = check_probe(probe)
-        scores = cross_validate(
-            self.base_model,
+        results = cross_validate(
+            base_model,
             X,
             y,
             cv=self.ensemble_strategy_,
             n_jobs=self.n_jobs,
+            scoring=noscoring,
             return_indices=True,
             return_estimator=True,
         )
 
-        estimators = scores["estimator"]
+        estimators = results["estimator"]
         n_ensemble_members = len(estimators)
 
         if in_the_bag:
@@ -88,7 +89,7 @@ class IndependentEnsemble(BaseEstimator):
 
         # TODO: parallel
         for e, (estimator, indices_oob, indices_itb) in enumerate(
-            zip(estimators, scores["indices"]["test"], scores["indices"]["train"])
+            zip(estimators, results["indices"]["test"], results["indices"]["train"])
         ):
             probe_scores[safe_mask(X, indices_oob), 0, e] = self.probe_scorer_(
                 estimator, X[safe_mask(X, indices_oob)], y[indices_oob]
@@ -99,7 +100,7 @@ class IndependentEnsemble(BaseEstimator):
         return probe_scores, masks
 
 
-class LeaveOneOut(BaseEstimator):
+class LeaveOneOutEnsemble(AbstractEnsemble):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -113,14 +114,12 @@ class LeaveOneOut(BaseEstimator):
 
     def __init__(
         self,
-        base_model,
         *,
         n_jobs=None,
     ):
-        self.base_model = base_model
         self.n_jobs = n_jobs
 
-    def probe_score(self, X, y, probe):
+    def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -136,15 +135,12 @@ class LeaveOneOut(BaseEstimator):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True)
-
-        self.probe_scorer_ = check_probe(probe)
         scores = cross_validate(
-            self.base_model,
+            base_model,
             X,
             y,
-            cv=LeaveOneOutCV(),
-            scoring=lambda est, X, y: self.probe_scorer_(est, X, y),
+            cv=LeaveOneOut(),
+            scoring=check_probe(probe),
             n_jobs=self.n_jobs,
         )
 

@@ -87,12 +87,11 @@ def test_detect(n_classes, detector):
         OutlierDetector(OneClassSVM(kernel="rbf", gamma=0.1)),
         # PDR
         ModelBasedDetector(
-            ensemble=SingleEnsemble(
-                make_pipeline(
-                    RBFSampler(gamma="scale", n_components=100),
-                    OneVsRestClassifier(LogisticRegression()),
-                )
+            base_model=make_pipeline(
+                RBFSampler(gamma="scale", n_components=100),
+                OneVsRestClassifier(LogisticRegression()),
             ),
+            ensemble=NoEnsemble(),
             probe="accuracy",
             aggregate="sum",
         ),
