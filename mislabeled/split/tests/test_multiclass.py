@@ -1,8 +1,10 @@
 import numpy as np
 import pytest
+from sklearn.model_selection import StratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 
-from mislabeled.detect import ConsensusDetector
+from mislabeled.detect import ModelBasedDetector
+from mislabeled.ensemble import IndependentEnsemble
 from mislabeled.split import PerClassSplitter, QuantileSplitter
 
 from ...tests.utils import blobs_1_mislabeled
@@ -12,8 +14,14 @@ from ...tests.utils import blobs_1_mislabeled
 def test_per_class_with_quantile_conserves_class_priors(n_classes):
     X, y, _ = blobs_1_mislabeled(n_classes=n_classes)
 
-    base_classifier = KNeighborsClassifier(n_neighbors=3)
-    classifier_detect = ConsensusDetector(base_classifier)
+    classifier_detect = ModelBasedDetector(
+        ensemble=IndependentEnsemble(
+            KNeighborsClassifier(n_neighbors=3),
+            StratifiedKFold(n_splits=5),
+        ),
+        probe="accuracy",
+        aggregate="mean_oob",
+    )
     splitter = PerClassSplitter(QuantileSplitter())
 
     scores = classifier_detect.trust_score(X, y)
