@@ -55,7 +55,6 @@ detectors = [
         probe=Complexity(complexity_proxy="n_leaves"),
         aggregate="sum",
     ),
-
 ]
 
 splitters = [
@@ -93,6 +92,7 @@ parametrize = parametrize_with_checks(
     )
 )
 parametrize = parametrize.with_args(ids=[])
+
 
 @parametrize
 def test_all_detectors(estimator, check):
