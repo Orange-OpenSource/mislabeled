@@ -1,11 +1,13 @@
 from sklearn.base import BaseEstimator
+
 from mislabeled.aggregate import check_aggregate
 
 
 class ModelBasedDetector(BaseEstimator):
-    def __init__(self, ensemble, probe, aggregate):
+    def __init__(self, base_model, ensembling, probe, aggregate):
+        self.base_model = base_model
+        self.ensembling = ensembling
         self.probe = probe
-        self.ensemble = ensemble
         self.aggregate = aggregate
 
     def probe_score(self, X, y):
@@ -13,7 +15,7 @@ class ModelBasedDetector(BaseEstimator):
         # n: #examples
         # p: #probes
         # e: #ensemble members
-        return self.ensemble.probe_score(X, y, self.probe)
+        return self.ensembling.probe(self.estimator, X, y, self.probe)
 
     def trust_score(self, X, y):
         probe_scores, masks = self.probe_score(X, y)

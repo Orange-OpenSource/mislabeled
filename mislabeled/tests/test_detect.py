@@ -10,13 +10,12 @@ from sklearn.pipeline import make_pipeline
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
-from mislabeled.detect import OutlierDetector, ModelBasedDetector
-
+from mislabeled.detect import ModelBasedDetector, OutlierDetector
 from mislabeled.ensemble import (
-    IndependentEnsemble,
-    LeaveOneOut,
-    ProgressiveEnsemble,
-    SingleEnsemble,
+    IndependentEnsembling,
+    LOOEnsembling,
+    NoEnsembling,
+    ProgressiveEnsembling,
 )
 from mislabeled.probe import Complexity, FiniteDiffSensitivity, Influence
 
@@ -37,91 +36,87 @@ def simple_detect_test(n_classes, detector):
 
 detectors = {
     "Influence": ModelBasedDetector(
-        ensemble=SingleEnsemble(
-            make_pipeline(
-                RBFSampler(gamma="scale", n_components=100), LogisticRegression()
-            )
+        base_model=make_pipeline(
+            RBFSampler(gamma="scale", n_components=100), LogisticRegression()
         ),
+        ensembling=NoEnsembling(),
         probe=Influence(),
         aggregate="sum",
     ),
     "FiniteDiffComplexity": ModelBasedDetector(
-        ensemble=SingleEnsemble(
-            GradientBoostingClassifier(),
-        ),
+        base_model=GradientBoostingClassifier(),
+        ensembling=NoEnsembling(),
         probe=FiniteDiffSensitivity(
             "soft_margin", False, n_directions=20, n_jobs=-1, random_state=1
         ),
         aggregate="sum",
     ),
     "DecisionTreeComplexity": ModelBasedDetector(
-        ensemble=LeaveOneOut(DecisionTreeClassifier()),
+        ensembling=LOOEnsembling(),
+        base_model=DecisionTreeClassifier(),
         probe=Complexity(complexity_proxy="n_leaves"),
         aggregate="sum",
     ),
     "FiniteDiffComplexity": ModelBasedDetector(
-        ensemble=SingleEnsemble(
-            GradientBoostingClassifier(),
-        ),
+        base_model=GradientBoostingClassifier(),
+        ensembling=NoEnsembling(),
         probe=FiniteDiffSensitivity(
             "soft_margin", False, n_directions=20, n_jobs=-1, random_state=1
         ),
         aggregate="sum",
     ),
     "Classifier": ModelBasedDetector(
-        ensemble=SingleEnsemble(
-            make_pipeline(
-                RBFSampler(gamma="scale", n_components=100), LogisticRegression()
-            )
+        base_model=make_pipeline(
+            RBFSampler(gamma="scale", n_components=100), LogisticRegression()
         ),
+        ensembling=NoEnsembling(),
         probe="accuracy",
         aggregate="sum",
     ),
     "ConsensusConsistency": ModelBasedDetector(
-        ensemble=IndependentEnsemble(
-            KNeighborsClassifier(n_neighbors=3),
+        base_model=KNeighborsClassifier(n_neighbors=3),
+        ensembling=IndependentEnsembling(
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
         ),
         probe="accuracy",
         aggregate="mean_oob",
     ),
     "ConfidentLearning": ModelBasedDetector(
-        ensemble=IndependentEnsemble(
-            KNeighborsClassifier(n_neighbors=3),
+        base_model=KNeighborsClassifier(n_neighbors=3),
+        ensembling=IndependentEnsembling(
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
         ),
         probe="confidence",
         aggregate="mean_oob",
     ),
     "AUM": ModelBasedDetector(
-        ensemble=ProgressiveEnsemble(GradientBoostingClassifier(max_depth=1)),
+        base_model=GradientBoostingClassifier(max_depth=1),
+        ensembling=ProgressiveEnsembling(),
         probe="soft_margin",
         aggregate="sum",
     ),
     "Forgetting": ModelBasedDetector(
-        ensemble=ProgressiveEnsemble(
-            GradientBoostingClassifier(
-                max_depth=None,
-                n_estimators=100,
-                subsample=0.3,
-                random_state=1,
-                init="zero",
-            ),
+        base_model=GradientBoostingClassifier(
+            max_depth=None,
+            n_estimators=100,
+            subsample=0.3,
+            random_state=1,
+            init="zero",
         ),
+        ensembling=ProgressiveEnsembling(),
         probe="accuracy",
         aggregate="forget",
     ),
     "VarianceOfGradients": ModelBasedDetector(
-        ensemble=ProgressiveEnsemble(
-            GradientBoostingClassifier(
-                max_depth=None,
-                n_estimators=100,
-                subsample=0.3,
-                learning_rate=0.2,
-                random_state=1,
-                init="zero",
-            ),
+        base_model=GradientBoostingClassifier(
+            max_depth=None,
+            n_estimators=100,
+            subsample=0.3,
+            learning_rate=0.2,
+            random_state=1,
+            init="zero",
         ),
+        ensembling=ProgressiveEnsembling(),
         probe=FiniteDiffSensitivity(
             probe="confidence",
             adjust=False,
@@ -150,12 +145,11 @@ def test_detect(n_classes, detector):
         OutlierDetector(OneClassSVM(kernel="rbf", gamma=0.1)),
         # PDR
         ModelBasedDetector(
-            ensemble=SingleEnsemble(
-                make_pipeline(
-                    RBFSampler(gamma="scale", n_components=100),
-                    OneVsRestClassifier(LogisticRegression()),
-                )
+            base_model=make_pipeline(
+                RBFSampler(gamma="scale", n_components=100),
+                OneVsRestClassifier(LogisticRegression()),
             ),
+            ensembling=NoEnsembling(),
             probe="accuracy",
             aggregate="sum",
         ),
