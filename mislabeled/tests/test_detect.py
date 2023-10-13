@@ -10,8 +10,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
-from mislabeled.detect import OutlierDetector, ModelBasedDetector
-
+from mislabeled.detect import ModelBasedDetector, OutlierDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
     LeaveOneOut,

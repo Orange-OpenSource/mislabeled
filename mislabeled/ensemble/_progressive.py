@@ -1,7 +1,7 @@
 import copy
 
 import numpy as np
-from sklearn.base import clone, BaseEstimator
+from sklearn.base import BaseEstimator, clone
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import _check_response_method
 
