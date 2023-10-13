@@ -49,12 +49,6 @@ detectors = [
         probe="soft_margin",
         aggregate="sum",
     ),
-    ModelBasedDetector(
-        base_model=DecisionTreeClassifier(random_state=seed),
-        ensemble=LeaveOneOutEnsemble(),
-        probe=Complexity(complexity_proxy="n_leaves"),
-        aggregate="sum",
-    ),
 ]
 
 splitters = [
@@ -83,11 +77,22 @@ handlers = [
 ]
 
 
+# this requires a separate test because one of the instance attributes is a function,
+# which makes tests detect it as being non deterministic
+other_detectors = [
+    ModelBasedDetector(
+        base_model=DecisionTreeClassifier(random_state=seed),
+        ensemble=LeaveOneOutEnsemble(),
+        probe=Complexity(complexity_proxy="n_leaves"),
+        aggregate="sum",
+    ),
+]
+
 parametrize = parametrize_with_checks(
     list(
         starmap(
             lambda detector, splitter, handler: handler(detector, splitter),
-            product(detectors, splitters, handlers),
+            product(other_detectors, splitters, handlers),
         )
     )
 )
@@ -95,5 +100,5 @@ parametrize = parametrize.with_args(ids=[])
 
 
 @parametrize
-def test_all_detectors(estimator, check):
+def test_complexity_detectors(estimator, check):
     return check(estimator)
