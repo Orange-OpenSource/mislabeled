@@ -14,9 +14,9 @@ from sklearn.utils.estimator_checks import parametrize_with_checks
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
-    LeaveOneOut,
+    LeaveOneOutEnsemble,
+    NoEnsemble,
     ProgressiveEnsemble,
-    SingleEnsemble,
 )
 from mislabeled.handle import (
     BiqualityClassifier,
@@ -30,27 +30,26 @@ seed = 42
 
 detectors = [
     ModelBasedDetector(
-        ensemble=SingleEnsemble(LogisticRegression()),
+        base_model=LogisticRegression(),
+        ensemble=NoEnsemble(),
         probe="accuracy",
         aggregate="sum",
     ),
     ModelBasedDetector(
+        base_model=KNeighborsClassifier(n_neighbors=3),
         ensemble=IndependentEnsemble(
-            KNeighborsClassifier(n_neighbors=3),
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=seed),
         ),
         probe="accuracy",
         aggregate="mean_oob",
     ),
     ModelBasedDetector(
-        ensemble=ProgressiveEnsemble(
-            GradientBoostingClassifier(max_depth=1, random_state=seed)
-        ),
+        base_model=GradientBoostingClassifier(max_depth=1, random_state=seed),
+        ensemble=ProgressiveEnsemble(),
         probe="soft_margin",
         aggregate="sum",
     ),
 ]
-
 
 splitters = [
     PerClassSplitter(
@@ -86,7 +85,7 @@ handlers = [
         )
     )
 )
-def test_all_detectors_with_splitter(estimator, check):
+def test_all_detectors(estimator, check):
     return check(estimator)
 
 
@@ -94,7 +93,8 @@ def test_all_detectors_with_splitter(estimator, check):
 # which makes tests detect it as being non deterministic
 other_detectors = [
     ModelBasedDetector(
-        ensemble=LeaveOneOut(DecisionTreeClassifier(random_state=seed)),
+        base_model=DecisionTreeClassifier(random_state=seed),
+        ensemble=LeaveOneOutEnsemble(),
         probe=Complexity(complexity_proxy="n_leaves"),
         aggregate="sum",
     ),
@@ -112,5 +112,5 @@ parametrize = parametrize.with_args(ids=[])
 
 
 @parametrize
-def test_naive_complexity(estimator, check):
+def test_complexity_detectors(estimator, check):
     return check(estimator)

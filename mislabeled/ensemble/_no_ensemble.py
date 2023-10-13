@@ -1,10 +1,12 @@
 import numpy as np
-from sklearn.base import BaseEstimator, clone
+from sklearn.base import clone
 
 from mislabeled.probe import check_probe
 
+from ._base import AbstractEnsemble
 
-class SingleEnsemble(BaseEstimator):
+
+class NoEnsemble(AbstractEnsemble):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -16,10 +18,7 @@ class SingleEnsemble(BaseEstimator):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, base_model):
-        self.base_model = base_model
-
-    def probe_score(self, X, y, probe):
+    def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -35,12 +34,10 @@ class SingleEnsemble(BaseEstimator):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True)
-
-        self.base_model_ = clone(self.base_model)
-        self.base_model_.fit(X, y)
+        base_model_ = clone(base_model)
+        base_model_.fit(X, y)
         probe_scorer = check_probe(probe)
-        probe_scores = probe_scorer(self.base_model_, X, y)
+        probe_scores = probe_scorer(base_model_, X, y)
 
         if probe_scores.ndim == 1:
             probe_scores = np.expand_dims(probe_scores, axis=(1, 2))

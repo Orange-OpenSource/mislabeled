@@ -17,8 +17,8 @@ def test_caching():
 
     base_classifier = KNeighborsClassifier(n_neighbors=3)
     classifier_detect = ModelBasedDetector(
+        base_model=KNeighborsClassifier(n_neighbors=3),
         ensemble=IndependentEnsemble(
-            KNeighborsClassifier(n_neighbors=3),
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
         ),
         probe="accuracy",
