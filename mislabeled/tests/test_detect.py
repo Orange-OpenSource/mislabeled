@@ -21,7 +21,7 @@ from mislabeled.detect.detectors import (
     InfluenceDetector,
     VarianceOfGradients,
 )
-from mislabeled.ensemble import SingleEnsemble
+from mislabeled.ensemble import NoEnsemble
 
 from .utils import blobs_1_mislabeled
 
