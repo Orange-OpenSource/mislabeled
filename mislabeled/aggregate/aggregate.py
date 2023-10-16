@@ -28,8 +28,8 @@ class AggregatorMixin:
 
 
 def forget(scores, masks):
-    diff_accuracy = scores[:, :, 1:] - scores[:, :, :-1]
-    return -(diff_accuracy == -1).sum(axis=(1, 2))
+    forgetting_events = np.diff(scores, axis=2, prepend=0) < 0
+    return -forgetting_events.sum(axis=(1, 2))
 
 
 def mean_of_var(scores, masks):
