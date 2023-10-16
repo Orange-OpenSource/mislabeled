@@ -10,14 +10,15 @@ from sklearn.pipeline import make_pipeline
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
-from mislabeled.detect import ModelBasedDetector, OutlierDetector
+from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
     LeaveOneOutEnsemble,
     NoEnsemble,
+    OutlierEnsemble,
     ProgressiveEnsemble,
 )
-from mislabeled.probe import Complexity, FiniteDiffSensitivity, Influence
+from mislabeled.probe import Complexity, FiniteDiffSensitivity, Influence, OutlierProbe
 
 from .utils import blobs_1_mislabeled
 
@@ -132,9 +133,19 @@ def test_detect(n_classes, detector):
 @pytest.mark.parametrize(
     "detector",
     [
-        OutlierDetector(IsolationForest(n_estimators=20, random_state=1)),
+        ModelBasedDetector(
+            base_model=IsolationForest(n_estimators=20, random_state=1),
+            ensemble=OutlierEnsemble(),
+            probe=OutlierProbe(),
+            aggregate="sum",
+        ),
         # KMM
-        OutlierDetector(OneClassSVM(kernel="rbf", gamma=0.1)),
+        ModelBasedDetector(
+            base_model=OneClassSVM(kernel="rbf", gamma=0.1),
+            ensemble=OutlierEnsemble(),
+            probe=OutlierProbe(),
+            aggregate="sum",
+        ),
         # PDR
         ModelBasedDetector(
             base_model=make_pipeline(
