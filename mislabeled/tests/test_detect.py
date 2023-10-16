@@ -38,14 +38,22 @@ def simple_detect_test(n_classes, detector):
     assert set(selected_untrusted) == set(indices_mislabeled)
 
 
+seed = 42
+
 detectors = [
     InfluenceDetector(
-        make_pipeline(RBFSampler(gamma="scale", n_components=100), LogisticRegression())
+        make_pipeline(
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LogisticRegression(),
+        )
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
     FiniteDiffComplexity(GradientBoostingClassifier()),
     Classifier(
-        make_pipeline(RBFSampler(gamma="scale", n_components=100), LogisticRegression())
+        make_pipeline(
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LogisticRegression(),
+        )
     ),
     ConsensusConsistency(KNeighborsClassifier(n_neighbors=3)),
     ConfidentLearning(KNeighborsClassifier(n_neighbors=3)),
@@ -88,7 +96,7 @@ def test_detect(n_classes, detector):
         # PDR
         ModelBasedDetector(
             base_model=make_pipeline(
-                RBFSampler(gamma="scale", n_components=100),
+                RBFSampler(gamma="scale", random_state=seed, n_components=100),
                 OneVsRestClassifier(LogisticRegression()),
             ),
             ensemble=NoEnsemble(),
