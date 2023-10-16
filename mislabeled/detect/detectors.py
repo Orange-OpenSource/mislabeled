@@ -43,6 +43,17 @@ class DecisionTreeComplexity(ModelBasedDetector):
         self.n_jobs = n_jobs
 
 
+class LinearModelComplexity(ModelBasedDetector):
+    def __init__(self, base_model, n_jobs=None):
+        super().__init__(
+            base_model=base_model,
+            ensemble=LeaveOneOutEnsemble(n_jobs=n_jobs),
+            probe=Complexity(complexity_proxy="weight_norm"),
+            aggregate="sum",
+        )
+        self.n_jobs = n_jobs
+
+
 class FiniteDiffComplexity(ModelBasedDetector):
     def __init__(
         self, base_model, epsilon=0.1, n_directions=20, n_jobs=None, random_state=None

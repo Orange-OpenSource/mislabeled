@@ -1,3 +1,7 @@
+import numpy as np
+from sklearn.pipeline import Pipeline
+
+
 class Complexity:
     """Detects likely mislabeled examples based on local smoothness of an overfitted
     classifier. Smoothness is measured using an estimate of the gradients around
@@ -14,7 +18,7 @@ class Complexity:
             - If int, then draws `n_directions` directions
             - If float, then draws `n_directions * n_features_in_` directions
 
-    classifier : Estimator object
+    classifier : base_model object
         The classifier used to overfit the examples
 
     random_state : int, RandomState instance or None, default=None
@@ -30,16 +34,18 @@ class Complexity:
     ):
         if complexity_proxy == "n_leaves":
             self._get_complexity = Complexity.complexity_n_leaves
+        elif complexity_proxy == "weight_norm":
+            self._get_complexity = Complexity.complexity_weight_norm
         else:
             raise NotImplementedError
 
-    def __call__(self, estimator, X, y):
+    def __call__(self, base_model, X, y):
         """Evaluate predicted probabilities for X relative to y_true.
 
         Parameters
         ----------
         method_caller : callable
-            Returns predictions given an estimator, method name, and other
+            Returns predictions given an base_model, method name, and other
             arguments, potentially caching results.
 
         clf : object
@@ -62,10 +68,16 @@ class Complexity:
         Returns
         -------
         score : float
-            Score function applied to prediction of estimator on X.
+            Score function applied to prediction of base_model on X.
         """
 
-        return self._get_complexity(estimator)
+        return self._get_complexity(base_model)
 
-    def complexity_n_leaves(estimator):
-        return estimator.get_n_leaves()
+    def complexity_n_leaves(base_model):
+        return base_model.get_n_leaves()
+
+    def complexity_weight_norm(base_model):
+        if isinstance(base_model, Pipeline):
+            base_model = base_model[-1]
+
+        return np.linalg.norm(base_model.coef_)

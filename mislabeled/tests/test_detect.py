@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
+from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
-from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import LogisticRegression
+from sklearn.kernel_approximation import Nystroem, RBFSampler
+from sklearn.linear_model import LogisticRegression, RidgeClassifier, SGDClassifier
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
@@ -19,6 +20,7 @@ from mislabeled.detect.detectors import (
     FiniteDiffComplexity,
     ForgetScores,
     InfluenceDetector,
+    LinearModelComplexity,
     VarianceOfGradients,
 )
 from mislabeled.ensemble import NoEnsemble
@@ -31,16 +33,26 @@ def simple_detect_test(n_classes, detector):
     # should be easily detected by every detection method
     X, y, indices_mislabeled = blobs_1_mislabeled(n_classes)
 
+    print(X.var(), X.shape)
+
     trust_scores = detector.trust_score(X, y)
 
     selected_untrusted = np.argsort(trust_scores)[:n_classes]
 
     assert set(selected_untrusted) == set(indices_mislabeled)
 
-
 seed = 42
 
 detectors = [
+    LinearModelComplexity(
+        make_pipeline(
+            StandardScaler(),
+            Nystroem(gamma=.5, n_components=200, random_state=seed),
+            LogisticRegression(C=1e3, warm_start=True),
+            # RidgeClassifier(alpha=1e-4)
+            # SGDClassifier(loss='log_loss', warm_start=True),
+        )
+    ),
     InfluenceDetector(
         make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
