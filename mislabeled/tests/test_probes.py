@@ -14,6 +14,8 @@ from mislabeled.probe._scorer import (
 
 from .utils import blobs_1_mislabeled, blobs_1_ood, blobs_1_outlier_y
 
+seed = 42
+
 
 def simple_detect_test(n_classes, detector):
     # a very simple task with a single mislabeled example that
@@ -62,7 +64,8 @@ def simple_ood_test(n_classes, n_outliers, detector):
 def test_supervised_pro_classif(n_classes, probe_scorer):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
-            RBFSampler(gamma="scale", n_components=100), LogisticRegression()
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LogisticRegression(),
         ),
         ensemble=NoEnsemble(),
         probe="accuracy",
@@ -81,7 +84,8 @@ def test_supervised_pro_classif(n_classes, probe_scorer):
 def test_unsupervised_pro(n_classes, n_outliers, probe_scorer):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
-            RBFSampler(gamma="scale", n_components=100), LogisticRegression()
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LogisticRegression(),
         ),
         ensemble=NoEnsemble(),
         probe="accuracy",
@@ -98,7 +102,8 @@ def test_unsupervised_pro(n_classes, n_outliers, probe_scorer):
 def test_supervised_pro_regr(probe_scorer):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
-            RBFSampler(gamma="scale", n_components=100), LinearRegression()
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LinearRegression(),
         ),
         ensemble=NoEnsemble(),
         probe="accuracy",

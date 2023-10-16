@@ -33,7 +33,7 @@ def blobs_1_outlier_y(n_samples=1000, seed=1):
     X = rng.uniform(-1, 1, size=(n_samples, 10))
 
     # project to higher dimension space
-    X_p = RBFSampler(gamma="scale", n_components=20).fit_transform(X)
+    X_p = RBFSampler(gamma="scale", n_components=20, random_state=seed).fit_transform(X)
 
     # sample random direction
     dir = rng.normal(0, 1, size=(20))

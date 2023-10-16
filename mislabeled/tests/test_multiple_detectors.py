@@ -12,6 +12,8 @@ from mislabeled.split import GMMSplitter, QuantileSplitter
 
 from .utils import blobs_1_mislabeled
 
+seed = 42
+
 
 def simple_split_test(n_classes, detectors, splitter):
     # a very simple task with a single mislabeled example that
@@ -37,7 +39,7 @@ def simple_split_test(n_classes, detectors, splitter):
         [
             ModelBasedDetector(
                 base_model=make_pipeline(
-                    RBFSampler(gamma="scale", n_components=100),
+                    RBFSampler(gamma="scale", n_components=100, random_state=seed),
                     LogisticRegression(),
                 ),
                 ensemble=NoEnsemble(),
@@ -46,7 +48,7 @@ def simple_split_test(n_classes, detectors, splitter):
             ),
             ModelBasedDetector(
                 base_model=make_pipeline(
-                    RBFSampler(gamma="scale", n_components=100),
+                    RBFSampler(gamma="scale", n_components=100, random_state=seed),
                     LogisticRegression(),
                 ),
                 ensemble=NoEnsemble(),
