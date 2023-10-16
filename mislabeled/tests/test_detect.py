@@ -48,7 +48,7 @@ detectors = [
         )
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
-    FiniteDiffComplexity(GradientBoostingClassifier()),
+    FiniteDiffComplexity(GradientBoostingClassifier(random_state=seed)),
     Classifier(
         make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
@@ -57,13 +57,13 @@ detectors = [
     ),
     ConsensusConsistency(KNeighborsClassifier(n_neighbors=3)),
     ConfidentLearning(KNeighborsClassifier(n_neighbors=3)),
-    AreaUnderMargin(GradientBoostingClassifier(max_depth=1)),
+    AreaUnderMargin(GradientBoostingClassifier(max_depth=1, random_state=seed)),
     ForgetScores(
         GradientBoostingClassifier(
             max_depth=None,
-            n_estimators=100,
+            n_estimators=200,
             subsample=0.3,
-            random_state=1,
+            random_state=seed,
             init="zero",
         )
     ),
@@ -73,7 +73,7 @@ detectors = [
             n_estimators=100,
             subsample=0.3,
             learning_rate=0.2,
-            random_state=1,
+            random_state=seed,
             init="zero",
         ),
     ),
