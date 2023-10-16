@@ -50,6 +50,7 @@ class FiniteDiffSensitivity:
         self.n_directions = n_directions
         self.random_state = random_state
         self.n_jobs = n_jobs
+        self._directions = None
 
     def __call__(self, estimator, X, y):
         """Evaluate predicted probabilities for X relative to y_true.
@@ -89,23 +90,25 @@ class FiniteDiffSensitivity:
             # treat as float
             n_directions = math.ceil(self.n_directions * X.shape[1])
 
-        def compute_delta_probe(probe, estimator, X, y, random_state):
-            n_samples, n_features = X.shape
-            random_state = check_random_state(random_state)
-            X_delta = random_state.normal(0, 1, size=(n_samples, n_features))
-            X_delta *= self.epsilon / np.linalg.norm(X_delta, axis=1, keepdims=True)
-            X_delta += X
-            return probe(estimator, X_delta, y)
+        # initialize directions
+        if self._directions is None:
+            random_state = check_random_state(self.random_state)
+            n_features = X.shape[1]
+            self._directions = random_state.normal(
+                0, 1, size=(n_directions, n_features)
+            )
+            self._directions /= np.linalg.norm(self._directions, axis=1, keepdims=True)
+
+        def compute_delta_probe(probe, estimator, X, y, i):
+            X_delta = self._directions[i] * self.epsilon
+            return probe(estimator, X + X_delta, y)
 
         probe = check_probe(self.probe, self.adjust)
 
-        random_state = check_random_state(self.random_state)
-        seeds = random_state.randint(np.iinfo(np.int32).max, size=n_directions)
-
         probe_scores = np.stack(
             Parallel(n_jobs=self.n_jobs)(
-                delayed(compute_delta_probe)(probe, estimator, X, y, seed)
-                for seed in seeds
+                delayed(compute_delta_probe)(probe, estimator, X, y, i)
+                for i in range(self.n_directions)
             ),
             axis=-1,
         )
