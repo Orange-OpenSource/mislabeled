@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
-from sklearn.model_selection import cross_validate, LeaveOneOut
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.validation import _num_samples
 
