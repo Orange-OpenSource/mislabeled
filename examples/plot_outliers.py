@@ -6,7 +6,7 @@ from sklearn.discriminant_analysis import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.svm import OneClassSVM
 
-from mislabeled.detect import OutlierDetector
+from mislabeled.detect.detectors import OutlierDetector
 from mislabeled.tests.utils import blobs_1_mislabeled
 
 detector = OutlierDetector(

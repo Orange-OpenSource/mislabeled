@@ -5,11 +5,23 @@ from mislabeled.ensemble import (
     IndependentEnsemble,
     LeaveOneOutEnsemble,
     NoEnsemble,
+    OutlierEnsemble,
     ProgressiveEnsemble,
 )
-from mislabeled.probe import Complexity, FiniteDiffSensitivity, Influence
+from mislabeled.probe import Complexity, FiniteDiffSensitivity, Influence, OutlierProbe
 
 # A detector zoo of techniques found in the litterature
+
+
+class OutlierDetector(ModelBasedDetector):
+    def __init__(self, base_model, n_jobs=None):
+        super().__init__(
+            base_model=base_model,
+            ensemble=OutlierEnsemble(),
+            probe=OutlierProbe(),
+            aggregate="sum",
+        )
+        self.n_jobs = n_jobs
 
 
 class InfluenceDetector(ModelBasedDetector):
