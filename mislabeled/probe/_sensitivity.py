@@ -32,6 +32,11 @@ class FiniteDiffSensitivity:
         from lists of possible values instead of scipy.stats distributions.
         Pass an int for reproducible output across multiple
         function calls.
+
+    fix_directions: bool
+        if True, then the directions are sampled once and then re-used every
+        consecutive call of the probe. Otherwise the directions are sampled
+        at every call.
     """
 
     def __init__(
@@ -43,6 +48,7 @@ class FiniteDiffSensitivity:
         n_directions=10,
         random_state=None,
         n_jobs=None,
+        fix_directions=True,
     ):
         self.probe = probe
         self.adjust = adjust
@@ -51,37 +57,27 @@ class FiniteDiffSensitivity:
         self.random_state = random_state
         self.n_jobs = n_jobs
         self._directions = None
+        self.fix_directions = fix_directions
 
     def __call__(self, estimator, X, y):
-        """Evaluate predicted probabilities for X relative to y_true.
+        """Evaluate the probe
 
         Parameters
         ----------
-        method_caller : callable
-            Returns predictions given an estimator, method name, and other
-            arguments, potentially caching results.
-
-        clf : object
-            Trained classifier to use for scoring. Must have a `predict_proba`
-            method; the output of that is used to compute the score.
+        estimator : object
+            Trained classifier to probe
 
         X : {array-like, sparse matrix}
-            Test data that will be fed to clf.predict_proba.
+            Test data
 
         y : array-like
-            Gold standard target values for X. These must be class labels,
-            not probabilities.
-
-        **kwargs : dict
-            Other parameters passed to the scorer. Refer to
-            :func:`set_score_request` for more details.
-
-            .. versionadded:: 1.3
+            Dataset target values for X
 
         Returns
         -------
-        score : float
-            Score function applied to prediction of estimator on X.
+        probe_scores : np.array
+            n x n_directions array of the finite difference computed along each
+            direction
         """
 
         if isinstance(self.n_directions, numbers.Integral):
@@ -91,7 +87,7 @@ class FiniteDiffSensitivity:
             n_directions = math.ceil(self.n_directions * X.shape[1])
 
         # initialize directions
-        if self._directions is None:
+        if self._directions is None or self.fix_directions is False:
             random_state = check_random_state(self.random_state)
             n_features = X.shape[1]
             self._directions = random_state.normal(
