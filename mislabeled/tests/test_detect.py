@@ -33,8 +33,6 @@ def simple_detect_test(n_classes, detector):
     # should be easily detected by every detection method
     X, y, indices_mislabeled = blobs_1_mislabeled(n_classes)
 
-    print(X.var(), X.shape)
-
     trust_scores = detector.trust_score(X, y)
 
     selected_untrusted = np.argsort(trust_scores)[:n_classes]
@@ -44,15 +42,6 @@ def simple_detect_test(n_classes, detector):
 seed = 42
 
 detectors = [
-    LinearModelComplexity(
-        make_pipeline(
-            StandardScaler(),
-            Nystroem(gamma=.5, n_components=200, random_state=seed),
-            LogisticRegression(C=1e3, warm_start=True),
-            # RidgeClassifier(alpha=1e-4)
-            # SGDClassifier(loss='log_loss', warm_start=True),
-        )
-    ),
     InfluenceDetector(
         make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
