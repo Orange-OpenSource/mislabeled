@@ -5,62 +5,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.validation import _num_samples
 
 
-class NaiveComplexityDetector(BaseEstimator, MetaEstimatorMixin):
-    """How much more capacity does fitting every example require compared
-    to not fitting it ?
-
-    Parameters
-    ----------
-    estimator : object
-        The estimator used to measure the complexity.
-
-    get_complexity : callable
-        The callable to get the complexity from the estimator.
-
-    n_jobs : int, default=None
-        The number of jobs to run in parallel. Computing trust scores
-        is parallelized over all samples.
-        ``None`` means 1 unless in a :obj:`joblib.parallel_backend`
-        context. ``-1`` means using all processors. See :term:`Glossary
-        <n_jobs>` for more details.
-    """
-
-    def __init__(self, estimator, get_complexity, *, n_jobs=None):
-        self.estimator = estimator
-        self.get_complexity = get_complexity
-
-        self.n_jobs = n_jobs
-
-    def trust_score(self, X, y):
-        """A reference implementation of a fitting function.
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix}, shape (n_samples, n_features)
-            The training input samples.
-        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
-            The target values (class labels in classification, real numbers in
-            regression).
-
-        Returns
-        -------
-        self : object
-            Returns self.
-        """
-        X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
-
-        scores = cross_validate(
-            self.estimator,
-            X,
-            y,
-            cv=LeaveOneOut(),
-            scoring=lambda est, X, y: self.get_complexity(est),
-            n_jobs=self.n_jobs,
-        )
-
-        return scores["test_score"]
-
-
 class DecisionTreeComplexityDetector(BaseEstimator, MetaEstimatorMixin):
     """How much more capacity does fitting every example require compared
     to not fitting it ?
