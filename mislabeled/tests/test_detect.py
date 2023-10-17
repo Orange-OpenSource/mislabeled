@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
-from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
-from sklearn.kernel_approximation import Nystroem, RBFSampler
-from sklearn.linear_model import LogisticRegression, RidgeClassifier, SGDClassifier
+from sklearn.kernel_approximation import RBFSampler
+from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
@@ -20,7 +19,6 @@ from mislabeled.detect.detectors import (
     FiniteDiffComplexity,
     ForgetScores,
     InfluenceDetector,
-    LinearModelComplexity,
     VarianceOfGradients,
 )
 from mislabeled.ensemble import NoEnsemble
@@ -38,6 +36,7 @@ def simple_detect_test(n_classes, detector):
     selected_untrusted = np.argsort(trust_scores)[:n_classes]
 
     assert set(selected_untrusted) == set(indices_mislabeled)
+
 
 seed = 42
 

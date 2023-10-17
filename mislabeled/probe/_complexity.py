@@ -36,6 +36,8 @@ class Complexity:
             self._get_complexity = Complexity.complexity_n_leaves
         elif complexity_proxy == "weight_norm":
             self._get_complexity = Complexity.complexity_weight_norm
+        elif complexity_proxy == "n_weak_learners":
+            self._get_complexity = Complexity.complexity_boosting
         else:
             raise NotImplementedError
 
@@ -73,11 +75,22 @@ class Complexity:
 
         return self._get_complexity(base_model)
 
+    def _get_model_in_pipeline(base_model):
+        if isinstance(base_model, Pipeline):
+            return base_model[-1]
+        return base_model
+
     def complexity_n_leaves(base_model):
+        base_model = Complexity._get_model_in_pipeline(base_model)
+
         return base_model.get_n_leaves()
 
     def complexity_weight_norm(base_model):
-        if isinstance(base_model, Pipeline):
-            base_model = base_model[-1]
+        base_model = Complexity._get_model_in_pipeline(base_model)
 
         return np.linalg.norm(base_model.coef_)
+
+    def complexity_boosting(base_model):
+        base_model = Complexity._get_model_in_pipeline(base_model)
+
+        return len(base_model.estimators_)
