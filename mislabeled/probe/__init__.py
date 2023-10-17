@@ -4,6 +4,7 @@ from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy, jensen_shannon, weighted_jensen_shannon
 from ._influence import Influence
 from ._margin import hard_margin, soft_margin
+from ._outlier import OutlierProbe
 from ._scorer import (
     check_probe,
     get_probe_scorer,
@@ -31,4 +32,5 @@ __all__ = [
     "FiniteDiffSensitivity",
     "Complexity",
     "Influence",
+    "OutlierProbe",
 ]
