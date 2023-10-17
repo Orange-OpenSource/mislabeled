@@ -40,7 +40,7 @@ class OutlierEnsemble(AbstractEnsemble):
 
         probe_scorer = check_probe(probe)
 
-        def ovr_fit_probe(base_model, X, y, c):
+        def one_vs_rest_fit_probe(base_model, X, y, c):
             base_model = clone(base_model)
             X_c, y_c = X[safe_mask(X, y == c)], y[y == c]
             base_model.fit(X_c, y_c)
@@ -48,7 +48,7 @@ class OutlierEnsemble(AbstractEnsemble):
             return probe_scores
 
         per_class_probe_scores = Parallel(n_jobs=self.n_jobs)(
-            delayed(ovr_fit_probe)(base_model, X, y, c) for c in classes
+            delayed(one_vs_rest_fit_probe)(base_model, X, y, c) for c in classes
         )
 
         probe_scores = np.empty(n_samples)
