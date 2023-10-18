@@ -10,15 +10,14 @@ class ModelBasedDetector(BaseEstimator):
         self.probe = probe
         self.aggregate = aggregate
 
-    def probe_score(self, X, y):
-        # returns: n x p x e
+    def trust_score(self, X, y):
+        probe_scores, masks = self.ensemble.probe_model(
+            self.base_model, X, y, self.probe
+        )
+        # probe_scores is n x p x e
         # n: #examples
         # p: #probes
         # e: #ensemble members
-        return self.ensemble.probe_model(self.base_model, X, y, self.probe)
-
-    def trust_score(self, X, y):
-        probe_scores, masks = self.probe_score(X, y)
 
         self.aggregate_ = check_aggregate(self.aggregate)
         return self.aggregate_(probe_scores, masks)
