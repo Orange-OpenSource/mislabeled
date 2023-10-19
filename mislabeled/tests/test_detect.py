@@ -49,7 +49,9 @@ detectors = [
         )
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
-    FiniteDiffComplexity(GradientBoostingClassifier(random_state=seed)),
+    FiniteDiffComplexity(
+        GradientBoostingClassifier(random_state=seed), random_state=seed
+    ),
     Classifier(
         make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
@@ -77,6 +79,7 @@ detectors = [
             random_state=seed,
             init="zero",
         ),
+        random_state=seed,
     ),
 ]
 
