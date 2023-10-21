@@ -1,16 +1,21 @@
 import os
 from tempfile import TemporaryDirectory
 
-from ..wrench import fetch_wrench
+import pytest
 
-# @pytest.mark.parametrize("name", WRENCH_DATASETS.keys())
-# def test_fetch(name):
-#     dataset = fetch_wrench(name)
-#     assert "data" in dataset
-#     assert "target" in dataset
-#     assert "weak_targets" in dataset
-#     assert "target_names" in dataset
-#     assert "description" in dataset
+from ..wrench import fetch_wrench, WRENCH_DATASETS
+
+
+@pytest.mark.parametrize("name", WRENCH_DATASETS.keys())
+def test_fetch(name):
+    with TemporaryDirectory() as tmpdir:
+        dataset = fetch_wrench(name, cache_folder=tmpdir)
+
+    assert "data" in dataset
+    assert "target" in dataset
+    assert "weak_targets" in dataset
+    assert "target_names" in dataset
+    assert "description" in dataset
 
 
 def test_youtube():
