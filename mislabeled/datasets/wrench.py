@@ -55,14 +55,17 @@ WRENCH_DATASETS = {
 }
 
 WRENCH_FILES = ["train.json", "valid.json", "test.json", "label.json"]
-WRENCH_SPLITS = [
-    ("train", "train.json"),
-    ("validation", "valid.json"),
-    ("test", "test.json"),
-]
+WRENCH_SPLITS = {
+    "train": ["train.json"],
+    "validation": ["valid.json"],
+    "test": ["test.json"],
+    "all": ["train.json", "valid.json", "test.json"],
+}
 
 
-def fetch_wrench(name, cache_folder=None):
+def fetch_wrench(name, cache_folder=None, split="train"):
+    if split not in WRENCH_SPLITS.keys():
+        raise ValueError(f"split should be in {WRENCH_SPLITS.keys()} was {split}")
     # Set the cache folder to home user
     if cache_folder is None:
         cache_folder = os.path.join(os.path.expanduser("~"), "wrench")
@@ -80,7 +83,7 @@ def fetch_wrench(name, cache_folder=None):
     data = []
     target = []
     weak_targets = []
-    for name, split in WRENCH_SPLITS:
+    for split in WRENCH_SPLITS[split]:
         # Load json as a dict structure
         with open(os.path.join(data_folder, split)) as split_file:
             indexed_content = dict(json.load(split_file))

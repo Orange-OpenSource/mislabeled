@@ -18,9 +18,9 @@ def test_youtube():
         youtube = fetch_wrench("youtube", cache_folder=tmpdir)
         assert os.path.exists(os.path.join(tmpdir, "youtube"))
 
-    assert len(youtube["data"]) == 2056
+    assert len(youtube["data"]) == 1686
     assert isinstance(youtube["data"][0], str)
-    assert len(youtube["target"]) == 2056
-    assert len(youtube["weak_targets"]) == 2056
+    assert len(youtube["target"]) == 1686
+    assert len(youtube["weak_targets"]) == 1686
     assert len(youtube["weak_targets"][0]) == 10
     assert youtube["target_names"] == ["HAM", "SPAM"]
