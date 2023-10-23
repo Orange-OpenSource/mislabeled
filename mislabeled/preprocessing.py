@@ -51,6 +51,10 @@ class WeakLabelEncoder(TransformerMixin, BaseEstimator):
         if self.missing == "random":
             n_nan = len(y[np.isnan(y)])
             y[np.isnan(y)] = rng.choice(self.classes_, size=n_nan)
+        if self.missing == "prior":
+            n_nan = len(y[np.isnan(y)])
+            priors = np.bincount(y[~np.isnan(y)], minlength=len(self.classes_))
+            y[np.isnan(y)] = rng.choice(self.classes_, size=n_nan, p=priors)
         else:
             raise ValueError(f"unrecognized missing: {self.missing}")
 
