@@ -1,9 +1,6 @@
-import math
-import numbers
-
 import numpy as np
 from scipy import stats
-from sklearn.base import BaseEstimator, TransformerMixin, check_array
+from sklearn.base import BaseEstimator, check_array, TransformerMixin
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import check_random_state
 

@@ -1,8 +1,5 @@
-from tempfile import TemporaryDirectory
-
 import numpy as np
 
-from mislabeled.datasets.wrench import fetch_wrench
 from mislabeled.preprocessing import WeakLabelEncoder
 
 
