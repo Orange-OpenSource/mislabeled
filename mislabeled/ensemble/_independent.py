@@ -17,8 +17,8 @@ class IndependentEnsemble(AbstractEnsemble):
 
     Parameters
     ----------
-    demo_param : str, default='demo_param'
-        A parameter used for demonstation of how to pass and store paramters.
+    in_the_bag : bool, default=False
+        whether to also compute probe on in_the_bag examples
     """
 
     def __init__(
@@ -26,11 +26,13 @@ class IndependentEnsemble(AbstractEnsemble):
         ensemble_strategy,
         *,
         n_jobs=None,
+        in_the_bag=False,
     ):
         self.ensemble_strategy = ensemble_strategy
         self.n_jobs = n_jobs
+        self.in_the_bag = in_the_bag
 
-    def probe_model(self, base_model, X, y, probe, in_the_bag=False):
+    def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -52,7 +54,7 @@ class IndependentEnsemble(AbstractEnsemble):
             self.ensemble_strategy, y, classifier=is_classifier(base_model)
         )
 
-        def noscoring(estimator, X, y):
+        def no_scoring(estimator, X, y):
             return 0
 
         self.probe_scorer_ = check_probe(probe)
@@ -62,26 +64,13 @@ class IndependentEnsemble(AbstractEnsemble):
             y,
             cv=self.ensemble_strategy_,
             n_jobs=self.n_jobs,
-            scoring=noscoring,
+            scoring=no_scoring,
             return_indices=True,
             return_estimator=True,
         )
 
         estimators = results["estimator"]
         n_ensemble_members = len(estimators)
-
-        if in_the_bag:
-            raise NotImplementedError
-
-        # if self.evalset == "train" or self.evalset == "test":
-        #     evalsets = scores["indices"][self.evalset]
-        # elif self.evalset == "all":
-        #     evalsets = starmap(
-        #         lambda train, test: np.concatenate((train, test)),
-        #         zip(scores["indices"]["train"], scores["indices"]["test"]),
-        #     )
-        # else:
-        #     raise ValueError(f"{self.evalset} not in ['train', 'test', 'all']")
 
         # atm we only support a single probe here
         probe_scores = np.full((n_samples, 1, n_ensemble_members), fill_value=np.nan)
@@ -91,10 +80,15 @@ class IndependentEnsemble(AbstractEnsemble):
         for e, (estimator, indices_oob, indices_itb) in enumerate(
             zip(estimators, results["indices"]["test"], results["indices"]["train"])
         ):
-            probe_scores[safe_mask(X, indices_oob), 0, e] = self.probe_scorer_(
-                estimator, X[safe_mask(X, indices_oob)], y[indices_oob]
-            )
-
+            if self.in_the_bag:
+                probe_scores[:, 0, e] = self.probe_scorer_(estimator, X, y)
+            else:
+                # only compute OOB probe scores
+                probe_scores[safe_mask(X, indices_oob), 0, e] = self.probe_scorer_(
+                    estimator, X[safe_mask(X, indices_oob)], y[indices_oob]
+                )
+            # mask indicates whether the examples was ITB or OOB when training
+            # the base model
             masks[safe_mask(X, indices_itb), 0, e] = 1
 
         return probe_scores, masks

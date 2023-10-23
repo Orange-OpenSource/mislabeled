@@ -20,6 +20,7 @@ from mislabeled.detect.detectors import (
     ForgetScores,
     InfluenceDetector,
     OutlierDetector,
+    RANSAC,
     VarianceOfGradients,
 )
 from mislabeled.ensemble import NoEnsemble
@@ -42,6 +43,12 @@ def simple_detect_test(n_classes, detector):
 seed = 42
 
 detectors = [
+    RANSAC(
+        make_pipeline(
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LogisticRegression(),
+        )
+    ),
     InfluenceDetector(
         make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
