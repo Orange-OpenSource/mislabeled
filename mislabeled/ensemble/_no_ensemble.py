@@ -1,9 +1,12 @@
 import numpy as np
-from sklearn.base import BaseEstimator, clone
-from sklearn.utils.validation import _num_features
+from sklearn.base import clone
+
+from mislabeled.probe import check_probe
+
+from ._base import AbstractEnsemble
 
 
-class InfluenceDetector(BaseEstimator):
+class NoEnsemble(AbstractEnsemble):
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -15,11 +18,7 @@ class InfluenceDetector(BaseEstimator):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, transform=None, *, alpha=1.0):
-        self.alpha = alpha
-        self.transform = transform
-
-    def trust_score(self, X, y):
+    def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -35,17 +34,14 @@ class InfluenceDetector(BaseEstimator):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True)
+        base_model_ = clone(base_model)
+        base_model_.fit(X, y)
+        probe_scorer = check_probe(probe)
+        probe_scores = probe_scorer(base_model_, X, y)
 
-        if self.transform is not None:
-            transform = clone(self.transform)
-            X = transform.fit_transform(X)
+        if probe_scores.ndim == 1:
+            probe_scores = np.expand_dims(probe_scores, axis=(1, 2))
+        elif probe_scores.ndim == 2:
+            probe_scores = np.expand_dims(probe_scores, axis=1)
 
-        n_features = _num_features(X)
-
-        inv = np.linalg.inv(X.T @ X + np.identity(n_features) * self.alpha)
-        H = X @ inv @ X.T
-
-        m = (H * (y.reshape(-1, 1) == y.reshape(1, -1))).sum(axis=1)
-
-        return m
+        return probe_scores, np.ones_like(probe_scores)

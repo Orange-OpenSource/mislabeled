@@ -1,9 +1,8 @@
-from sklearn.base import BaseEstimator, clone, MetaEstimatorMixin
+import numpy as np
+from sklearn.pipeline import make_pipeline, Pipeline
 
-from mislabeled.probe import check_probe
 
-
-class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
+class Influence:
     """A template estimator to be used as a reference implementation.
 
     For more information regarding how to build your own estimator, read more
@@ -15,12 +14,7 @@ class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
         A parameter used for demonstation of how to pass and store paramters.
     """
 
-    def __init__(self, estimator, probe="soft_margin", adjust=False):
-        self.probe = probe
-        self.adjust = adjust
-        self.estimator = estimator
-
-    def trust_score(self, X, y):
+    def __call__(self, estimator, X, y):
         """A reference implementation of a fitting function.
 
         Parameters
@@ -36,9 +30,18 @@ class ClassifierDetector(BaseEstimator, MetaEstimatorMixin):
         self : object
             Returns self.
         """
-        X, y = self._validate_data(X, y, accept_sparse=True, force_all_finite=False)
 
-        self.estimator_ = clone(self.estimator)
-        self.estimator_.fit(X, y)
-        self.probe_scorer_ = check_probe(self.probe, self.adjust)
-        return self.probe_scorer_(self.estimator_, X, y)
+        if isinstance(estimator, Pipeline):
+            X = make_pipeline(estimator[:-1]).transform(X)
+            coef = estimator[-1].coef_
+        else:
+            coef = estimator.coef_
+
+        # binary case
+        if coef.shape[0] == 1:
+            H = np.dot(X, coef.T)
+            return H * np.expand_dims((y - 0.5), axis=1)
+        # multiclass case
+        else:
+            H = np.dot(X, coef.T)
+            return np.take_along_axis(H, np.expand_dims(y, axis=1), axis=1)

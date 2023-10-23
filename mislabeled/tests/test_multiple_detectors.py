@@ -6,10 +6,13 @@ from sklearn.mixture import GaussianMixture
 from sklearn.pipeline import make_pipeline
 from sklearn.utils.estimator_checks import _get_check_estimator_ids
 
-from mislabeled.detect import ClassifierDetector
+from mislabeled.detect import ModelBasedDetector
+from mislabeled.ensemble import NoEnsemble
 from mislabeled.split import GMMSplitter, QuantileSplitter
 
 from .utils import blobs_1_mislabeled
+
+seed = 42
 
 
 def simple_split_test(n_classes, detectors, splitter):
@@ -34,13 +37,23 @@ def simple_split_test(n_classes, detectors, splitter):
     "detectors",
     [
         [
-            ClassifierDetector(
-                make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()),
+            ModelBasedDetector(
+                base_model=make_pipeline(
+                    RBFSampler(gamma="scale", n_components=100, random_state=seed),
+                    LogisticRegression(),
+                ),
+                ensemble=NoEnsemble(),
                 probe="accuracy",
+                aggregate="sum",
             ),
-            ClassifierDetector(
-                make_pipeline(RBFSampler(gamma="scale"), LogisticRegression()),
+            ModelBasedDetector(
+                base_model=make_pipeline(
+                    RBFSampler(gamma="scale", n_components=100, random_state=seed),
+                    LogisticRegression(),
+                ),
+                ensemble=NoEnsemble(),
                 probe="soft_margin",
+                aggregate="sum",
             ),
         ]
     ],

@@ -339,7 +339,7 @@ def get_probe_scorer_names():
     return sorted(_PROBE_SCORERS.keys())
 
 
-def check_probe(probe, adjust):
+def check_probe(probe, adjust=False):
     """Determine probe_scorer from user options.
 
     Parameters
@@ -375,7 +375,10 @@ def check_probe(probe, adjust):
             hasattr(module, "startswith")
             and module.startswith("mislabeled.probe.")
             and not module.startswith("mislabeled.probe._scorer")
+            and not module.startswith("mislabeled.probe._complexity")
             and not module.startswith("mislabeled.probe._sensitivity")
+            and not module.startswith("mislabeled.probe._influence")
+            and not module.startswith("mislabeled.probe._outlier")
             and not module.startswith("mislabeled.probe.tests.")
         ):
             raise ValueError(
