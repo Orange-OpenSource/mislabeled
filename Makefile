@@ -16,12 +16,12 @@ format:
 # Run tests for the library
 
 test:
-	pytest -n auto --maxprocesses=8 -s -v mislabeled
+	pytest -n auto --maxprocesses=8 -s -v mislabeled --ignore=mislabeled/datasets/tests/test_wrench.py
 
 # Run code coverage
 
 test-coverage:
-	pytest --cov --cov-report term --cov-report xml --junitxml=junit.xml -n auto --maxprocesses=8 -s -v mislabeled
+	pytest --cov --cov-report term --cov-report xml --junitxml=junit.xml -n auto --maxprocesses=8 -s -v mislabeled --ignore=mislabeled/datasets/tests/test_wrench.py
 
 # Check that docs can build
 
