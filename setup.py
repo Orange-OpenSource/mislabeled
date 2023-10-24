@@ -17,7 +17,15 @@ LICENSE = "new BSD"
 DOWNLOAD_URL = "https://github.com/scikit-learn-contrib/project-template"
 USE_SCM_VERSION = {"local_scheme": "no-local-version"}
 SETUP_REQUIRES = ["setuptools_scm"]
-INSTALL_REQUIRES = ["numpy", "scipy", "scikit-learn", "biquality-learn", "gdown"]
+INSTALL_REQUIRES = [
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "biquality-learn",
+    "gdown",
+    "pooch",
+    "pandas",
+]
 CLASSIFIERS = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
