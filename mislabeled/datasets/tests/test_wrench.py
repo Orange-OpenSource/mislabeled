@@ -7,7 +7,7 @@ from ..wrench import fetch_wrench, WRENCH_DATASETS
 
 
 @pytest.mark.parametrize("name", WRENCH_DATASETS.keys())
-def test_fetch(name):
+def test_fetch_wrench(name):
     with TemporaryDirectory() as tmpdir:
         dataset = fetch_wrench(name, cache_folder=tmpdir)
 
@@ -18,7 +18,7 @@ def test_fetch(name):
     assert "description" in dataset
 
 
-def test_youtube():
+def test_fetch_youtube():
     with TemporaryDirectory() as tmpdir:
         youtube = fetch_wrench("youtube", cache_folder=tmpdir)
         assert os.path.exists(os.path.join(tmpdir, "youtube"))
