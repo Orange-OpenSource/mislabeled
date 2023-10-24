@@ -1,10 +1,15 @@
-import pooch
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pooch
+
+WALN_GITHUB_URL = (
+    "https://raw.githubusercontent.com/uds-lsv/"
+    "transfer-distant-transformer-african/master/data"
+)
 
 WALN_DATASETS = {
-    "hausa": "https://raw.githubusercontent.com/uds-lsv/transfer-distant-transformer-african/master/data/hausa_newsclass",
-    "yoruba": "https://raw.githubusercontent.com/uds-lsv/transfer-distant-transformer-african/master/data/yoruba_newsclass",
+    "hausa": f"{WALN_GITHUB_URL}/hausa_newsclass",
+    "yoruba": f"{WALN_GITHUB_URL}/yoruba_newsclass",
 }
 
 WALN_SPLITS = {
@@ -14,7 +19,7 @@ WALN_SPLITS = {
     "all": ["train_clean.tsv", "dev.tsv", "test.tsv"],
 }
 
-WALN_LEXICON_URL = "https://raw.githubusercontent.com/uds-lsv/transfer-distant-transformer-african/master/data/yoruba_newsclass/lexicon"
+WALN_LEXICON_URL = f"{WALN_GITHUB_URL}/yoruba_newsclass/lexicon"
 
 WALN_LEXICONS = {
     "africa": (
@@ -50,12 +55,14 @@ WALN_LEXICONS = {
 
 # Define functions that your users can call to get back the data in memory
 def fetch_west_african_language_news(name, cache_folder=None, split="train"):
-    """Fetch datasets of weakly supervised west african languages text classification [1]_.
+    """Fetch datasets of weakly supervised west african languages
+    text classification [1]_.
 
     References
     ----------
-    .. [1] Transfer Learning and Distant Supervision for Multilingual Transformer Models:\
-        A Study on African Languages (Hedderich et al., EMNLP 2020)
+    .. [1] Transfer Learning and Distant Supervision\
+        for Multilingual Transformer Models: A Study on African Languages\
+        (Hedderich et al., EMNLP 2020)
     """
     # Download all lexicons
     rules = {}

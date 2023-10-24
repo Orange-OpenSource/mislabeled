@@ -69,7 +69,8 @@ def fetch_wrench(name, cache_folder=None, split="train"):
     References
     ----------
     .. [1] Zhang, J., Yu, Y., Li, Y., Wang, Y., Yang, Y., Yang, M., & Ratner, A.\
-    "Wrench: A comprehensive benchmark for weak supervision." NeurIPS Datasets Track 2021.
+    "Wrench: A comprehensive benchmark for weak supervision."\
+    NeurIPS Datasets Track 2021.
     """
 
     if split not in WRENCH_SPLITS.keys():

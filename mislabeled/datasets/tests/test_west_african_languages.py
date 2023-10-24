@@ -1,9 +1,8 @@
 import os
 from tempfile import TemporaryDirectory
+
 import numpy as np
-
 import pytest
-
 
 from ..west_african_languages import (
     fetch_west_african_language_news,
