@@ -64,6 +64,15 @@ WRENCH_SPLITS = {
 
 
 def fetch_wrench(name, cache_folder=None, split="train"):
+    """Fetch datasets from the weak supervision benchmark (WRENCH) [1]_.
+
+    References
+    ----------
+    .. [1] Zhang, J., Yu, Y., Li, Y., Wang, Y., Yang, Y., Yang, M., & Ratner, A.\
+    "Wrench: A comprehensive benchmark for weak supervision."\
+    NeurIPS Datasets Track 2021.
+    """
+
     if split not in WRENCH_SPLITS.keys():
         raise ValueError(f"split should be in {WRENCH_SPLITS.keys()} was {split}")
     # Set the cache folder to home user
