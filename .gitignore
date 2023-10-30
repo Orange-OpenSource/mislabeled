@@ -177,3 +177,4 @@ docs/auto_examples/
 benchmark/output
 output/
 cache/
+catboost_info/

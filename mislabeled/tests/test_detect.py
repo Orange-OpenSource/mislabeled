@@ -88,6 +88,18 @@ detectors = [
         ),
         random_state=seed,
     ),
+    VarianceOfGradients(
+        GradientBoostingClassifier(
+            max_depth=None,
+            n_estimators=100,
+            subsample=0.3,
+            learning_rate=0.2,
+            random_state=seed,
+            init="zero",
+        ),
+        n_directions=1.0,
+        random_state=seed,
+    ),
 ]
 
 
