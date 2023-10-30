@@ -104,7 +104,7 @@ class FiniteDiffSensitivity:
         probe_scores = np.stack(
             Parallel(n_jobs=self.n_jobs)(
                 delayed(compute_delta_probe)(probe, estimator, X, y, i)
-                for i in range(self.n_directions)
+                for i in range(n_directions)
             ),
             axis=-1,
         )
