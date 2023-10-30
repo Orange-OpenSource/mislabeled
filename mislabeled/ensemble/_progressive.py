@@ -1,7 +1,10 @@
 import copy
+from functools import singledispatch
 
 import numpy as np
 from sklearn.base import clone
+from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.validation import _check_response_method
 
@@ -9,6 +12,61 @@ from mislabeled.probe import check_probe
 from mislabeled.probe._scorer import _PROBES
 
 from ._base import AbstractEnsemble
+
+
+# TODO: Deal with current number of iterations
+# not being the same as the maximum number of iterations
+@singledispatch
+def incremental_fit(estimator, X, y, reset=False):
+    return NotImplementedError
+
+
+def incremental_fit_gradient(estimator, X, y, reset=False):
+    if reset:
+        estimator.set_params(warm_start=False)
+
+    estimator.set_params(max_iter=1)
+    estimator.fit(X, y)
+
+    estimator.set_params(warm_start=True)
+
+    return estimator
+
+
+@incremental_fit.register(SGDClassifier)
+def _incremental_fit_sgdc(estimator, X, y, reset=False):
+    return incremental_fit_gradient(estimator, X, y, reset=reset)
+
+
+@incremental_fit.register(LogisticRegression)
+def _incremental_fit_lr(estimator, X, y, reset=False):
+    return incremental_fit_gradient(estimator, X, y, reset=reset)
+
+
+def incremental_fit_ensemble(
+    estimator, X, y, reset=False, *, iter_param="n_estimators"
+):
+    if reset:
+        estimator.set_params(warm_start=False)
+        estimator.set_params(**{f"{iter_param}": 1})
+
+    else:
+        max_iter = estimator.get_params()[iter_param]
+        estimator.set_params(**{f"{iter_param}": max_iter + 1})
+
+    estimator.fit(X, y)
+    estimator.set_params(warm_start=True)
+    return estimator
+
+
+@incremental_fit.register(HistGradientBoostingClassifier)
+def _incremental_fit_hgbc(estimator, X, y, reset=False):
+    return incremental_fit_ensemble(estimator, X, y, reset=reset, iter_param="max_iter")
+
+
+@incremental_fit.register(GradientBoostingClassifier)
+def _incremental_fit_gbc(estimator, X, y, reset=False):
+    return incremental_fit_ensemble(estimator, X, y, reset=reset)
 
 
 class ProgressiveEnsemble(AbstractEnsemble):
@@ -41,9 +99,11 @@ class ProgressiveEnsemble(AbstractEnsemble):
     def __init__(
         self,
         *,
+        max_iter=100,
         staging=False,
         method="predict",
     ):
+        self.max_iter = max_iter
         self.staging = staging
         self.method = method
 
@@ -86,34 +146,16 @@ class ProgressiveEnsemble(AbstractEnsemble):
                 probe_scores.append(probe_scores_iter)
 
         else:
-            if not hasattr(base_model_, "warm_start"):
+            if base_model.__class__ not in incremental_fit.registry:
                 raise ValueError(
-                    "%s doesn't support iterative learning."
-                    % base_model.__class__.__name__
+                    f"{base_model.__class__.__name__} doesn't support iterative"
+                    " learning. Register the estimator class to incremental_fit."
                 )
-
-            base_model_.set_params(warm_start=True)
-
-            base_model_params = base_model_.get_params()
-            iter_params = ["n_estimators", "max_iter"]
-            filtered_iter_params = [
-                iter_param
-                for iter_param in iter_params
-                if iter_param in base_model_params
-            ]
-            if filtered_iter_params is None:
-                raise AttributeError(
-                    f"{base_model.__class__.__name__} has none of the following params:"
-                    f" {', '.join(iter_params)}."
-                )
-            self.iter_param_ = filtered_iter_params[0]
-            self.max_iter_ = base_model_params.get(self.iter_param_)
 
             self.probe_scorer_ = check_probe(probe)
             probe_scores = []
-            for i in range(0, self.max_iter_):
-                base_model_.set_params(**{f"{self.iter_param_}": i + 1})
-                base_model_.fit(X, y)
+            for i in range(0, self.max_iter):
+                base_model_ = incremental_fit(base_model_, X, y, reset=i == 0)
                 probe_scores_iter = self.probe_scorer_(base_model_, X, y)
                 if probe_scores_iter.ndim == 1:
                     probe_scores_iter = np.expand_dims(probe_scores_iter, axis=1)
