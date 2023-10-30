@@ -142,15 +142,14 @@ class AreaUnderMargin(ModelBasedDetector):
         NeurIPS 2020.
     """
 
-    def __init__(self, base_model, staging=False, max_iter=100):
+    def __init__(self, base_model, staging=False):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=staging, max_iter=max_iter),
+            ensemble=ProgressiveEnsemble(staging=staging),
             probe="soft_margin",
             aggregate="sum",
         )
         self.staging = staging
-        self.max_iter = max_iter
 
 
 class ForgetScores(ModelBasedDetector):
@@ -164,15 +163,14 @@ class ForgetScores(ModelBasedDetector):
         ICLR 2019.
     """
 
-    def __init__(self, base_model, staging=False, max_iter=100):
+    def __init__(self, base_model, staging=False):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=staging, max_iter=max_iter),
+            ensemble=ProgressiveEnsemble(staging=staging),
             probe="accuracy",
             aggregate="forget",
         )
         self.staging = staging
-        self.max_iter = max_iter
 
 
 class VarianceOfGradients(ModelBasedDetector):
@@ -193,11 +191,10 @@ class VarianceOfGradients(ModelBasedDetector):
         n_directions=20,
         random_state=None,
         n_jobs=None,
-        max_iter=100,
     ):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=False, max_iter=max_iter),
+            ensemble=ProgressiveEnsemble(staging=False),
             probe=FiniteDiffSensitivity(
                 probe="confidence",
                 adjust=False,
@@ -212,4 +209,3 @@ class VarianceOfGradients(ModelBasedDetector):
         self.n_directions = n_directions
         self.random_state = random_state
         self.n_jobs = n_jobs
-        self.max_iter = max_iter

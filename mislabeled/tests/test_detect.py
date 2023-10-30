@@ -68,27 +68,29 @@ detectors = [
     ConsensusConsistency(KNeighborsClassifier(n_neighbors=3)),
     ConfidentLearning(KNeighborsClassifier(n_neighbors=3)),
     AreaUnderMargin(
-        GradientBoostingClassifier(max_depth=1, random_state=seed),
-        max_iter=100,
+        GradientBoostingClassifier(n_estimators=100, max_depth=1, random_state=seed),
     ),
     ForgetScores(
         GradientBoostingClassifier(
+            n_estimators=200,
             max_depth=None,
             subsample=0.3,
             random_state=seed,
             init="zero",
         ),
-        max_iter=200,
+    ),
+    AreaUnderMargin(
+        DecisionTreeClassifier(),
     ),
     VarianceOfGradients(
         GradientBoostingClassifier(
+            n_estimators=100,
             max_depth=None,
             subsample=0.3,
             learning_rate=0.2,
             random_state=seed,
             init="zero",
         ),
-        max_iter=100,
         random_state=seed,
     ),
 ]
