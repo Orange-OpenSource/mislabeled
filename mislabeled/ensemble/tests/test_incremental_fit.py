@@ -24,19 +24,19 @@ def test_incremental_fit_gradient_model(estimator):
     np.random.seed(1)
     X, y = np.random.rand(10, 2), np.random.randint(0, high=2, size=10)
 
-    incremental_fit(estimator_incr, X, y)
+    estimator_incr, next = incremental_fit(estimator_incr, X, y, None, init=True)
     estimator_one_shot.set_params(max_iter=1)
     np.testing.assert_almost_equal(
         estimator_incr.coef_, estimator_one_shot.fit(X, y).coef_
     )
 
-    incremental_fit(estimator_incr, X, y)
+    estimator_incr, next = incremental_fit(estimator_incr, X, y, next)
     estimator_one_shot.set_params(max_iter=2)
     np.testing.assert_almost_equal(
         estimator_incr.coef_, estimator_one_shot.fit(X, y).coef_
     )
 
-    incremental_fit(estimator_incr, X, y, reset=True)
+    estimator_incr, next = incremental_fit(estimator_incr, X, y, None, init=True)
     estimator_one_shot.set_params(max_iter=1)
     np.testing.assert_almost_equal(
         estimator_incr.coef_, estimator_one_shot.fit(X, y).coef_
