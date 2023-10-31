@@ -1,5 +1,5 @@
 import copy
-from functools import singledispatch
+from functools import partial, singledispatch
 
 import numpy as np
 from sklearn.base import clone
@@ -22,7 +22,9 @@ def incremental_fit(estimator, X, y, next, init=False):
     return NotImplementedError
 
 
-def incremental_fit_gradient(estimator, X, y, next, init=False):
+@incremental_fit.register(SGDClassifier)
+@incremental_fit.register(LogisticRegression)
+def _incremental_fit_gradient(estimator, X, y, next, init=False):
     if init:
         max_iter = estimator.get_params()["max_iter"]
         next = range(max_iter)
@@ -35,17 +37,7 @@ def incremental_fit_gradient(estimator, X, y, next, init=False):
     return estimator, next[1:]
 
 
-@incremental_fit.register(SGDClassifier)
-def _incremental_fit_sgdc(estimator, X, y, next, init=False):
-    return incremental_fit_gradient(estimator, X, y, next, init=init)
-
-
-@incremental_fit.register(LogisticRegression)
-def _incremental_fit_lr(estimator, X, y, next, init=False):
-    return incremental_fit_gradient(estimator, X, y, next, init=init)
-
-
-def incremental_fit_ensemble(
+def _incremental_fit_ensemble(
     estimator, X, y, next, init=False, *, iter_param="n_estimators"
 ):
     if init:
@@ -59,20 +51,18 @@ def incremental_fit_ensemble(
     return estimator, next[1:]
 
 
-@incremental_fit.register(HistGradientBoostingClassifier)
-def _incremental_fit_hgbc(estimator, X, y, next, init=False):
-    return incremental_fit_ensemble(
-        estimator, X, y, next, init=init, iter_param="max_iter"
-    )
-
-
-@incremental_fit.register(GradientBoostingClassifier)
-def _incremental_fit_gbc(estimator, X, y, next, init=False):
-    return incremental_fit_ensemble(estimator, X, y, next, init=init)
+incremental_fit.register(
+    HistGradientBoostingClassifier,
+    partial(_incremental_fit_ensemble, iter_param="max_iter"),
+)
+incremental_fit.register(
+    GradientBoostingClassifier,
+    partial(_incremental_fit_ensemble, iter_param="n_estimators"),
+)
 
 
 @incremental_fit.register(DecisionTreeClassifier)
-def incremental_fit_tree(estimator, X, y, next, init=False):
+def _incremental_fit_tree(estimator, X, y, next, init=False):
     if init:
         path = estimator.cost_complexity_pruning_path(X, y)
         next = list(reversed(path.ccp_alphas))
