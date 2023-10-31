@@ -18,37 +18,37 @@ from ._base import AbstractEnsemble
 # TODO: Deal with current number of iterations
 # not being the same as the maximum number of iterations
 @singledispatch
-def incremental_fit(estimator, X, y, next, init=False):
+def incremental_fit(estimator, X, y, remaining_iterations, init=False):
     return NotImplementedError
 
 
 @incremental_fit.register(SGDClassifier)
 @incremental_fit.register(LogisticRegression)
-def _incremental_fit_gradient(estimator, X, y, next, init=False):
+def _incremental_fit_gradient(estimator, X, y, remaining_iterations, init=False):
     if init:
         max_iter = estimator.get_params()["max_iter"]
-        next = range(max_iter)
+        remaining_iterations = [1] * max_iter
         estimator.set_params(warm_start=False)
 
-    estimator.set_params(max_iter=1)
+    estimator.set_params(max_iter=remaining_iterations[0])
     estimator.fit(X, y)
     estimator.set_params(warm_start=True)
 
-    return estimator, next[1:]
+    return estimator, remaining_iterations[1:]
 
 
 def _incremental_fit_ensemble(
-    estimator, X, y, next, init=False, *, iter_param="n_estimators"
+    estimator, X, y, remaining_iterations, init=False, *, iter_param="n_estimators"
 ):
     if init:
         max_iter = estimator.get_params()[iter_param]
-        next = range(max_iter)
+        remaining_iterations = range(1, max_iter + 1)
         estimator.set_params(warm_start=False)
 
-    estimator.set_params(**{f"{iter_param}": next[0] + 1})
+    estimator.set_params(**{f"{iter_param}": remaining_iterations[0]})
     estimator.fit(X, y)
     estimator.set_params(warm_start=True)
-    return estimator, next[1:]
+    return estimator, remaining_iterations[1:]
 
 
 incremental_fit.register(
@@ -62,15 +62,15 @@ incremental_fit.register(
 
 
 @incremental_fit.register(DecisionTreeClassifier)
-def _incremental_fit_tree(estimator, X, y, next, init=False):
+def _incremental_fit_tree(estimator, X, y, remaining_iterations, init=False):
     if init:
         path = estimator.cost_complexity_pruning_path(X, y)
-        next = list(reversed(path.ccp_alphas))
+        remaining_iterations = list(reversed(path.ccp_alphas))
 
-    estimator.set_params(ccp_alpha=next[0])
+    estimator.set_params(ccp_alpha=remaining_iterations[0])
     estimator.fit(X, y)
 
-    return estimator, next[1:]
+    return estimator, remaining_iterations[1:]
 
 
 class ProgressiveEnsemble(AbstractEnsemble):
@@ -158,9 +158,11 @@ class ProgressiveEnsemble(AbstractEnsemble):
             probe_scores = []
 
             init = True
-            next = True
-            while next:
-                base_model_, next = incremental_fit(base_model_, X, y, next, init=init)
+            remaining_iterations = True
+            while remaining_iterations:
+                base_model_, remaining_iterations = incremental_fit(
+                    base_model_, X, y, remaining_iterations, init=init
+                )
                 init = False
                 probe_scores_iter = self.probe_scorer_(base_model_, X, y)
                 if probe_scores_iter.ndim == 1:
