@@ -2,15 +2,24 @@ import copy
 from functools import partial, singledispatch
 
 import numpy as np
-from sklearn.base import clone
-from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
+from sklearn.base import (
+    BaseEstimator,
+    ClassifierMixin,
+    RegressorMixin,
+    clone,
+    is_classifier,
+)
+from sklearn.ensemble import (
+    AdaBoostClassifier,
+    GradientBoostingClassifier,
+    HistGradientBoostingClassifier,
+)
 from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.utils.metaestimators import available_if
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.utils.validation import _check_response_method
 
 from mislabeled.probe import check_probe
-from mislabeled.probe._scorer import _PROBES
 
 from ._base import AbstractEnsemble
 
@@ -73,6 +82,45 @@ def _incremental_fit_tree(estimator, X, y, remaining_iterations, init=False):
     return estimator, remaining_iterations[1:]
 
 
+class StagedEstimator(BaseEstimator):
+    def __init__(
+        self,
+        i,
+        cache=None,
+    ):
+        self.i = i
+        self.cache = cache
+
+    def _has(self, attr):
+        return attr in self.cache
+
+    @available_if(partial(_has, attr="staged_predict"))
+    def predict(self, X):
+        return self.cache["staged_predict"][self.i]
+
+    @available_if(partial(_has, attr="staged_predict_proba"))
+    def predict_proba(self, X):
+        return self.cache["staged_predict_proba"][self.i]
+
+    @available_if(partial(_has, attr="staged_decision_function"))
+    def decision_function(self, X):
+        return self.cache["staged_decision_function"][self.i]
+
+
+class StagedRegressor(StagedEstimator, RegressorMixin):
+    pass
+
+
+class StagedClassifier(StagedEstimator, ClassifierMixin):
+    def __init__(self, classes, i, cache=None):
+        super().__init__(i, cache=cache)
+        self.classes = classes
+
+    @property
+    def classes_(self):
+        return self.classes
+
+
 class ProgressiveEnsemble(AbstractEnsemble):
     """Detector based on training dynamics.
 
@@ -104,10 +152,8 @@ class ProgressiveEnsemble(AbstractEnsemble):
         self,
         *,
         staging=False,
-        method="predict",
     ):
         self.staging = staging
-        self.method = method
 
     def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
@@ -132,20 +178,37 @@ class ProgressiveEnsemble(AbstractEnsemble):
         else:
             base_model = base_model
 
-        base_model_ = clone(base_model)
+        base_model = clone(base_model)
+        probe_scorer = check_probe(probe)
 
         if self.staging:
-            # Can't work at the "probe_scorer" level because of staged version
-            probe_ = copy.deepcopy(_PROBES[probe])
+            if all(not attr.startswith("staged") for attr in dir(base_model)):
+                raise ValueError(
+                    f"{base_model.__class__.__name__} doesn't allow to be staged."
+                    "The estimator must implement a staged prediction method."
+                )
 
-            self.method_ = _check_response_method(base_model_, f"staged_{self.method}")
+            base_model.fit(X, y)
 
-            base_model_.fit(X, y)
+            cache = {}
+            n_stages = 0
 
-            probe_scores = []
-            for y_pred in self.method_(X):
-                probe_scores_iter = probe_(y, y_pred)
-                probe_scores.append(probe_scores_iter)
+            for method in [
+                "staged_predict",
+                "staged_predict_proba",
+                "staged_decision_function",
+            ]:
+                if hasattr(base_model, method):
+                    cache[method] = list(getattr(base_model, method)(X))
+                    n_stages = len(cache[method])
+
+            if is_classifier(base_model):
+                stages = [
+                    StagedClassifier(base_model.classes_, i, cache)
+                    for i in range(n_stages)
+                ]
+            else:
+                stages = [StagedEstimator(i, cache) for i in range(n_stages)]
 
         else:
             if base_model.__class__ not in incremental_fit.registry:
@@ -154,21 +217,27 @@ class ProgressiveEnsemble(AbstractEnsemble):
                     " learning. Register the estimator class to incremental_fit."
                 )
 
-            self.probe_scorer_ = check_probe(probe)
-            probe_scores = []
-
             init = True
             remaining_iterations = True
+            stages = []
             while remaining_iterations:
-                base_model_, remaining_iterations = incremental_fit(
-                    base_model_, X, y, remaining_iterations, init=init
+                base_model, remaining_iterations = incremental_fit(
+                    base_model, X, y, remaining_iterations, init=init
                 )
                 init = False
-                probe_scores_iter = self.probe_scorer_(base_model_, X, y)
-                if probe_scores_iter.ndim == 1:
-                    probe_scores_iter = np.expand_dims(probe_scores_iter, axis=1)
-                probe_scores.append(probe_scores_iter)
+                stages.append(copy.deepcopy(base_model))
+
+        probe_scores = []
+        for stage in stages:
+            stage_probe_scores = probe_scorer(stage, X, y)
+            if stage_probe_scores.ndim == 1:
+                stage_probe_scores = np.expand_dims(stage_probe_scores, axis=1)
+            probe_scores.append(stage_probe_scores)
+
+        print(probe_scores[0].shape)
 
         probe_scores = np.stack(probe_scores, axis=-1)
+
+        print(probe_scores.shape)
 
         return probe_scores, np.ones_like(probe_scores)

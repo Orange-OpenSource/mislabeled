@@ -189,12 +189,13 @@ class VarianceOfGradients(ModelBasedDetector):
         *,
         epsilon=0.1,
         n_directions=20,
+        staging=False,
         random_state=None,
         n_jobs=None,
     ):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=False),
+            ensemble=ProgressiveEnsemble(staging=staging),
             probe=FiniteDiffSensitivity(
                 probe="confidence",
                 adjust=False,
@@ -207,5 +208,6 @@ class VarianceOfGradients(ModelBasedDetector):
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
+        self.staging = staging
         self.random_state = random_state
         self.n_jobs = n_jobs
