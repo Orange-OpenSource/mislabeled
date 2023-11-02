@@ -56,9 +56,7 @@ class DecisionTreeComplexity(ModelBasedDetector):
 
 
 class FiniteDiffComplexity(ModelBasedDetector):
-    def __init__(
-        self, base_model, epsilon=0.1, n_directions=20, n_jobs=None, random_state=None
-    ):
+    def __init__(self, base_model, epsilon=0.1, n_directions=20, random_state=None):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
@@ -67,7 +65,6 @@ class FiniteDiffComplexity(ModelBasedDetector):
                 False,
                 epsilon=epsilon,
                 n_directions=n_directions,
-                n_jobs=n_jobs,
                 random_state=random_state,
             ),
             aggregate="sum",
@@ -75,7 +72,6 @@ class FiniteDiffComplexity(ModelBasedDetector):
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.random_state = random_state
-        self.n_jobs = n_jobs
 
 
 class Classifier(ModelBasedDetector):
@@ -191,7 +187,6 @@ class VarianceOfGradients(ModelBasedDetector):
         n_directions=20,
         staging=False,
         random_state=None,
-        n_jobs=None,
     ):
         super().__init__(
             base_model=base_model,
@@ -202,7 +197,6 @@ class VarianceOfGradients(ModelBasedDetector):
                 epsilon=epsilon,
                 n_directions=n_directions,
                 random_state=random_state,
-                n_jobs=n_jobs,
             ),
             aggregate="mean_of_var",
         )
@@ -210,4 +204,3 @@ class VarianceOfGradients(ModelBasedDetector):
         self.n_directions = n_directions
         self.staging = staging
         self.random_state = random_state
-        self.n_jobs = n_jobs

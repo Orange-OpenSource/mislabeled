@@ -2,7 +2,6 @@ import math
 import numbers
 
 import numpy as np
-from joblib import delayed, Parallel
 from sklearn.dummy import check_random_state
 
 from mislabeled.probe import check_probe
@@ -47,7 +46,6 @@ class FiniteDiffSensitivity:
         epsilon=1e-1,
         n_directions=10,
         random_state=None,
-        n_jobs=None,
         fix_directions=True,
     ):
         self.probe = probe
@@ -55,7 +53,6 @@ class FiniteDiffSensitivity:
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.random_state = random_state
-        self.n_jobs = n_jobs
         self._directions = None
         self.fix_directions = fix_directions
 
@@ -95,21 +92,18 @@ class FiniteDiffSensitivity:
             )
             self._directions /= np.linalg.norm(self._directions, axis=1, keepdims=True)
 
-        def compute_delta_probe(probe, estimator, X, y, i):
-            X_delta = self._directions[i] * self.epsilon
-            return probe(estimator, X + X_delta, y)
+        probe_scorer = check_probe(self.probe, self.adjust)
 
-        probe = check_probe(self.probe, self.adjust)
+        reference_probe_scores = probe_scorer(estimator, X, y)
 
-        probe_scores = np.stack(
-            Parallel(n_jobs=self.n_jobs)(
-                delayed(compute_delta_probe)(probe, estimator, X, y, i)
-                for i in range(n_directions)
-            ),
-            axis=-1,
-        )
+        n_samples, n_features = X.shape
+        X = np.repeat(X, n_directions, axis=0)
+        X_delta = np.tile(self._directions, (n_samples, 1)) * self.epsilon
+        y = np.repeat(y, n_directions)
 
-        probe_scores -= probe(estimator, X, y).reshape(-1, 1)
+        probe_scores = probe_scorer(estimator, X + X_delta, y)
+        probe_scores = probe_scores.reshape(n_samples, n_directions)
+        probe_scores -= reference_probe_scores.reshape(n_samples, 1)
         probe_scores /= self.epsilon
 
         return probe_scores
