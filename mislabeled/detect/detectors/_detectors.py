@@ -194,7 +194,7 @@ class VarianceOfGradients(ModelBasedDetector):
     ):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(),
+            ensemble=ProgressiveEnsemble(staging=False),
             probe=FiniteDiffSensitivity(
                 probe="confidence",
                 adjust=False,
