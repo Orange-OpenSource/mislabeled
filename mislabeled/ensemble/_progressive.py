@@ -209,9 +209,7 @@ class ProgressiveEnsemble(AbstractEnsemble):
             ]:
                 if hasattr(base_model, method):
                     if isinstance(self.cache_location, str):
-                        cache_location = os.path.join(
-                            self.cache_location, str(hash(base_model)), method
-                        )
+                        cache_location = os.path.join(self.cache_location, method)
                     else:
                         cache_location = None
 
