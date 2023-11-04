@@ -121,11 +121,11 @@ class StagedClassifier(StagedEstimator, ClassifierMixin):
         return self.estimator.classes_
 
 
-def evaluated_staged_method(estimator, method):
-    def evaluated_generator(X):
-        return list(getattr(estimator, method)(X))
+def stacked_staged_method(estimator, method):
+    def inner(X):
+        return np.stack(list(getattr(estimator, method)(X)))
 
-    return evaluated_generator
+    return inner
 
 
 class ProgressiveEnsemble(AbstractEnsemble):
@@ -214,7 +214,7 @@ class ProgressiveEnsemble(AbstractEnsemble):
                         cache_location = None
 
                     memory = Memory(cache_location, verbose=0)
-                    to_cache = evaluated_staged_method(base_model, method)
+                    to_cache = stacked_staged_method(base_model, method)
                     cache[f"cached_{method}"] = memory.cache(to_cache)
                     if n_stages is None:
                         n_stages = len(cache[f"cached_{method}"](X))
