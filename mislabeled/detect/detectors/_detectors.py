@@ -56,9 +56,7 @@ class DecisionTreeComplexity(ModelBasedDetector):
 
 
 class FiniteDiffComplexity(ModelBasedDetector):
-    def __init__(
-        self, base_model, epsilon=0.1, n_directions=20, n_jobs=None, random_state=None
-    ):
+    def __init__(self, base_model, epsilon=0.1, n_directions=20, random_state=None):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
@@ -67,7 +65,6 @@ class FiniteDiffComplexity(ModelBasedDetector):
                 False,
                 epsilon=epsilon,
                 n_directions=n_directions,
-                n_jobs=n_jobs,
                 random_state=random_state,
             ),
             aggregate="sum",
@@ -75,7 +72,6 @@ class FiniteDiffComplexity(ModelBasedDetector):
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.random_state = random_state
-        self.n_jobs = n_jobs
 
 
 class Classifier(ModelBasedDetector):
@@ -142,14 +138,17 @@ class AreaUnderMargin(ModelBasedDetector):
         NeurIPS 2020.
     """
 
-    def __init__(self, base_model, staging=False):
+    def __init__(self, base_model, staging=False, cache_location=None):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=staging),
+            ensemble=ProgressiveEnsemble(
+                staging=staging, cache_location=cache_location
+            ),
             probe="soft_margin",
             aggregate="sum",
         )
         self.staging = staging
+        self.cache_location = cache_location
 
 
 class ForgetScores(ModelBasedDetector):
@@ -163,14 +162,17 @@ class ForgetScores(ModelBasedDetector):
         ICLR 2019.
     """
 
-    def __init__(self, base_model, staging=False):
+    def __init__(self, base_model, staging=False, cache_location=None):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=staging),
+            ensemble=ProgressiveEnsemble(
+                staging=staging, cache_location=cache_location
+            ),
             probe="accuracy",
             aggregate="forget",
         )
         self.staging = staging
+        self.cache_location = cache_location
 
 
 class VarianceOfGradients(ModelBasedDetector):
@@ -189,23 +191,26 @@ class VarianceOfGradients(ModelBasedDetector):
         *,
         epsilon=0.1,
         n_directions=20,
+        staging=False,
+        cache_location=None,
         random_state=None,
-        n_jobs=None,
     ):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=False),
+            ensemble=ProgressiveEnsemble(
+                staging=staging, cache_location=cache_location
+            ),
             probe=FiniteDiffSensitivity(
                 probe="confidence",
                 adjust=False,
                 epsilon=epsilon,
                 n_directions=n_directions,
                 random_state=random_state,
-                n_jobs=n_jobs,
             ),
             aggregate="mean_of_var",
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
+        self.staging = staging
+        self.cache_location = cache_location
         self.random_state = random_state
-        self.n_jobs = n_jobs

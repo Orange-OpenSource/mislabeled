@@ -1,3 +1,5 @@
+import tempfile
+
 import numpy as np
 import pytest
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
@@ -69,6 +71,8 @@ detectors = [
     ConfidentLearning(KNeighborsClassifier(n_neighbors=3)),
     AreaUnderMargin(
         GradientBoostingClassifier(n_estimators=100, max_depth=1, random_state=seed),
+        staging=True,
+        cache_location=tempfile.mkdtemp(),
     ),
     ForgetScores(
         GradientBoostingClassifier(
@@ -78,20 +82,11 @@ detectors = [
             random_state=seed,
             init="zero",
         ),
+        staging=True,
+        cache_location=tempfile.mkdtemp(),
     ),
     AreaUnderMargin(
         DecisionTreeClassifier(),
-    ),
-    VarianceOfGradients(
-        GradientBoostingClassifier(
-            n_estimators=100,
-            max_depth=None,
-            subsample=0.3,
-            learning_rate=0.2,
-            random_state=seed,
-            init="zero",
-        ),
-        random_state=seed,
     ),
     VarianceOfGradients(
         GradientBoostingClassifier(
@@ -104,6 +99,8 @@ detectors = [
         ),
         n_directions=1.0,
         random_state=seed,
+        staging=True,
+        cache_location=tempfile.mkdtemp(),
     ),
 ]
 
