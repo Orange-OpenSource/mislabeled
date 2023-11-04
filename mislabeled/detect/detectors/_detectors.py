@@ -138,14 +138,17 @@ class AreaUnderMargin(ModelBasedDetector):
         NeurIPS 2020.
     """
 
-    def __init__(self, base_model, staging=False):
+    def __init__(self, base_model, staging=False, cache_location=None):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=staging),
+            ensemble=ProgressiveEnsemble(
+                staging=staging, cache_location=cache_location
+            ),
             probe="soft_margin",
             aggregate="sum",
         )
         self.staging = staging
+        self.cache_location = cache_location
 
 
 class ForgetScores(ModelBasedDetector):
@@ -159,14 +162,17 @@ class ForgetScores(ModelBasedDetector):
         ICLR 2019.
     """
 
-    def __init__(self, base_model, staging=False):
+    def __init__(self, base_model, staging=False, cache_location=None):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=staging),
+            ensemble=ProgressiveEnsemble(
+                staging=staging, cache_location=cache_location
+            ),
             probe="accuracy",
             aggregate="forget",
         )
         self.staging = staging
+        self.cache_location = cache_location
 
 
 class VarianceOfGradients(ModelBasedDetector):
@@ -186,11 +192,14 @@ class VarianceOfGradients(ModelBasedDetector):
         epsilon=0.1,
         n_directions=20,
         staging=False,
+        cache_location=None,
         random_state=None,
     ):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(staging=staging),
+            ensemble=ProgressiveEnsemble(
+                staging=staging, cache_location=cache_location
+            ),
             probe=FiniteDiffSensitivity(
                 probe="confidence",
                 adjust=False,
@@ -203,4 +212,5 @@ class VarianceOfGradients(ModelBasedDetector):
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.staging = staging
+        self.cache_location = cache_location
         self.random_state = random_state

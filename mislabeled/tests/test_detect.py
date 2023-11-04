@@ -1,3 +1,5 @@
+import tempfile
+
 import numpy as np
 import pytest
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
@@ -70,6 +72,7 @@ detectors = [
     AreaUnderMargin(
         GradientBoostingClassifier(n_estimators=100, max_depth=1, random_state=seed),
         staging=True,
+        cache_location=tempfile.mkdtemp(),
     ),
     ForgetScores(
         GradientBoostingClassifier(
@@ -80,6 +83,7 @@ detectors = [
             init="zero",
         ),
         staging=True,
+        cache_location=tempfile.mkdtemp(),
     ),
     AreaUnderMargin(
         DecisionTreeClassifier(),
@@ -96,6 +100,7 @@ detectors = [
         n_directions=1.0,
         random_state=seed,
         staging=True,
+        cache_location=tempfile.mkdtemp(),
     ),
 ]
 

@@ -1,6 +1,5 @@
 import copy
 import os
-import tempfile
 from functools import partial, singledispatch
 
 import numpy as np
@@ -160,10 +159,10 @@ class ProgressiveEnsemble(AbstractEnsemble):
         self,
         *,
         staging=False,
-        location=None,
+        cache_location=None,
     ):
         self.staging = staging
-        self.location = location
+        self.cache_location = cache_location
 
     def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
@@ -203,20 +202,21 @@ class ProgressiveEnsemble(AbstractEnsemble):
             cache = {}
             n_stages = None
 
-            if self.location is None:
-                location = os.path.join(tempfile.gettempdir(), str(hash(base_model)))
-            else:
-                location = self.location
-
             for method in [
                 "staged_predict",
                 "staged_predict_proba",
                 "staged_decision_function",
             ]:
                 if hasattr(base_model, method):
-                    memory = Memory(os.path.join(location, method))
-                    to_cache = evaluated_staged_method(base_model, method)
+                    if isinstance(self.cache_location, str):
+                        cache_location = os.path.join(
+                            self.cache_location, str(hash(base_model)), method
+                        )
+                    else:
+                        cache_location = None
 
+                    memory = Memory(cache_location, verbose=0)
+                    to_cache = evaluated_staged_method(base_model, method)
                     cache[f"cached_{method}"] = memory.cache(to_cache)
                     if n_stages is None:
                         n_stages = len(cache[f"cached_{method}"](X))
