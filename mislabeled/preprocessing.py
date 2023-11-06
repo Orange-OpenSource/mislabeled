@@ -38,27 +38,37 @@ class WeakLabelEncoder(TransformerMixin, BaseEstimator):
 
         Y[Y != -1] = self.le_.transform(Y[Y != -1].reshape(-1))
 
-        Y = Y.astype(float)
-        Y[Y == -1] = np.nan
-
         rng = check_random_state(self.random_state)
 
-        if self.method == "majority":
-            y = stats.mode(Y, axis=1, nan_policy="omit")[0]
-        else:
-            raise ValueError(f"unrecognized method: {self.method}")
+        n_classes = len(self.classes_)
 
         if self.missing == "random":
-            n_nan = len(y[np.isnan(y)])
-            y[np.isnan(y)] = rng.choice(self.classes_, size=n_nan)
+            priors = np.ones(n_classes)
         elif self.missing == "prior":
-            n_nan = len(y[np.isnan(y)])
-            priors = np.bincount(y[~np.isnan(y)], minlength=len(self.classes_))
-            y[np.isnan(y)] = rng.choice(self.classes_, size=n_nan, p=priors)
+            priors = np.bincount(Y[Y != -1], minlength=n_classes)
         else:
             raise ValueError(f"unrecognized missing: {self.missing}")
 
-        return y.astype(int)
+        if self.method == "majority":
+            Y = Y.astype(float)
+            Y[Y == -1] = np.nan
+            y = stats.mode(Y, axis=1, nan_policy="omit")[0]
+            n_nan = len(y[np.isnan(y)])
+            y[np.isnan(y)] = rng.choice(
+                self.classes_, size=n_nan, p=priors / np.sum(priors)
+            )
+            y = y.astype(int)
+
+        elif self.method == "soft":
+            Y[Y == -1] = n_classes
+            y = np.apply_along_axis(np.bincount, 1, Y, minlength=n_classes + 1)
+            y = y[:, :n_classes]
+            y[np.all(y == 0, axis=1)] = priors
+            y = y / np.sum(y, axis=1, keepdims=True)
+        else:
+            raise ValueError(f"unrecognized method: {self.method}")
+
+        return y
 
     def inverse_transform(self, y):
         return self.le_.inverse_transform(y)
