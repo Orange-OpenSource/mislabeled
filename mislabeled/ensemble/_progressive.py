@@ -168,8 +168,8 @@ class ProgressiveEnsemble(AbstractEnsemble):
 
         probe_scores = []
 
-        for stage in range(0, n_stages, self.steps):
-            stage_probe_scores = probe_scorer(stage, X, y)
+        for i in range(0, n_stages, self.steps):
+            stage_probe_scores = probe_scorer(stages[i], X, y)
             if stage_probe_scores.ndim == 1:
                 stage_probe_scores = np.expand_dims(stage_probe_scores, axis=1)
             probe_scores.append(stage_probe_scores)
