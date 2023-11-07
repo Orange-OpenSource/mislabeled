@@ -1,29 +1,20 @@
 import copy
-import os
-from functools import partial, singledispatch
+import numbers
+from functools import singledispatch
 
 import numpy as np
-from joblib import Memory
-from sklearn.base import (
-    BaseEstimator,
-    ClassifierMixin,
-    clone,
-    is_classifier,
-    RegressorMixin,
-)
+from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn.svm import LinearSVC
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.utils.metaestimators import available_if
 
 from mislabeled.probe import check_probe
 
 from ._base import AbstractEnsemble
 
 
-# TODO: Deal with current number of iterations
-# not being the same as the maximum number of iterations
 @singledispatch
 def incremental_fit(estimator, X, y, remaining_iterations, init=False):
     return NotImplementedError
@@ -31,10 +22,16 @@ def incremental_fit(estimator, X, y, remaining_iterations, init=False):
 
 @incremental_fit.register(SGDClassifier)
 @incremental_fit.register(LogisticRegression)
+@incremental_fit.register(LinearSVC)
 def _incremental_fit_gradient(estimator, X, y, remaining_iterations, init=False):
     if init:
-        max_iter = estimator.get_params()["max_iter"]
-        remaining_iterations = [1] * max_iter
+        estimator.fit(X, y)
+        n_classes = len(estimator.classes_)
+        if n_classes > 2:
+            n_iter = np.max(estimator.n_iter_)
+        else:
+            n_iter = estimator.n_iter_
+        remaining_iterations = [1] * n_iter
         estimator.set_params(warm_start=False)
 
     estimator.set_params(max_iter=remaining_iterations[0])
@@ -44,28 +41,41 @@ def _incremental_fit_gradient(estimator, X, y, remaining_iterations, init=False)
     return estimator, remaining_iterations[1:]
 
 
-def _incremental_fit_ensemble(
-    estimator, X, y, remaining_iterations, init=False, *, iter_param="n_estimators"
+@incremental_fit.register(HistGradientBoostingClassifier)
+def _incremental_fit_hgb(
+    estimator: HistGradientBoostingClassifier, X, y, remaining_iterations, init=False
 ):
     if init:
-        max_iter = estimator.get_params()[iter_param]
-        remaining_iterations = range(1, max_iter + 1)
-        estimator.set_params(warm_start=False)
+        estimator.fit(X, y)
+        remaining_iterations = []
+        for i in range(estimator.n_iter_):
+            shrinked = copy.deepcopy(estimator)
+            shrinked._predictors = estimator._predictors[0 : i + 1]
+            shrinked.train_score_ = estimator.train_score_[0 : i + 1]
+            shrinked.validation_score_ = estimator.validation_score_[0 : i + 1]
+            remaining_iterations.append(shrinked)
 
-    estimator.set_params(**{f"{iter_param}": remaining_iterations[0]})
-    estimator.fit(X, y)
-    estimator.set_params(warm_start=True)
-    return estimator, remaining_iterations[1:]
+    return remaining_iterations[0], remaining_iterations[1:]
 
 
-incremental_fit.register(
-    HistGradientBoostingClassifier,
-    partial(_incremental_fit_ensemble, iter_param="max_iter"),
-)
-incremental_fit.register(
-    GradientBoostingClassifier,
-    partial(_incremental_fit_ensemble, iter_param="n_estimators"),
-)
+@incremental_fit.register(GradientBoostingClassifier)
+def _incremental_fit_gb(
+    estimator: GradientBoostingClassifier, X, y, remaining_iterations, init=False
+):
+    if init:
+        estimator.fit(X, y)
+        remaining_iterations = []
+        for i in range(estimator.n_estimators_):
+            shrinked = copy.deepcopy(estimator)
+            shrinked.estimators_ = estimator.estimators_[0 : i + 1]
+            if estimator.get_params()["subsample"] < 1:
+                shrinked.oob_improvement_ = estimator.oob_improvement_[0 : i + 1]
+                shrinked.oob_scores_ = estimator.oob_scores_[0 : i + 1]
+                shrinked.oob_score_ = estimator.oob_scores_[i]
+            shrinked.train_score_ = estimator.train_score_[0 : i + 1]
+            remaining_iterations.append(shrinked)
+
+    return remaining_iterations[0], remaining_iterations[1:]
 
 
 @incremental_fit.register(DecisionTreeClassifier)
@@ -80,54 +90,6 @@ def _incremental_fit_tree(estimator, X, y, remaining_iterations, init=False):
     return estimator, remaining_iterations[1:]
 
 
-class StagedEstimator(BaseEstimator):
-    def __init__(
-        self,
-        estimator,
-        i,
-        cached_staged_predict=None,
-        cached_staged_predict_proba=None,
-        cached_staged_decision_function=None,
-    ):
-        self.estimator = estimator
-        self.i = i
-        self.cached_staged_predict = cached_staged_predict
-        self.cached_staged_predict_proba = cached_staged_predict_proba
-        self.cached_staged_decision_function = cached_staged_decision_function
-
-    def _has(self, method):
-        return getattr(self, f"cached_staged_{method}") is not None
-
-    @available_if(partial(_has, method="predict"))
-    def predict(self, X):
-        return self.cached_staged_predict(X)[self.i]
-
-    @available_if(partial(_has, method="predict_proba"))
-    def predict_proba(self, X):
-        return self.cached_staged_predict_proba(X)[self.i]
-
-    @available_if(partial(_has, method="decision_function"))
-    def decision_function(self, X):
-        return self.cached_staged_decision_function(X)[self.i]
-
-
-class StagedRegressor(StagedEstimator, RegressorMixin):
-    pass
-
-
-class StagedClassifier(StagedEstimator, ClassifierMixin):
-    @property
-    def classes_(self):
-        return self.estimator.classes_
-
-
-def stacked_staged_method(estimator, method):
-    def inner(X):
-        return np.stack(list(getattr(estimator, method)(X)))
-
-    return inner
-
-
 class ProgressiveEnsemble(AbstractEnsemble):
     """Detector based on training dynamics.
 
@@ -137,11 +99,8 @@ class ProgressiveEnsemble(AbstractEnsemble):
         The estimator used to measure the complexity. It is required
         that the `estimator` supports iterative learning with `warm_start`.
 
-    max_iter : int, default=100
-        Maximum number of iterations.
-
-    staging : bool, default=False
-        Uses staged predictions if `estimator` supports it.
+    steps : int
+        The model is probed every n_steps.
 
     Attributes
     ----------
@@ -155,14 +114,8 @@ class ProgressiveEnsemble(AbstractEnsemble):
         Number of iterations of the boosting process.
     """
 
-    def __init__(
-        self,
-        *,
-        staging=False,
-        cache_location=None,
-    ):
-        self.staging = staging
-        self.cache_location = cache_location
+    def __init__(self, *, steps=1):
+        self.steps = steps
 
     def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
@@ -190,63 +143,32 @@ class ProgressiveEnsemble(AbstractEnsemble):
         base_model = clone(base_model)
         probe_scorer = check_probe(probe)
 
-        if self.staging:
-            if all(not attr.startswith("staged") for attr in dir(base_model)):
-                raise ValueError(
-                    f"{base_model.__class__.__name__} doesn't allow to be staged."
-                    "The estimator must implement a staged prediction method."
-                )
+        if base_model.__class__ not in incremental_fit.registry:
+            raise ValueError(
+                f"{base_model.__class__.__name__} doesn't support iterative"
+                " learning. Register the estimator class to incremental_fit."
+            )
 
-            base_model.fit(X, y)
+        init = True
+        remaining_iterations = True
+        stages = []
+        while remaining_iterations:
+            base_model, remaining_iterations = incremental_fit(
+                base_model, X, y, remaining_iterations, init=init
+            )
+            init = False
+            stages.append(copy.deepcopy(base_model))
 
-            cache = {}
-            n_stages = None
+        n_stages = len(stages)
 
-            for method in [
-                "staged_predict",
-                "staged_predict_proba",
-                "staged_decision_function",
-            ]:
-                if hasattr(base_model, method):
-                    if isinstance(self.cache_location, str):
-                        cache_location = os.path.join(self.cache_location, method)
-                    else:
-                        cache_location = None
-
-                    memory = Memory(cache_location, verbose=0)
-                    to_cache = stacked_staged_method(base_model, method)
-                    cache[f"cached_{method}"] = memory.cache(to_cache)
-                    if n_stages is None:
-                        n_stages = len(cache[f"cached_{method}"](X))
-
-            if is_classifier(base_model):
-                stages = [
-                    StagedClassifier(base_model, i, **cache) for i in range(n_stages)
-                ]
-            else:
-                stages = [
-                    StagedEstimator(base_model, i, **cache) for i in range(n_stages)
-                ]
-
-        else:
-            if base_model.__class__ not in incremental_fit.registry:
-                raise ValueError(
-                    f"{base_model.__class__.__name__} doesn't support iterative"
-                    " learning. Register the estimator class to incremental_fit."
-                )
-
-            init = True
-            remaining_iterations = True
-            stages = []
-            while remaining_iterations:
-                base_model, remaining_iterations = incremental_fit(
-                    base_model, X, y, remaining_iterations, init=init
-                )
-                init = False
-                stages.append(copy.deepcopy(base_model))
+        if self.steps is not numbers.Integral and self.steps <= 0:
+            raise ValueError(
+                f"steps size should be a strictly positive integer, was : {self.steps}"
+            )
 
         probe_scores = []
-        for stage in stages:
+
+        for stage in range(0, n_stages, self.steps):
             stage_probe_scores = probe_scorer(stage, X, y)
             if stage_probe_scores.ndim == 1:
                 stage_probe_scores = np.expand_dims(stage_probe_scores, axis=1)
