@@ -10,7 +10,8 @@ from sklearn.ensemble import (
     GradientBoostingClassifier,
     HistGradientBoostingClassifier,
 )
-from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.tree import DecisionTreeClassifier
 
@@ -64,10 +65,13 @@ def _staged_fit_ada(estimator: AdaBoostClassifier, X, y):
 
 
 @staged_fit.register(SGDClassifier)
-def _staged_fit_sgd(estimator: SGDClassifier, X, y):
+@staged_fit.register(LogisticRegression)
+@staged_fit.register(MLPClassifier)
+def _staged_fit_gradient(estimator, X, y):
     original = copy.deepcopy(estimator)
     original.fit(X, y)
-    for i in range(original.n_iter_):
+    n_iter = np.asarray(original.n_iter_).max()
+    for i in range(n_iter):
         estimator.set_params(max_iter=1)
         estimator.fit(X, y)
         if i == 0:

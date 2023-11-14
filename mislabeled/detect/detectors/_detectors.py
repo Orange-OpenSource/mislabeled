@@ -8,7 +8,13 @@ from mislabeled.ensemble import (
     OutlierEnsemble,
     ProgressiveEnsemble,
 )
-from mislabeled.probe import Complexity, FiniteDiffSensitivity, Influence, OutlierProbe
+from mislabeled.probe import (
+    Complexity,
+    FiniteDiffSensitivity,
+    Influence,
+    LinearSensitivity,
+    OutlierProbe,
+)
 
 # A detector zoo of techniques found in the litterature
 
@@ -169,8 +175,8 @@ class ForgetScores(ModelBasedDetector):
         self.steps = steps
 
 
-class VarianceOfGradients(ModelBasedDetector):
-    """Detector based on variance of gradients.
+class VoLG(ModelBasedDetector):
+    """Detector based on variance of logits' gradients. The original VoG.
 
     References
     ----------
@@ -178,6 +184,36 @@ class VarianceOfGradients(ModelBasedDetector):
     "Estimating example difficulty using variance of gradients."
     CVPR 2022.
     """
+
+    def __init__(
+        self,
+        base_model,
+        *,
+        epsilon=0.1,
+        n_directions=20,
+        steps=1,
+        random_state=None,
+    ):
+        super().__init__(
+            base_model=base_model,
+            ensemble=ProgressiveEnsemble(steps=steps),
+            probe=FiniteDiffSensitivity(
+                probe="logits",
+                adjust=False,
+                epsilon=epsilon,
+                n_directions=n_directions,
+                random_state=random_state,
+            ),
+            aggregate="mean_of_var",
+        )
+        self.epsilon = epsilon
+        self.n_directions = n_directions
+        self.steps = steps
+        self.random_state = random_state
+
+
+class VoSG(ModelBasedDetector):
+    """Detector based on variance of softmax's gradients. The corrected VoG."""
 
     def __init__(
         self,
@@ -204,3 +240,22 @@ class VarianceOfGradients(ModelBasedDetector):
         self.n_directions = n_directions
         self.steps = steps
         self.random_state = random_state
+
+
+class LinearVoSG(ModelBasedDetector):
+    """Detector based on variance of softmax's gradients.
+    The exact formulation for linear model."""
+
+    def __init__(
+        self,
+        base_model,
+        *,
+        steps=1,
+    ):
+        super().__init__(
+            base_model=base_model,
+            ensemble=ProgressiveEnsemble(steps=steps),
+            probe=LinearSensitivity(),
+            aggregate="mean_of_var",
+        )
+        self.steps = steps

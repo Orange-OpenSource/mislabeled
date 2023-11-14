@@ -215,7 +215,8 @@ def make_probe_scorer(
 
 l1_probe_scorer = make_probe_scorer(l1, needs_threshold=True, greater_is_better=False)
 l2_probe_scorer = make_probe_scorer(l2, needs_threshold=True, greater_is_better=False)
-confidence_probe_scorer = make_probe_scorer(confidence, needs_threshold=True)
+logits_probe_scorer = make_probe_scorer(confidence, needs_threshold=True)
+confidence_probe_scorer = make_probe_scorer(confidence, needs_proba=True)
 confidence_entropy_ratio_probe_scorer = make_probe_scorer(
     confidence_entropy_ratio, needs_proba=True
 )
@@ -242,6 +243,7 @@ unsupervised_entropy_probe_scorer = make_probe_scorer(
 )
 
 _PROBE_SCORERS_CLASSIFICATION = dict(
+    logits=logits_probe_scorer,
     confidence=confidence_probe_scorer,
     unsupervised_confidence=unsupervised_confidence_probe_scorer,
     confidence_entropy_ratio=confidence_entropy_ratio_probe_scorer,

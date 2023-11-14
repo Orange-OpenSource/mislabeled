@@ -7,9 +7,11 @@ from ._detectors import (
     FiniteDiffComplexity,
     ForgetScores,
     InfluenceDetector,
+    LinearVoSG,
     OutlierDetector,
     Regressor,
-    VarianceOfGradients,
+    VoLG,
+    VoSG,
 )
 from ._ransac import RANSAC
 
@@ -24,6 +26,8 @@ __all__ = [
     "ConfidentLearning",
     "AreaUnderMargin",
     "ForgetScores",
-    "VarianceOfGradients",
+    "VoLG",
+    "VoSG",
+    "LinearVoSG",
     "RANSAC",
 ]
