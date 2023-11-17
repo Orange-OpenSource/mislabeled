@@ -228,7 +228,7 @@ class VoSG(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=FiniteDiffSensitivity(
-                probe="confidence",
+                probe="softmax",
                 adjust=False,
                 epsilon=epsilon,
                 n_directions=n_directions,

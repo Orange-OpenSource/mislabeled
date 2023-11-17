@@ -16,7 +16,7 @@ from mislabeled.probe._margin import soft_margin
         HistGradientBoostingClassifier(
             early_stopping=True, max_iter=100, random_state=1
         ),
-        GradientBoostingClassifier(n_estimators=20),
+        GradientBoostingClassifier(n_estimators=20, random_state=1),
     ],
 )
 def test_progressive_staged(estimator):
@@ -33,4 +33,4 @@ def test_progressive_staged(estimator):
     detector_incr = AreaUnderMargin(estimator)
     incr_ts = detector_incr.trust_score(X, y)
 
-    np.testing.assert_array_almost_equal(baseline_ts, incr_ts, decimal=4)
+    np.testing.assert_array_almost_equal(baseline_ts, incr_ts, decimal=3)

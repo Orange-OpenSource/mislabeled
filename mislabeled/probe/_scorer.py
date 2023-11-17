@@ -127,12 +127,71 @@ class _ThresholdUncertaintyScorer(_BaseScorer):
         return ", needs_threshold=True"
 
 
+class _LogitsUncertaintyScorer(_BaseScorer):
+    def _score(self, method_caller, clf, X, y, **kwargs):
+        """Evaluate decision function output for X relative to y_true.
+
+        Parameters
+        ----------
+        method_caller : callable
+            Returns predictions given an estimator, method name, and other
+            arguments, potentially caching results.
+
+        clf : object
+            Trained classifier to use for scoring. Must have either a
+            decision_function method or a predict_proba method; the output of
+            that is used to compute the score.
+
+        X : {array-like, sparse matrix}
+            Test data that will be fed to clf.decision_function or
+            clf.predict_proba.
+
+        y : array-like
+            Gold standard target values for X. These must be class labels,
+            not decision function values.
+
+        **kwargs : dict
+            Other parameters passed to the scorer. Refer to
+            :func:`set_score_request` for more details.
+
+            .. versionadded:: 1.3
+
+        Returns
+        -------
+        score : float
+            Score function applied to prediction of estimator on X.
+        """
+        self._warn_overlap(
+            message=(
+                "There is an overlap between set kwargs of this scorer instance and"
+                " passed metadata. Please pass them either as kwargs to "
+                "`make_probe_scorer` or metadata, but not both."
+            ),
+            kwargs=kwargs,
+        )
+
+        if is_regressor(clf):
+            y_pred = method_caller(clf, "predict", X)
+        else:
+            y_type = type_of_target(y)
+            if y_type not in ("binary", "multiclass"):
+                raise ValueError("{0} format is not supported".format(y_type))
+            y_pred = method_caller(clf, "decision_function", X)
+
+        scoring_kwargs = {**self._kwargs, **kwargs}
+        return self._sign * self._score_func(y, y_pred, **scoring_kwargs)
+
+    def _factory_args(self):
+        return ", needs_logits=True"
+
+
 def make_probe_scorer(
     probe_func,
     *,
     greater_is_better=True,
     needs_proba=False,
     needs_threshold=False,
+    needs_logits=False,
     **kwargs,
 ):
     """Make a probe_scorer from a certainty or probe function.
@@ -207,6 +266,8 @@ def make_probe_scorer(
         cls = _ProbaUncertaintyScorer
     elif needs_threshold:
         cls = _ThresholdUncertaintyScorer
+    elif needs_logits:
+        cls = _LogitsUncertaintyScorer
     else:
         cls = _PredictUncertaintyScorer
 
@@ -215,8 +276,9 @@ def make_probe_scorer(
 
 l1_probe_scorer = make_probe_scorer(l1, needs_threshold=True, greater_is_better=False)
 l2_probe_scorer = make_probe_scorer(l2, needs_threshold=True, greater_is_better=False)
-logits_probe_scorer = make_probe_scorer(confidence, needs_threshold=True)
-confidence_probe_scorer = make_probe_scorer(confidence, needs_proba=True)
+logits_probe_scorer = make_probe_scorer(confidence, needs_logits=True)
+softmax_probe_scorer = make_probe_scorer(confidence, needs_proba=True)
+confidence_probe_scorer = make_probe_scorer(confidence, needs_threshold=True)
 confidence_entropy_ratio_probe_scorer = make_probe_scorer(
     confidence_entropy_ratio, needs_proba=True
 )
@@ -242,8 +304,10 @@ unsupervised_entropy_probe_scorer = make_probe_scorer(
     entropy, supervised=False, needs_proba=True
 )
 
+
 _PROBE_SCORERS_CLASSIFICATION = dict(
     logits=logits_probe_scorer,
+    softmax=softmax_probe_scorer,
     confidence=confidence_probe_scorer,
     unsupervised_confidence=unsupervised_confidence_probe_scorer,
     confidence_entropy_ratio=confidence_entropy_ratio_probe_scorer,
