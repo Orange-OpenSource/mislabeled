@@ -21,7 +21,7 @@ from mislabeled.detect.detectors import (
     InfluenceDetector,
     OutlierDetector,
     RANSAC,
-    VarianceOfGradients,
+    VoLG,
 )
 from mislabeled.ensemble import NoEnsemble
 
@@ -84,7 +84,7 @@ detectors = [
     AreaUnderMargin(
         DecisionTreeClassifier(),
     ),
-    VarianceOfGradients(
+    VoLG(
         GradientBoostingClassifier(
             max_depth=None,
             n_estimators=100,

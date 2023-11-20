@@ -3,8 +3,9 @@ import numbers
 
 import numpy as np
 from sklearn.dummy import check_random_state
+from sklearn.pipeline import make_pipeline, Pipeline
 
-from mislabeled.probe import check_probe
+from mislabeled.probe import check_probe, confidence
 
 
 class FiniteDiffSensitivity:
@@ -107,3 +108,47 @@ class FiniteDiffSensitivity:
         probe_scores /= self.epsilon
 
         return probe_scores
+
+
+class LinearSensitivity:
+    """Detects likely mislabeled examples based on the
+    softmax derivative with respect to the inputs for linear models."""
+
+    def __call__(self, estimator, X, y):
+        """Evaluate the probe
+
+        Parameters
+        ----------
+        estimator : object
+            Trained classifier to probe
+
+        X : {array-like, sparse matrix}
+            Test data
+
+        y : array-like
+            Dataset target values for X
+
+        Returns
+        -------
+        probe_scores : np.array
+            n x n_directions array of the finite difference computed along each
+            direction
+        """
+
+        if isinstance(estimator, Pipeline):
+            X = make_pipeline(estimator[:-1]).transform(X)
+            estimator = estimator[-1]
+
+        if hasattr(estimator, "coef_"):
+            coef = estimator.coef_
+        else:
+            raise ValueError(
+                f"estimator {estimator.__class__.__name__} is not a linear model."
+            )
+
+        if coef.shape[0] == 1:
+            coef = np.vstack((-coef, coef))
+
+        p = confidence(y, estimator.predict_proba(X))[..., None]
+
+        return coef[y] * p * (1 - p)

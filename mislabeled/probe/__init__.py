@@ -11,7 +11,7 @@ from ._scorer import (
     get_probe_scorer_names,
     make_probe_scorer,
 )
-from ._sensitivity import FiniteDiffSensitivity
+from ._sensitivity import FiniteDiffSensitivity, LinearSensitivity
 from ._weight import confidence_normalization, entropy_normalization
 
 __all__ = [
@@ -30,6 +30,7 @@ __all__ = [
     "get_probe_scorer_names",
     "check_probe",
     "FiniteDiffSensitivity",
+    "LinearSensitivity",
     "Complexity",
     "Influence",
     "OutlierProbe",
