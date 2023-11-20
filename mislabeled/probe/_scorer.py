@@ -170,13 +170,10 @@ class _LogitsUncertaintyScorer(_BaseScorer):
             kwargs=kwargs,
         )
 
-        if is_regressor(clf):
-            y_pred = method_caller(clf, "predict", X)
-        else:
-            y_type = type_of_target(y)
-            if y_type not in ("binary", "multiclass"):
-                raise ValueError("{0} format is not supported".format(y_type))
-            y_pred = method_caller(clf, "decision_function", X)
+        y_type = type_of_target(y)
+        if y_type not in ("binary", "multiclass"):
+            raise ValueError("{0} format is not supported".format(y_type))
+        y_pred = method_caller(clf, "decision_function", X)
 
         scoring_kwargs = {**self._kwargs, **kwargs}
         return self._sign * self._score_func(y, y_pred, **scoring_kwargs)
