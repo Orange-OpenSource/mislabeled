@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pytest
 
@@ -28,3 +30,27 @@ def test_multivariate_quantile_with_independent_scores_equals_univariate_quantil
             np.bincount(splitter.split(None, None, scores_correlated[:, 0])),
             decimal=-1,
         )
+
+
+@pytest.mark.parametrize("quantile", np.linspace(0.1, 0.9, num=5))
+def test_quantile_splitter_keeps_highest_scores(quantile):
+    splitter = QuantileSplitter(quantile=quantile)
+
+    rng = np.random.RandomState(42)
+    scores = rng.randn(1000, 1)
+
+    trusted = splitter.split(None, None, scores)
+
+    assert np.mean(scores[trusted]) > np.mean(scores[~trusted])
+
+
+@pytest.mark.parametrize("quantile", np.linspace(0.1, 0.9, num=5))
+def test_quantile_splitter_keeps_correct_amount(quantile):
+    splitter = QuantileSplitter(quantile=quantile)
+
+    rng = np.random.RandomState(42)
+    scores = rng.randn(1000, 1)
+
+    trusted = splitter.split(None, None, scores)
+
+    assert math.isclose(np.mean(trusted), 1.0 - quantile)
