@@ -1,5 +1,4 @@
 from ._detectors import (
-    AGRA,
     AreaUnderMargin,
     Classifier,
     ConfidentLearning,
@@ -7,6 +6,7 @@ from ._detectors import (
     DecisionTreeComplexity,
     FiniteDiffComplexity,
     ForgetScores,
+    GradientSimilarity,
     InfluenceDetector,
     LinearVoSG,
     OutlierDetector,
@@ -33,5 +33,5 @@ __all__ = [
     "LinearVoSG",
     "RANSAC",
     "TracIn",
-    "AGRA",
+    "GradientSimilarity",
 ]

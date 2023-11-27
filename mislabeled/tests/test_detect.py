@@ -12,7 +12,6 @@ from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.detect.detectors import (
-    AGRA,
     AreaUnderMargin,
     Classifier,
     ConfidentLearning,
@@ -20,6 +19,7 @@ from mislabeled.detect.detectors import (
     DecisionTreeComplexity,
     FiniteDiffComplexity,
     ForgetScores,
+    GradientSimilarity,
     InfluenceDetector,
     OutlierDetector,
     RANSAC,
@@ -46,7 +46,7 @@ def simple_detect_test(n_classes, detector):
 seed = 42
 
 detectors = [
-    AGRA(
+    GradientSimilarity(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
             MLPClassifier(

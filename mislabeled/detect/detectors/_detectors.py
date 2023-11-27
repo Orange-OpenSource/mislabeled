@@ -200,7 +200,7 @@ class TracIn(ModelBasedDetector):
         self.steps = steps
 
 
-class AGRA(ModelBasedDetector):
+class GradientSimilarity(ModelBasedDetector):
     """Detector based on the sum of cosine similarities
 
     References

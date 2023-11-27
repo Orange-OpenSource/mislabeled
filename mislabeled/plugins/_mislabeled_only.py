@@ -6,7 +6,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import _num_samples
 import matplotlib.pyplot as plt
-from mislabeled.detect.detectors import AGRA
+from mislabeled.detect.detectors import GradientSimilarity
 
 # %%
 
@@ -34,7 +34,7 @@ def auto_threshold_mislabeled(detector, X, y, proportion=0.1, quantile=0.95):
 
 # %%
 seed = 1
-detector = AGRA(
+detector = GradientSimilarity(
     make_pipeline(
         Nystroem(gamma=0.1, n_components=100, random_state=seed),
         StandardScaler(),
