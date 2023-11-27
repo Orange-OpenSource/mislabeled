@@ -62,7 +62,15 @@ class DecisionTreeComplexity(ModelBasedDetector):
 
 
 class FiniteDiffComplexity(ModelBasedDetector):
-    def __init__(self, base_model, epsilon=0.1, n_directions=20, random_state=None):
+    def __init__(
+        self,
+        base_model,
+        epsilon=0.1,
+        n_directions=20,
+        directions_per_batch=1,
+        n_jobs=None,
+        random_state=None,
+    ):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
@@ -71,13 +79,17 @@ class FiniteDiffComplexity(ModelBasedDetector):
                 False,
                 epsilon=epsilon,
                 n_directions=n_directions,
+                directions_per_batch=directions_per_batch,
+                n_jobs=n_jobs,
                 random_state=random_state,
             ),
             aggregate="sum",
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
+        self.directions_per_batch = directions_per_batch
         self.random_state = random_state
+        self.n_jobs = n_jobs
 
 
 class Classifier(ModelBasedDetector):
@@ -101,36 +113,48 @@ class Regressor(ModelBasedDetector):
 
 
 class ConsensusConsistency(ModelBasedDetector):
-    def __init__(self, base_model, n_splits=5, n_repeats=10, random_state=None):
+    def __init__(
+        self, base_model, n_splits=5, n_repeats=10, n_jobs=None, random_state=None
+    ):
         super().__init__(
             base_model=base_model,
             ensemble=IndependentEnsemble(
                 RepeatedStratifiedKFold(
-                    n_splits=n_splits, n_repeats=n_repeats, random_state=random_state
+                    n_splits=n_splits,
+                    n_repeats=n_repeats,
+                    random_state=random_state,
                 ),
+                n_jobs=n_jobs,
             ),
             probe="accuracy",
             aggregate="mean_oob",
         )
         self.n_splits = n_splits
         self.n_repeats = n_repeats
+        self.n_jobs = n_jobs
         self.random_state = random_state
 
 
 class ConfidentLearning(ModelBasedDetector):
-    def __init__(self, base_model, n_splits=5, n_repeats=10, random_state=None):
+    def __init__(
+        self, base_model, n_splits=5, n_repeats=10, n_jobs=None, random_state=None
+    ):
         super().__init__(
             base_model=base_model,
             ensemble=IndependentEnsemble(
                 RepeatedStratifiedKFold(
-                    n_splits=n_splits, n_repeats=n_repeats, random_state=random_state
+                    n_splits=n_splits,
+                    n_repeats=n_repeats,
+                    random_state=random_state,
                 ),
+                n_jobs=n_jobs,
             ),
             probe="confidence",
             aggregate="mean_oob",
         )
         self.n_splits = n_splits
         self.n_repeats = n_repeats
+        self.n_jobs = n_jobs
         self.random_state = random_state
 
 
@@ -191,7 +215,9 @@ class VoLG(ModelBasedDetector):
         *,
         epsilon=0.1,
         n_directions=20,
+        directions_per_batch=1,
         steps=1,
+        n_jobs=None,
         random_state=None,
     ):
         super().__init__(
@@ -202,12 +228,15 @@ class VoLG(ModelBasedDetector):
                 adjust=False,
                 epsilon=epsilon,
                 n_directions=n_directions,
+                directions_per_batch=directions_per_batch,
+                n_jobs=n_jobs,
                 random_state=random_state,
             ),
             aggregate="mean_of_var",
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
+        self.directions_per_batch = directions_per_batch
         self.steps = steps
         self.random_state = random_state
 
