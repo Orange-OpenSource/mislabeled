@@ -55,6 +55,7 @@ detectors = [
                 solver="sgd",
                 batch_size=500,
                 learning_rate_init=0.1,
+                random_state=seed,
             ),
         )
     ),
