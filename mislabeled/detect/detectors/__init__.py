@@ -6,7 +6,6 @@ from ._detectors import (
     DecisionTreeComplexity,
     FiniteDiffComplexity,
     ForgetScores,
-    GradientSimilarity,
     InfluenceDetector,
     LinearVoSG,
     OutlierDetector,
@@ -33,5 +32,4 @@ __all__ = [
     "LinearVoSG",
     "RANSAC",
     "TracIn",
-    "GradientSimilarity",
 ]

@@ -19,14 +19,14 @@ from mislabeled.detect.detectors import (
     DecisionTreeComplexity,
     FiniteDiffComplexity,
     ForgetScores,
-    GradientSimilarity,
     InfluenceDetector,
     OutlierDetector,
     RANSAC,
     TracIn,
     VoLG,
 )
-from mislabeled.ensemble import NoEnsemble
+from mislabeled.ensemble import NoEnsemble, ProgressiveEnsemble
+from mislabeled.probe import LinearGradSimilarity
 
 from .utils import blobs_1_mislabeled
 
@@ -46,8 +46,8 @@ def simple_detect_test(n_classes, detector):
 seed = 42
 
 detectors = [
-    GradientSimilarity(
-        make_pipeline(
+    ModelBasedDetector(
+        base_model=make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
             MLPClassifier(
                 hidden_layer_sizes=(),
@@ -55,7 +55,10 @@ detectors = [
                 batch_size=1000,
                 random_state=seed,
             ),
-        )
+        ),
+        ensemble=ProgressiveEnsemble(),
+        probe=LinearGradSimilarity(),
+        aggregate="sum",
     ),
     TracIn(
         make_pipeline(

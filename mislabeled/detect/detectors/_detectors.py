@@ -13,7 +13,6 @@ from mislabeled.probe import (
     FiniteDiffSensitivity,
     Influence,
     LinearGradNorm2,
-    LinearGradSimilarity,
     LinearSensitivity,
     OutlierProbe,
 )
@@ -195,26 +194,6 @@ class TracIn(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearGradNorm2(),
-            aggregate="sum",
-        )
-        self.steps = steps
-
-
-class GradientSimilarity(ModelBasedDetector):
-    """Detector based on the sum of cosine similarities
-
-    References
-    ----------
-    .. [1] Anastasiia Sedova, Lena Zellinger, Benjamin Roth
-        "Learning with Noisy Labels by Adaptive Gradient-Based Outlier Removal"
-        ECML PKDD 2023
-    """
-
-    def __init__(self, base_model, steps=1):
-        super().__init__(
-            base_model=base_model,
-            ensemble=ProgressiveEnsemble(steps=steps),
-            probe=LinearGradSimilarity(),
             aggregate="sum",
         )
         self.steps = steps
