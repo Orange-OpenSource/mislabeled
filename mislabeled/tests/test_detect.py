@@ -1,18 +1,19 @@
 import numpy as np
 import pytest
-from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
-from sklearn.kernel_approximation import RBFSampler
+from sklearn.kernel_approximation import Nystroem
 from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.detect.detectors import (
+    AGRA,
     AreaUnderMargin,
     Classifier,
     ConfidentLearning,
@@ -46,9 +47,21 @@ def simple_detect_test(n_classes, detector):
 seed = 42
 
 detectors = [
+    AGRA(
+        make_pipeline(
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
+            StandardScaler(),
+            MLPClassifier(
+                hidden_layer_sizes=(),
+                solver="sgd",
+                batch_size=1000,
+                random_state=seed,
+            ),
+        )
+    ),
     TracIn(
         make_pipeline(
-            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
             StandardScaler(),
             MLPClassifier(
                 hidden_layer_sizes=(),
@@ -61,13 +74,13 @@ detectors = [
     ),
     RANSAC(
         make_pipeline(
-            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
             LogisticRegression(),
         )
     ),
     InfluenceDetector(
         make_pipeline(
-            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
             LogisticRegression(),
         )
     ),
@@ -77,7 +90,7 @@ detectors = [
     ),
     Classifier(
         make_pipeline(
-            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
             LogisticRegression(),
         )
     ),
@@ -132,7 +145,7 @@ def test_detect(n_classes, detector):
         # PDR
         ModelBasedDetector(
             base_model=make_pipeline(
-                RBFSampler(gamma="scale", random_state=seed, n_components=100),
+                Nystroem(gamma=0.1, n_components=100, random_state=seed),
                 OneVsRestClassifier(LogisticRegression()),
             ),
             ensemble=NoEnsemble(),

@@ -1,4 +1,5 @@
 from ._detectors import (
+    AGRA,
     AreaUnderMargin,
     Classifier,
     ConfidentLearning,
@@ -32,4 +33,5 @@ __all__ = [
     "LinearVoSG",
     "RANSAC",
     "TracIn",
+    "AGRA",
 ]

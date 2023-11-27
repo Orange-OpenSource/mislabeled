@@ -442,6 +442,7 @@ def check_probe(probe, adjust=False):
             and not module.startswith("mislabeled.probe._sensitivity")
             and not module.startswith("mislabeled.probe._influence")
             and not module.startswith("mislabeled.probe._outlier")
+            and not module.startswith("mislabeled.probe._grads")
             and not module.startswith("mislabeled.probe.tests.")
         ):
             raise ValueError(
