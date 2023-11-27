@@ -78,7 +78,7 @@ class BaseHandleClassifier(
             Returns self.
         """
         # Check that X and y have correct shape
-        X, y = self._validate_data(X, y)
+        X, y = self._validate_data(X, y, accept_sparse=["csr", "csc", "lil"])
 
         check_classification_targets(y)
 
@@ -92,12 +92,12 @@ class BaseHandleClassifier(
         _trust_score_cached = memory.cache(_trust_score)
 
         self.detector_ = clone(self.detector)
-        trust_scores = _trust_score_cached(self.detector_, X, y)
+        self.trust_scores_ = _trust_score_cached(self.detector_, X, y)
 
         self.splitter_ = clone(self.splitter)
-        trusted = self.splitter_.split(X, y, trust_scores)
+        self.trusted_ = self.splitter_.split(X, y, self.trust_scores_)
 
-        X, y, fit_params = self.handle(X, y, trusted)
+        X, y, fit_params = self.handle(X, y, self.trusted_)
 
         self.estimator_ = clone(self.estimator)
         self.estimator_.fit(X, y, **fit_params)
