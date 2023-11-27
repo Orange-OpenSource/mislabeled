@@ -46,12 +46,13 @@ class LinearGradSimilarity:
 
         average_grad = np.dot(grad_pre_act.T, X) / n_samples
 
-        indiv_grads = np.einsum("ni,nj->nij", grad_pre_act, X)
-
+        # Note: if n_classes > n_features it is probably more efficient to switch
+        # X and grad_pre_act in the next statement
         cos_sim = (
-            np.dot(indiv_grads.reshape(n_samples, -1), average_grad.reshape(-1))
+            (np.dot(X, average_grad.T) * grad_pre_act).sum(axis=1)
             / np.linalg.norm(average_grad)
-            / np.linalg.norm(indiv_grads, axis=(1, 2))
+            / np.linalg.norm(X, axis=1)
+            / np.linalg.norm(grad_pre_act, axis=1)
         )
 
         return cos_sim
