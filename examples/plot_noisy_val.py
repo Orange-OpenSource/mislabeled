@@ -117,7 +117,5 @@ plt.axvline(
 plt.xlabel("threshold")
 plt.ylabel("balanced accuracy")
 plt.title("Threshold selection on SMS dataset")
-plt.legend()
+plt.legend(loc="lower right")
 plt.show()
-
-# %%
