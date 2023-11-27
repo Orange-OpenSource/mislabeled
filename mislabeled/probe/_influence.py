@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.pipeline import make_pipeline, Pipeline
-from mislabeled.probe import confidence
 
 
 class Influence:

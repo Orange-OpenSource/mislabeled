@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -22,8 +22,8 @@ from mislabeled.detect.detectors import (
     InfluenceDetector,
     OutlierDetector,
     RANSAC,
-    VoLG,
     TracIn,
+    VoLG,
 )
 from mislabeled.ensemble import NoEnsemble
 
