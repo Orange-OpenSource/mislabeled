@@ -170,7 +170,7 @@ class TracIn(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearGradNorm2(),
-            aggregate="neg_sum",
+            aggregate="sum",
         )
         self.steps = steps
 
@@ -225,7 +225,7 @@ class VoLG(ModelBasedDetector):
                 n_directions=n_directions,
                 random_state=random_state,
             ),
-            aggregate="mean_of_var",
+            aggregate="mean_of_neg_var",
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -255,7 +255,7 @@ class VoSG(ModelBasedDetector):
                 n_directions=n_directions,
                 random_state=random_state,
             ),
-            aggregate="mean_of_var",
+            aggregate="mean_of_neg_var",
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -277,6 +277,6 @@ class LinearVoSG(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearSensitivity(),
-            aggregate="mean_of_var",
+            aggregate="mean_of_neg_var",
         )
         self.steps = steps
