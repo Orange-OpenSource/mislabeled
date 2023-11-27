@@ -53,14 +53,12 @@ def test_probe_unsupervised_with_labels_throws_user_warning(probe):
 @pytest.mark.parametrize("probe", probes_with_logits)
 def test_probe_multiclass_missing_labels_with_labels_none(probe):
     y_true = np.array([0, 1, 2, 2])
-    pred_decision = np.array(
-        [
-            [+1.27, 0.034, -0.68, -1.40],
-            [-1.45, -0.58, -0.38, -0.17],
-            [-2.36, -0.79, -0.27, +0.24],
-            [-2.36, -0.79, -0.27, +0.24],
-        ]
-    )
+    pred_decision = np.array([
+        [+1.27, 0.034, -0.68, -1.40],
+        [-1.45, -0.58, -0.38, -0.17],
+        [-2.36, -0.79, -0.27, +0.24],
+        [-2.36, -0.79, -0.27, +0.24],
+    ])
     pred_decision = softmax(pred_decision, axis=1)
     with raises(ValueError):
         probe(y_true, pred_decision)
