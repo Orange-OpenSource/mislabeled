@@ -32,7 +32,7 @@ def forget(scores, masks):
     return -forgetting_events.sum(axis=(1, 2))
 
 
-def mean_of_var(scores, masks):
+def mean_of_neg_var(scores, masks):
     return -scores.var(axis=2).mean(axis=1)
 
 
@@ -52,7 +52,7 @@ _AGGREGATORS = dict(
     sum=sum,
     var=partial(np.nanvar, axis=-1),
     forget=forget,
-    mean_of_var=mean_of_var,
+    mean_of_neg_var=mean_of_neg_var,
 )
 
 

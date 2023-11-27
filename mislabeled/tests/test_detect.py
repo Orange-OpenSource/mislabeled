@@ -5,7 +5,9 @@ from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
@@ -21,6 +23,7 @@ from mislabeled.detect.detectors import (
     InfluenceDetector,
     OutlierDetector,
     RANSAC,
+    TracIn,
     VoLG,
 )
 from mislabeled.ensemble import NoEnsemble
@@ -43,6 +46,19 @@ def simple_detect_test(n_classes, detector):
 seed = 42
 
 detectors = [
+    TracIn(
+        make_pipeline(
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            StandardScaler(),
+            MLPClassifier(
+                hidden_layer_sizes=(),
+                solver="sgd",
+                batch_size=500,
+                learning_rate_init=0.1,
+                random_state=seed,
+            ),
+        )
+    ),
     RANSAC(
         make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),

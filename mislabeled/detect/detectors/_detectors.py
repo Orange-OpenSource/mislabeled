@@ -12,6 +12,7 @@ from mislabeled.probe import (
     Complexity,
     FiniteDiffSensitivity,
     Influence,
+    LinearGradNorm2,
     LinearSensitivity,
     OutlierProbe,
 )
@@ -178,6 +179,26 @@ class AreaUnderMargin(ModelBasedDetector):
         self.steps = steps
 
 
+class TracIn(ModelBasedDetector):
+    """Detector based on the sum of individual gradients
+
+    References
+    ----------
+    .. [1] Pruthi, G., Liu, F., Kale, S., & Sundararajan, M.
+        "Estimating training data influence by tracing gradient descent."
+        NeurIPS 2020
+    """
+
+    def __init__(self, base_model, steps=1):
+        super().__init__(
+            base_model=base_model,
+            ensemble=ProgressiveEnsemble(steps=steps),
+            probe=LinearGradNorm2(),
+            aggregate="sum",
+        )
+        self.steps = steps
+
+
 class ForgetScores(ModelBasedDetector):
     """Detector based on forgetting events.
 
@@ -232,7 +253,7 @@ class VoLG(ModelBasedDetector):
                 n_jobs=n_jobs,
                 random_state=random_state,
             ),
-            aggregate="mean_of_var",
+            aggregate="mean_of_neg_var",
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -263,7 +284,7 @@ class VoSG(ModelBasedDetector):
                 n_directions=n_directions,
                 random_state=random_state,
             ),
-            aggregate="mean_of_var",
+            aggregate="mean_of_neg_var",
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -285,6 +306,6 @@ class LinearVoSG(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearSensitivity(),
-            aggregate="mean_of_var",
+            aggregate="mean_of_neg_var",
         )
         self.steps = steps

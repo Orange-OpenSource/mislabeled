@@ -10,6 +10,7 @@ from ._detectors import (
     LinearVoSG,
     OutlierDetector,
     Regressor,
+    TracIn,
     VoLG,
     VoSG,
 )
@@ -30,4 +31,5 @@ __all__ = [
     "VoSG",
     "LinearVoSG",
     "RANSAC",
+    "TracIn",
 ]
