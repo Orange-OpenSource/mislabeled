@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn.utils.extmath import safe_sparse_dot
 
 
 class Influence:
@@ -39,12 +40,14 @@ class Influence:
 
         # binary case
         if coef.shape[0] == 1:
-            H = np.dot(X, coef.T)
-            return H * np.expand_dims((y - 0.5), axis=1)
+            H = safe_sparse_dot(X, coef.T, dense_output=True)
+            return H * (y - 0.5).reshape(-1, 1)
         # multiclass case
         else:
-            H = np.dot(X, coef.T)
-            return np.take_along_axis(H, np.expand_dims(y, axis=1), axis=1)
+            H = safe_sparse_dot(X, coef.T, dense_output=True)
+            mask = np.zeros_like(H, dtype=bool)
+            mask[np.arange(H.shape[0]), y] = True
+            return H[mask]
 
 
 class LinearGradNorm2:
