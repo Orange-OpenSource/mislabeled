@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
@@ -48,6 +49,7 @@ detectors = [
     TracIn(
         make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            StandardScaler(),
             MLPClassifier(
                 hidden_layer_sizes=(),
                 solver="sgd",

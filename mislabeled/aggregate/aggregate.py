@@ -47,7 +47,7 @@ def sum(scores, masks):
 
 
 def neg_sum(scores, masks):
-    return np.nansum(scores, axis=(1, 2))
+    return -np.nansum(scores, axis=(1, 2))
 
 
 _AGGREGATORS = dict(

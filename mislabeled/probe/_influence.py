@@ -84,7 +84,7 @@ class LinearGradNorm2:
         p = estimator.predict_proba(X)
 
         # grads of the cross entropy w.r.t. pre-activations before the softmax
-        grad_pre_act = -p
+        grad_pre_act = p
         grad_pre_act[np.arange(grad_pre_act.shape[0]), y] -= 1
 
         return (grad_pre_act**2).sum(axis=1) * (X**2).sum(axis=1)

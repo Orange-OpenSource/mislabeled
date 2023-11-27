@@ -170,7 +170,7 @@ class TracIn(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearGradNorm2(),
-            aggregate="sum",
+            aggregate="neg_sum",
         )
         self.steps = steps
 
