@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
@@ -8,6 +7,7 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
