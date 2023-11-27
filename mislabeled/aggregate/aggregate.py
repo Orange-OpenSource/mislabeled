@@ -46,10 +46,15 @@ def sum(scores, masks):
     return np.nansum(scores, axis=(1, 2))
 
 
+def neg_sum(scores, masks):
+    return np.nansum(scores, axis=(1, 2))
+
+
 _AGGREGATORS = dict(
     mean=partial(np.nanmean, axis=-1),
     mean_oob=mean_oob,
     sum=sum,
+    neg_sum=neg_sum,
     var=partial(np.nanvar, axis=-1),
     forget=forget,
     mean_of_var=mean_of_var,

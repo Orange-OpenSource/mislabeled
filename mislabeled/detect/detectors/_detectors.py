@@ -12,6 +12,7 @@ from mislabeled.probe import (
     Complexity,
     FiniteDiffSensitivity,
     Influence,
+    LinearGradNorm2,
     LinearSensitivity,
     OutlierProbe,
 )
@@ -149,6 +150,26 @@ class AreaUnderMargin(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe="soft_margin",
+            aggregate="sum",
+        )
+        self.steps = steps
+
+
+class TracIn(ModelBasedDetector):
+    """Detector based on the sum of individual gradients
+
+    References
+    ----------
+    .. [1] Pruthi, G., Liu, F., Kale, S., & Sundararajan, M.
+        "Estimating training data influence by tracing gradient descent."
+        NeurIPS 2020
+    """
+
+    def __init__(self, base_model, steps=1):
+        super().__init__(
+            base_model=base_model,
+            ensemble=ProgressiveEnsemble(steps=steps),
+            probe=LinearGradNorm2(),
             aggregate="sum",
         )
         self.steps = steps
