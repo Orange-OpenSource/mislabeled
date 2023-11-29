@@ -44,14 +44,14 @@ def moons_gt_display(spread, dataset_cache_path):
 
 
 def generate_moons_ground_truth(
-    spread=0.2, dataset_cache_path=os.path.dirname(__file__)
+    spread=0.2, dataset_cache_path=os.path.dirname(__file__), n_samples=1000000
 ):
     spread_str = "0" + str(spread)[2:]
 
     ###################
     # prepare p(y|x)
     ###################
-    X, y = make_moons(n_samples=1000000, noise=spread)
+    X, y = make_moons(n_samples=n_samples, noise=spread)
     clf = make_pipeline(
         StandardScaler(),
         Nystroem(gamma=0.5, n_components=100),
