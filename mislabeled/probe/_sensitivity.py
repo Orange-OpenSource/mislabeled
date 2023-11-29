@@ -1,5 +1,7 @@
+from functools import reduce
 import math
 import numbers
+import warnings
 
 import numpy as np
 import scipy.sparse as sp
@@ -177,6 +179,13 @@ class LinearSensitivity:
 
         if hasattr(estimator, "coef_"):
             coef = estimator.coef_
+        if hasattr(estimator, "coefs_"):
+            warnings.warn(
+                f"LinearSensitivity treats the neural network as a linear combination"
+                f" of all layer weights",
+                UserWarning,
+            )
+            coef = reduce(np.dot, estimator.coefs_)
         else:
             raise ValueError(
                 f"estimator {estimator.__class__.__name__} is not a linear model."
