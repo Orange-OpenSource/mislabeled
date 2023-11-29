@@ -178,3 +178,6 @@ benchmark/output
 output/
 cache/
 catboost_info/
+
+# joblib
+*.joblib
