@@ -49,7 +49,7 @@ def generate_moons_ground_truth(
     spread_str = "0" + str(spread)[2:]
 
     ###################
-    ## prepare p(y|x)
+    # prepare p(y|x)
     ###################
     X, y = make_moons(n_samples=1000000, noise=spread)
     clf = make_pipeline(
@@ -62,7 +62,7 @@ def generate_moons_ground_truth(
     dump(clf, os.path.join(dataset_cache_path, f"moons_gt_pyx_{spread_str}.joblib"))
 
     ###################
-    ## prepare p(x)
+    # prepare p(x)
     ###################
     x_edges = np.linspace(-1.75, 2.75, 121)
     y_edges = np.linspace(-1.25, 1.75, 81)

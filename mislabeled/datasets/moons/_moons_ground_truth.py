@@ -9,7 +9,7 @@ def moons_ground_truth_pyx(X, spread=0.2, dataset_cache_path=os.path.dirname(__f
         gt_clf = load(
             os.path.join(dataset_cache_path, f"moons_gt_pyx_{spread_str}.joblib")
         )
-    except:
+    except FileNotFoundError:
         print(
             "Please run moons_ground_truth_create.py first with the same spread level"
         )
@@ -26,7 +26,7 @@ def moons_ground_truth_px(X, spread=0.2, dataset_cache_path=os.path.dirname(__fi
         gt_regr = load(
             os.path.join(dataset_cache_path, f"moons_gt_px_{spread_str}.joblib")
         )
-    except:
+    except FileNotFoundError:
         print(
             "Please run moons_ground_truth_create.py first with the same spread level"
         )
