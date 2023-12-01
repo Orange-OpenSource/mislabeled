@@ -10,6 +10,7 @@ from ._adjust import adjusted_probe
 from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy, jensen_shannon, weighted_jensen_shannon
 from ._margin import accuracy, hard_margin, soft_margin
+from ._peer import peered_probe
 from ._regression import l1, l2
 from .utils import check_array_prob
 
@@ -343,9 +344,15 @@ _PROBES = dict(
 )
 
 for key, probe in _PROBES.items():
-    if key not in ["accuracy", "hard_margin", "weighted_jensen_shannon", "l2"]:
+    if key not in ["accuracy", "hard_margin", "l2", "l1"]:
         _PROBE_SCORERS["adjusted_" + key] = make_probe_scorer(
             partial(adjusted_probe, probe), needs_proba=True
+        )
+
+for key, probe in _PROBES.items():
+    if key not in ["accuracy", "l2", "l1"]:
+        _PROBE_SCORERS["peered_" + key] = make_probe_scorer(
+            partial(peered_probe, probe), needs_proba=True
         )
 
 
