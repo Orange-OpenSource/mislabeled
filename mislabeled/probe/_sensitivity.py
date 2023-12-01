@@ -180,7 +180,7 @@ class LinearSensitivity:
 
         if hasattr(estimator, "coef_"):
             coef = estimator.coef_
-        if hasattr(estimator, "coefs_"):
+        elif hasattr(estimator, "coefs_"):
             warnings.warn(
                 "LinearSensitivity treats the neural network as a linear combination"
                 " of all layer weights",
