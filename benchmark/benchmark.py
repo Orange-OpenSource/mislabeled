@@ -14,9 +14,9 @@ from functools import partial
 
 import numpy as np
 import scipy.sparse as sp
+from sklearn.compose import make_column_transformer
 from sklearn.datasets import fetch_openml
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.kernel_approximation import Nystroem, RBFSampler
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import (
@@ -61,8 +61,9 @@ from catboost import CatBoostClassifier
 
 from autocommit import autocommit
 
-commit_hash = autocommit()
-print(f"I saved the working directory as (possibly detached) commit {commit_hash}")
+# commit_hash = autocommit()
+# print(f"I saved the working directory as (possibly detached) commit {commit_hash}")
+commit_hash = "kek"
 
 
 ## DEFINITION FOR PROGRESSIVE ENSEMBLE
@@ -91,7 +92,7 @@ if not sys.warnoptions:
 
 ## KERNELS DEFINITIONS
 
-rbf = Nystroem(random_state=seed)
+rbf = RBFSampler(random_state=seed)
 param_grid_rbf = {"n_components": [100, 1000]}
 
 kernels = {}
@@ -125,10 +126,32 @@ fetch_wrench = partial(fetch_wrench, cache_folder=wrench_folder)
 
 cpu_datasets = [
     # ("agnews", fetch_wrench, TfidfVectorizer(strip_accents="unicode",stop_words="english", min_df=1e-3), "linear"),
-    ("bank-marketing", fetch_wrench, None, "rbf"),
+    (
+        "bank-marketing",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore"),
+                [1, 2, 3, 8, 9, 10, 15],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
     # ("basketball", fetch_wrench, None, "rbf"),
     # ("bioresponse", fetch_wrench, None, "rbf"),
-    # ("census", fetch_wrench, None, "rbf"),
+    (
+        "census",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                [1, 3, 5, 6, 7, 8, 14],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
     # ("commercial", fetch_wrench, None, "rbf"),
     # (
     #     "imdb",
@@ -136,8 +159,30 @@ cpu_datasets = [
     #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
     #     "linear",
     # ),
-    ("mushroom", fetch_wrench, None, "rbf"),
-    ("phishing", fetch_wrench, None, "rbf"),
+    (
+        "mushroom",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                [0, 1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
+    (
+        "phishing",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                [1, 6, 7, 13, 14, 15, 25, 28],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
     ("spambase", fetch_wrench, None, "rbf"),
     (
         "sms",
@@ -188,7 +233,11 @@ for name, fetch, preprocessing, kernel in cpu_datasets:
         data = [
             weak_dataset[split]["data"] for split in ["train", "validation", "test"]
         ]
-        preprocessing.fit(sum(data, []))
+        if isinstance(data[0], list):
+            whole = sum(data, [])
+        else:
+            whole = np.concatenate(data)
+        preprocessing.fit(whole)
         for split in ["train", "validation", "test"]:
             weak_dataset[split]["raw"] = weak_dataset[split]["data"]
             weak_dataset[split]["data"] = preprocessing.transform(
@@ -233,7 +282,7 @@ klm = Pipeline(
     ],
 )
 param_grid_klm = {
-    "sgd__alpha": [1e-7, 1e-4],
+    "sgd__alpha": [1e-4],
     "sgd__eta0": [1e-4, 1e-2, 0.1],  # AKA Learning Rate
 }
 
@@ -295,23 +344,23 @@ agra = ModelBasedDetector(klm, NoEnsemble(), LinearGradSimilarity(), "sum")
 param_grid_agra = param_grid_detector(param_grid_klm)
 
 detectors = [
-    # ("gold", None, None),
-    # ("silver", None, None),
-    # ("bronze", None, None),
-    # ("none", None, None),
+    ("gold", None, None),
+    ("silver", None, None),
+    ("bronze", None, None),
+    ("none", None, None),
     # ("knn_loo", knn_loo, param_grid_knn_loo),
-    # ("gb_aum", gb_aum, param_grid_gb_aum),
-    # ("klm_aum", klm_aum, param_grid_klm_aum),
-    # ("gb_forget", gb_forget, param_grid_gb_forget),
-    # ("klm_forget", klm_forget, param_grid_klm_forget),
-    # ("gb_cleanlab", gb_cleanlab, param_grid_gb_cleanlab),
-    # ("klm_cleanlab", klm_cleanlab, param_grid_klm_cleanlab),
-    # ("gb_consensus", gb_consensus, param_grid_gb_consensus),
-    # ("klm_consensus", klm_consensus, param_grid_klm_consensus),
-    # ("influence", influence, param_grid_influence),
-    # ("tracin", tracin, param_grid_tracin),
-    # ("klm_sensitivity", klm_sensitivity, param_grid_klm_sensitivity),
-    # ("klm_vosg", klm_vosg, param_grid_klm_vosg),
+    ("gb_aum", gb_aum, param_grid_gb_aum),
+    ("klm_aum", klm_aum, param_grid_klm_aum),
+    ("gb_forget", gb_forget, param_grid_gb_forget),
+    ("klm_forget", klm_forget, param_grid_klm_forget),
+    ("gb_cleanlab", gb_cleanlab, param_grid_gb_cleanlab),
+    ("klm_cleanlab", klm_cleanlab, param_grid_klm_cleanlab),
+    ("gb_consensus", gb_consensus, param_grid_gb_consensus),
+    ("klm_consensus", klm_consensus, param_grid_klm_consensus),
+    ("influence", influence, param_grid_influence),
+    ("tracin", tracin, param_grid_tracin),
+    ("klm_sensitivity", klm_sensitivity, param_grid_klm_sensitivity),
+    ("klm_vosg", klm_vosg, param_grid_klm_vosg),
     ("agra", agra, param_grid_agra),
 ]
 
@@ -330,10 +379,10 @@ splitters = {}
 
 quantile_splitter = QuantileSplitter()
 param_grid_quantile_splitter = {
-    "quantile": [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
+    "quantile": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
 }
 
-for detector_name in detectors.keys():
+for detector_name, _, _ in detectors:
     splitters[detector_name] = (quantile_splitter, param_grid_quantile_splitter)
 
 splitters["agra"] = (ThresholdSplitter(0), {})
