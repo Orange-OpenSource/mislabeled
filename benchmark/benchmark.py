@@ -61,9 +61,8 @@ from catboost import CatBoostClassifier
 
 from autocommit import autocommit
 
-# commit_hash = autocommit()
-# print(f"I saved the working directory as (possibly detached) commit {commit_hash}")
-commit_hash = "kek"
+commit_hash = autocommit()
+print(f"I saved the working directory as (possibly detached) commit {commit_hash}")
 
 
 ## DEFINITION FOR PROGRESSIVE ENSEMBLE
@@ -98,20 +97,6 @@ param_grid_rbf = {"n_components": [100, 1000]}
 kernels = {}
 kernels["rbf"] = (rbf, param_grid_rbf)
 kernels["linear"] = ("passthrough", {})
-
-# %%
-
-## PREPROCESSING OF UCI DATASETS
-
-# uci_datasets_to_fetch = [
-#     ("phishing", fetch_openml(data_id=4534, return_X_y=True, parser="pandas")),
-# ]
-
-# n_noise_ratios = 10
-# noises = {
-#     "uniform": np.linspace(0, 1, num=n_noise_ratios, endpoint=True),
-#     "permutation": np.linspace(0, 0.5, num=n_noise_ratios, endpoint=True),
-# }
 
 # %%
 
@@ -532,7 +517,7 @@ for dataset_name, dataset in weak_datasets.items():
                 ranking_quality = np.empty(n_classes)
                 for c in range(n_classes):
                     ranking_quality[c] = roc_auc_score(
-                        y_noisy[y_train == c] == y_train[y_train == c],
+                        (y_noisy == y_train)[y_train == c],
                         best_trust_scores[y_train == c],
                     )
 
