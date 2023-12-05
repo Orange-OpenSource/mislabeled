@@ -17,7 +17,7 @@ import scipy.sparse as sp
 from sklearn.datasets import fetch_openml
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.kernel_approximation import RBFSampler
+from sklearn.kernel_approximation import Nystroem, RBFSampler
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import (
     accuracy_score,
@@ -40,6 +40,7 @@ from mislabeled.detect.detectors import (
     ForgetScores,
     FiniteDiffComplexity,
     LinearVoSG,
+    TracIn,
 )
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble
@@ -49,10 +50,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from mislabeled.datasets.wrench import fetch_wrench
 from mislabeled.preprocessing import WeakLabelEncoder
-from mislabeled.split import QuantileSplitter
+from mislabeled.split import QuantileSplitter, ThresholdSplitter
 from uuid import uuid1
 from mislabeled.ensemble._progressive import staged_fit
-from mislabeled.probe import LinearSensitivity
+from mislabeled.probe import LinearSensitivity, LinearGradSimilarity
 
 from catboost import CatBoostClassifier
 
@@ -90,7 +91,7 @@ if not sys.warnoptions:
 
 ## KERNELS DEFINITIONS
 
-rbf = RBFSampler(random_state=seed)
+rbf = Nystroem(random_state=seed)
 param_grid_rbf = {"n_components": [100, 1000]}
 
 kernels = {}
@@ -122,9 +123,9 @@ else:
 
 fetch_wrench = partial(fetch_wrench, cache_folder=wrench_folder)
 
-weak_datasets_to_fetch = [
+cpu_datasets = [
     # ("agnews", fetch_wrench, TfidfVectorizer(strip_accents="unicode",stop_words="english", min_df=1e-3), "linear"),
-    # ("bank-marketing", fetch_wrench, None, "rbf"),
+    ("bank-marketing", fetch_wrench, None, "rbf"),
     # ("basketball", fetch_wrench, None, "rbf"),
     # ("bioresponse", fetch_wrench, None, "rbf"),
     # ("census", fetch_wrench, None, "rbf"),
@@ -135,22 +136,26 @@ weak_datasets_to_fetch = [
     #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
     #     "linear",
     # ),
-    # ("mushroom", fetch_wrench, None, "rbf"),
-    # ("phishing", fetch_wrench, None, "rbf"),
-    # ("spambase", fetch_wrench, None, "rbf"),
-    # (
-    #     "sms",
-    #     fetch_wrench,
-    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=10),
-    #     "linear",
-    # ),
+    ("mushroom", fetch_wrench, None, "rbf"),
+    ("phishing", fetch_wrench, None, "rbf"),
+    ("spambase", fetch_wrench, None, "rbf"),
+    (
+        "sms",
+        fetch_wrench,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+        ),
+        "linear",
+    ),
     # ("tennis", fetch_wrench, None, "rbf"),
-    # (
-    #     "trec",
-    #     fetch_wrench,
-    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=10),
-    #     "linear",
-    # ),
+    (
+        "trec",
+        fetch_wrench,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+        ),
+        "linear",
+    ),
     # (
     #     "yelp",
     #     fetch_wrench,
@@ -160,13 +165,15 @@ weak_datasets_to_fetch = [
     (
         "youtube",
         fetch_wrench,
-        TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-2),
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+        ),
         "linear",
     ),
 ]
 
 weak_datasets = {}
-for name, fetch, preprocessing, kernel in weak_datasets_to_fetch:
+for name, fetch, preprocessing, kernel in cpu_datasets:
     weak_dataset = {}
     for split in ["train", "validation", "test"]:
         weak_dataset_split = fetch(name, split=split)
@@ -275,11 +282,17 @@ param_grid_klm_consensus["n_repeats"] = [5]
 influence = InfluenceDetector(klm)
 param_grid_influence = param_grid_detector(param_grid_klm)
 
+tracin = TracIn(klm)
+param_grid_tracin = param_grid_detector(param_grid_klm)
+
 klm_sensitivity = ModelBasedDetector(klm, NoEnsemble(), LinearSensitivity(), "sum")
 param_grid_klm_sensitivity = param_grid_detector(param_grid_klm)
 
 klm_vosg = LinearVoSG(klm)
 param_grid_klm_vosg = param_grid_detector(param_grid_klm)
+
+agra = ModelBasedDetector(klm, NoEnsemble(), LinearGradSimilarity(), "sum")
+param_grid_agra = param_grid_detector(param_grid_klm)
 
 detectors = [
     # ("gold", None, None),
@@ -296,8 +309,10 @@ detectors = [
     # ("gb_consensus", gb_consensus, param_grid_gb_consensus),
     # ("klm_consensus", klm_consensus, param_grid_klm_consensus),
     # ("influence", influence, param_grid_influence),
-    ("klm_sensitivity", klm_sensitivity, param_grid_klm_sensitivity),
-    ("klm_vosg", klm_vosg, param_grid_klm_vosg),
+    # ("tracin", tracin, param_grid_tracin),
+    # ("klm_sensitivity", klm_sensitivity, param_grid_klm_sensitivity),
+    # ("klm_vosg", klm_vosg, param_grid_klm_vosg),
+    ("agra", agra, param_grid_agra),
 ]
 
 # %%
@@ -311,10 +326,17 @@ param_grid_classifier = param_grid_gb
 
 ## SPLITTER DEFINITION
 
-splitter = QuantileSplitter()
-param_grid_splitter = {
-    "quantile": [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5],
+splitters = {}
+
+quantile_splitter = QuantileSplitter()
+param_grid_quantile_splitter = {
+    "quantile": [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
 }
+
+for detector_name in detectors.keys():
+    splitters[detector_name] = (quantile_splitter, param_grid_quantile_splitter)
+
+splitters["agra"] = (ThresholdSplitter(0), {})
 
 # %%
 
@@ -372,8 +394,6 @@ for dataset_name, dataset in weak_datasets.items():
 
     print(X_train.shape)
 
-    y = np.concatenate([y_train, y_val, y_test])
-
     if "raw" in dataset["train"]:
         raw_train = dataset["train"]["raw"]
         raw_val = dataset["train"]["raw"]
@@ -388,6 +408,7 @@ for dataset_name, dataset in weak_datasets.items():
         cache = f"cache/{uuid1(seed)}"
 
         if detector is not None:
+            splitter, param_grid_splitter = splitters[detector_name]
             detect_handle = FilterClassifier(
                 detector,
                 splitter,
@@ -481,7 +502,7 @@ for dataset_name, dataset in weak_datasets.items():
             "dataset_name": dataset_name,
             "noise_ratio": noise_ratio,
             "noisy_class_distribution": (np.bincount(y_noisy) / len(y_noisy)).tolist(),
-            "class_distribution": (np.bincount(y) / len(y)).tolist(),
+            "class_distribution": (np.bincount(y_train) / len(y_train)).tolist(),
             "accuracy": round(acc, 4),
             "balanced_accuracy": round(bacc, 4),
             "log_loss": round(logl, 4),
