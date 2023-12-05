@@ -351,8 +351,8 @@ detectors = [
     # ("knn_loo", knn_loo, param_grid_knn_loo),
     ("gb_aum", gb_aum, param_grid_gb_aum),
     ("klm_aum", klm_aum, param_grid_klm_aum),
-    ("gb_forget", gb_forget, param_grid_gb_forget),
-    ("klm_forget", klm_forget, param_grid_klm_forget),
+    # ("gb_forget", gb_forget, param_grid_gb_forget),
+    # ("klm_forget", klm_forget, param_grid_klm_forget),
     ("gb_cleanlab", gb_cleanlab, param_grid_gb_cleanlab),
     ("klm_cleanlab", klm_cleanlab, param_grid_klm_cleanlab),
     ("gb_consensus", gb_consensus, param_grid_gb_consensus),
@@ -443,6 +443,8 @@ for dataset_name, dataset in weak_datasets.items():
 
     print(X_train.shape)
 
+    n_classes = len(np.unique(y_train))
+
     if "raw" in dataset["train"]:
         raw_train = dataset["train"]["raw"]
         raw_val = dataset["train"]["raw"]
@@ -525,9 +527,14 @@ for dataset_name, dataset in weak_datasets.items():
             best_trust_scores = model.best_estimator_.trust_scores_
 
             if np.all(np.equal(y_train, y_noisy)):
-                ranking_quality = 1
+                ranking_quality = np.ones(n_classes)
             else:
-                ranking_quality = roc_auc_score(y_noisy == y_train, best_trust_scores)
+                ranking_quality = np.empty(n_classes)
+                for c in range(n_classes):
+                    ranking_quality[c] = roc_auc_score(
+                        y_noisy[y_train == c] == y_train[y_train == c],
+                        best_trust_scores[y_train == c],
+                    )
 
             print("Most untrusted instances :")
             indices = np.argsort(best_trust_scores, axis=None)
@@ -543,9 +550,9 @@ for dataset_name, dataset in weak_datasets.items():
             if detector_name == "gold":
                 ranking_quality = None
             if detector_name in ["silver", "bronze"]:
-                ranking_quality = 1
+                ranking_quality = np.ones(n_classes)
             else:
-                ranking_quality = 0
+                ranking_quality = np.zeros(n_classes)
 
         res = {
             "dataset_name": dataset_name,
@@ -555,7 +562,7 @@ for dataset_name, dataset in weak_datasets.items():
             "accuracy": round(acc, 4),
             "balanced_accuracy": round(bacc, 4),
             "log_loss": round(logl, 4),
-            "ranking_quality": round(ranking_quality, 4),
+            "ranking_quality": np.around(ranking_quality, 4).tolist(),
             "detector_name": detector_name,
             "handler_name": "filter",
             "fitting_time": end - start,
