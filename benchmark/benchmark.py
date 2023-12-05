@@ -346,7 +346,7 @@ param_grid_agra = param_grid_detector(param_grid_klm)
 detectors = [
     ("gold", None, None),
     ("silver", None, None),
-    ("bronze", None, None),
+    # ("bronze", None, None),
     ("none", None, None),
     # ("knn_loo", knn_loo, param_grid_knn_loo),
     ("gb_aum", gb_aum, param_grid_gb_aum),
@@ -438,7 +438,7 @@ for dataset_name, dataset in weak_datasets.items():
         X_train = np.vstack([X_train, X_val])
 
     y_train = np.concatenate([y_train, y_val])
-    y_noisy = np.concatenate([y_noisy_train, y_noisy_val])
+    y_noisy = np.concatenate([y_noisy_train, y_val])
     y_soft = np.concatenate([y_soft_train, y_soft_val])
 
     print(X_train.shape)
@@ -489,7 +489,7 @@ for dataset_name, dataset in weak_datasets.items():
             estimator=detect_handle,
             param_grid=param_grid,
             cv=PredefinedSplit(split),
-            scoring="balanced_accuracy",
+            scoring="neg_log_loss",
             verbose=3,
             n_jobs=1,
         )
@@ -501,11 +501,11 @@ for dataset_name, dataset in weak_datasets.items():
             clean = y_train == y_noisy
             model.set_params(cv=PredefinedSplit(split[clean]))
             model.fit(X_train[safe_mask(X_train, clean)], y_noisy[clean])
-        elif detector_name == "bronze":
-            clean = y_train == y_noisy
-            clean = clean | (split == 0)
-            model.set_params(cv=PredefinedSplit(split[clean]))
-            model.fit(X_train[safe_mask(X_train, clean)], y_noisy[clean])
+        # elif detector_name == "bronze":
+        #     clean = y_train == y_noisy
+        #     clean = clean | (split == 0)
+        #     model.set_params(cv=PredefinedSplit(split[clean]))
+        #     model.fit(X_train[safe_mask(X_train, clean)], y_noisy[clean])
         else:
             model.fit(X_train, y_noisy)
 
