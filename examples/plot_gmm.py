@@ -16,7 +16,8 @@ from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.pipeline import make_pipeline
 
-from mislabeled.detect import ConsensusDetector
+from mislabeled.detect import ModelBasedDetector
+from mislabeled.ensemble import IndependentEnsemble
 
 X, y = load_digits(return_X_y=True)
 
@@ -26,11 +27,13 @@ clf = make_pipeline(
 )
 clf.fit(X, y).score(X, y)
 # %%
-detector = ConsensusDetector(
+detector = ModelBasedDetector(
     clf,
     probe="entropy",
-    cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=1),
-    n_jobs=-1,
+    ensemble=IndependentEnsemble(
+        RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=1), n_jobs=-1
+    ),
+    aggregate="mean_oob",
 )
 # %%
 y_noisy = make_label_noise(y, "permutation", noise_ratio=0.4, random_state=1)
@@ -78,11 +81,13 @@ plt.xlabel("Negative Cross-Entropy")
 plt.legend()
 plt.show()
 # %%
-detector_unsupervised = ConsensusDetector(
+detector_unsupervised = ModelBasedDetector(
     clf,
     probe="unsupervised_entropy",
-    cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=1),
-    n_jobs=-1,
+    ensemble=IndependentEnsemble(
+        RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=1), n_jobs=-1
+    ),
+    aggregate="mean_oob",
 )
 unsupervised_scores = detector_unsupervised.trust_score(X, y_noisy)
 # %%

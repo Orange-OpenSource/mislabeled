@@ -14,6 +14,8 @@ from functools import partial
 
 import numpy as np
 import scipy.sparse as sp
+from sklearn.base import clone
+from sklearn.preprocessing import LabelEncoder
 from sklearn.compose import make_column_transformer
 from sklearn.datasets import fetch_openml
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -25,6 +27,7 @@ from sklearn.metrics import (
     brier_score_loss,
     cohen_kappa_score,
     log_loss,
+    make_scorer,
     roc_auc_score,
 )
 from sklearn.model_selection import PredefinedSplit, GridSearchCV
@@ -49,6 +52,7 @@ from mislabeled.handle._filter import FilterClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from mislabeled.datasets.wrench import fetch_wrench
+from mislabeled.datasets.west_african_languages import fetch_west_african_language_news
 from mislabeled.preprocessing import WeakLabelEncoder
 from mislabeled.split import QuantileSplitter, ThresholdSplitter
 from uuid import uuid1
@@ -110,96 +114,110 @@ else:
 fetch_wrench = partial(fetch_wrench, cache_folder=wrench_folder)
 
 cpu_datasets = [
-    # ("agnews", fetch_wrench, TfidfVectorizer(strip_accents="unicode",stop_words="english", min_df=1e-3), "linear"),
-    (
-        "bank-marketing",
-        fetch_wrench,
-        make_column_transformer(
-            (
-                OneHotEncoder(handle_unknown="ignore"),
-                [1, 2, 3, 8, 9, 10, 15],
-            ),
-            remainder="passthrough",
-        ),
-        "rbf",
-    ),
-    # ("basketball", fetch_wrench, None, "rbf"),
-    # ("bioresponse", fetch_wrench, None, "rbf"),
-    (
-        "census",
-        fetch_wrench,
-        make_column_transformer(
-            (
-                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
-                [1, 3, 5, 6, 7, 8, 14],
-            ),
-            remainder="passthrough",
-        ),
-        "rbf",
-    ),
-    # ("commercial", fetch_wrench, None, "rbf"),
+    # # ("agnews", fetch_wrench, TfidfVectorizer(strip_accents="unicode",stop_words="english", min_df=1e-3), "linear"),
     # (
-    #     "imdb",
+    #     "bank-marketing",
     #     fetch_wrench,
-    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
+    #     make_column_transformer(
+    #         (
+    #             OneHotEncoder(handle_unknown="ignore"),
+    #             [1, 2, 3, 8, 9, 10, 15],
+    #         ),
+    #         remainder="passthrough",
+    #     ),
+    #     "rbf",
+    # ),
+    # # ("basketball", fetch_wrench, None, "rbf"),
+    # # ("bioresponse", fetch_wrench, None, "rbf"),
+    # (
+    #     "census",
+    #     fetch_wrench,
+    #     make_column_transformer(
+    #         (
+    #             OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+    #             [1, 3, 5, 6, 7, 8, 14],
+    #         ),
+    #         remainder="passthrough",
+    #     ),
+    #     "rbf",
+    # ),
+    # # ("commercial", fetch_wrench, None, "rbf"),
+    # # (
+    # #     "imdb",
+    # #     fetch_wrench,
+    # #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
+    # #     "linear",
+    # # ),
+    # (
+    #     "mushroom",
+    #     fetch_wrench,
+    #     make_column_transformer(
+    #         (
+    #             OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+    #             [0, 1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20],
+    #         ),
+    #         remainder="passthrough",
+    #     ),
+    #     "rbf",
+    # ),
+    # (
+    #     "phishing",
+    #     fetch_wrench,
+    #     make_column_transformer(
+    #         (
+    #             OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+    #             [1, 6, 7, 13, 14, 15, 25, 28],
+    #         ),
+    #         remainder="passthrough",
+    #     ),
+    #     "rbf",
+    # ),
+    # ("spambase", fetch_wrench, None, "rbf"),
+    # (
+    #     "sms",
+    #     fetch_wrench,
+    #     TfidfVectorizer(
+    #         strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+    #     ),
+    #     "linear",
+    # ),
+    # # ("tennis", fetch_wrench, None, "rbf"),
+    # # (
+    # #     "trec",
+    # #     fetch_wrench,
+    # #     TfidfVectorizer(
+    # #         strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+    # #     ),
+    # #     "linear",
+    # # ),
+    # # (
+    # #     "yelp",
+    # #     fetch_wrench,
+    # #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
+    # #     "linear",
+    # # ),
+    # (
+    #     "youtube",
+    #     fetch_wrench,
+    #     TfidfVectorizer(
+    #         strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+    #     ),
+    #     "linear",
+    # ),
+    # (
+    #     "hausa",
+    #     fetch_west_african_language_news,
+    #     TfidfVectorizer(
+    #         strip_accents="unicode", min_df=5, max_df=0.5
+    #     ),
     #     "linear",
     # ),
     (
-        "mushroom",
-        fetch_wrench,
-        make_column_transformer(
-            (
-                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
-                [0, 1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20],
-            ),
-            remainder="passthrough",
-        ),
-        "rbf",
-    ),
-    (
-        "phishing",
-        fetch_wrench,
-        make_column_transformer(
-            (
-                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
-                [1, 6, 7, 13, 14, 15, 25, 28],
-            ),
-            remainder="passthrough",
-        ),
-        "rbf",
-    ),
-    ("spambase", fetch_wrench, None, "rbf"),
-    (
-        "sms",
-        fetch_wrench,
-        TfidfVectorizer(
-            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
-        ),
+        "yoruba",
+        fetch_west_african_language_news,
+        TfidfVectorizer(strip_accents="unicode", min_df=5, max_df=0.5),
         "linear",
-    ),
-    # ("tennis", fetch_wrench, None, "rbf"),
-    (
-        "trec",
-        fetch_wrench,
-        TfidfVectorizer(
-            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
-        ),
-        "linear",
-    ),
-    # (
-    #     "yelp",
-    #     fetch_wrench,
-    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
-    #     "linear",
-    # ),
-    (
-        "youtube",
-        fetch_wrench,
-        TfidfVectorizer(
-            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
-        ),
-        "linear",
-    ),
+    )
 ]
 
 weak_datasets = {}
@@ -213,6 +231,9 @@ for name, fetch, preprocessing, kernel in cpu_datasets:
         weak_dataset_split["soft_targets"] = WeakLabelEncoder(
             random_state=seed, method="soft"
         ).fit_transform(weak_dataset_split["weak_targets"])
+        weak_dataset_split["target"] = LabelEncoder().fit_transform(
+            weak_dataset_split["target"]
+        )
         weak_dataset[split] = weak_dataset_split
     if preprocessing is not None:
         data = [
@@ -319,9 +340,6 @@ param_grid_influence = param_grid_detector(param_grid_klm)
 tracin = TracIn(klm)
 param_grid_tracin = param_grid_detector(param_grid_klm)
 
-klm_sensitivity = ModelBasedDetector(klm, NoEnsemble(), LinearSensitivity(), "sum")
-param_grid_klm_sensitivity = param_grid_detector(param_grid_klm)
-
 klm_vosg = LinearVoSG(klm)
 param_grid_klm_vosg = param_grid_detector(param_grid_klm)
 
@@ -329,7 +347,7 @@ agra = ModelBasedDetector(klm, NoEnsemble(), LinearGradSimilarity(), "sum")
 param_grid_agra = param_grid_detector(param_grid_klm)
 
 detectors = [
-    ("gold", None, None),
+    # ("gold", None, None),
     ("silver", None, None),
     # ("bronze", None, None),
     ("none", None, None),
@@ -344,7 +362,6 @@ detectors = [
     ("klm_consensus", klm_consensus, param_grid_klm_consensus),
     ("influence", influence, param_grid_influence),
     ("tracin", tracin, param_grid_tracin),
-    ("klm_sensitivity", klm_sensitivity, param_grid_klm_sensitivity),
     ("klm_vosg", klm_vosg, param_grid_klm_vosg),
     ("agra", agra, param_grid_agra),
 ]
@@ -364,7 +381,7 @@ splitters = {}
 
 quantile_splitter = QuantileSplitter()
 param_grid_quantile_splitter = {
-    "quantile": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    "quantile": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
 }
 
 for detector_name, _, _ in detectors:
@@ -411,6 +428,7 @@ for dataset_name, dataset in weak_datasets.items():
     )
 
     split = np.concatenate([-np.ones(X_train.shape[0]), np.zeros(X_val.shape[0])])
+    train = split == -1
 
     # FASTER TRAINING
     X_train = X_train.astype(np.float32)
@@ -428,7 +446,8 @@ for dataset_name, dataset in weak_datasets.items():
 
     print(X_train.shape)
 
-    n_classes = len(np.unique(y_train))
+    labels = np.unique(y_train)
+    n_classes = len(labels)
 
     if "raw" in dataset["train"]:
         raw_train = dataset["train"]["raw"]
@@ -472,33 +491,44 @@ for dataset_name, dataset in weak_datasets.items():
             detect_handle = classifier
             param_grid = param_grid_classifier
 
-        model = GridSearchCV(
+        gscv = GridSearchCV(
             estimator=detect_handle,
             param_grid=param_grid,
             cv=PredefinedSplit(split),
             scoring="neg_log_loss",
+            refit=False,
             verbose=3,
             n_jobs=1,
         )
 
         start = time.perf_counter()
         if detector_name == "gold":
-            model.fit(X_train, y_train)
+            gscv.fit(X_train, y_train)
         elif detector_name == "silver":
             clean = y_train == y_noisy
-            model.set_params(cv=PredefinedSplit(split[clean]))
-            model.fit(X_train[safe_mask(X_train, clean)], y_noisy[clean])
+            print(np.mean(clean), y_train, y_noisy)
+            gscv.set_params(cv=PredefinedSplit(split[clean]))
+            gscv.fit(X_train[clean, :], y_noisy[clean])
         # elif detector_name == "bronze":
         #     clean = y_train == y_noisy
         #     clean = clean | (split == 0)
         #     model.set_params(cv=PredefinedSplit(split[clean]))
         #     model.fit(X_train[safe_mask(X_train, clean)], y_noisy[clean])
         else:
-            model.fit(X_train, y_noisy)
+            gscv.fit(X_train, y_noisy)
 
         end = time.perf_counter()
 
-        best_params = model.best_params_
+        best_params = gscv.best_params_
+
+        model = clone(detect_handle).set_params(**best_params)
+        if detector_name == "gold":
+            model.fit(X_train[train, :], y_train[train])
+        elif detector_name in ["silver", "bronze"]:
+            clean = y_train == y_noisy
+            model.fit(X_train[clean & train, :], y_noisy[clean & train])
+        else:
+            model.fit(X_train[train, :], y_noisy[train])
 
         y_pred = model.predict(X_test)
         y_proba = model.predict_proba(X_test)
@@ -509,20 +539,21 @@ for dataset_name, dataset in weak_datasets.items():
         logl = log_loss(y_test, y_proba)
 
         if detector is not None:
-            best_trust_scores = model.best_estimator_.trust_scores_
+            trust_scores = model.trust_scores_
 
-            if np.all(np.equal(y_train, y_noisy)):
-                ranking_quality = np.ones(n_classes)
-            else:
-                ranking_quality = np.empty(n_classes)
-                for c in range(n_classes):
+            ranking_quality = np.full(n_classes, np.nan)
+            for c in range(n_classes):
+                mask_c = y_train[train] == c
+                mislabeled_train_c = (y_noisy[train] == y_train[train])[mask_c]
+
+                if len(np.unique(mislabeled_train_c)) > 1:
                     ranking_quality[c] = roc_auc_score(
-                        (y_noisy == y_train)[y_train == c],
-                        best_trust_scores[y_train == c],
+                        mislabeled_train_c,
+                        trust_scores[mask_c],
                     )
 
             print("Most untrusted instances :")
-            indices = np.argsort(best_trust_scores, axis=None)
+            indices = np.argsort(trust_scores, axis=None)
             for i in range(5):
                 idx = indices[i]
                 print(
@@ -542,8 +573,12 @@ for dataset_name, dataset in weak_datasets.items():
         res = {
             "dataset_name": dataset_name,
             "noise_ratio": noise_ratio,
-            "noisy_class_distribution": (np.bincount(y_noisy) / len(y_noisy)).tolist(),
-            "class_distribution": (np.bincount(y_train) / len(y_train)).tolist(),
+            "noisy_class_distribution": (
+                np.bincount(y_noisy[train]) / len(y_noisy[train])
+            ).tolist(),
+            "class_distribution": (
+                np.bincount(y_train[train]) / len(y_train[train])
+            ).tolist(),
             "accuracy": round(acc, 4),
             "balanced_accuracy": round(bacc, 4),
             "log_loss": round(logl, 4),
@@ -559,7 +594,7 @@ for dataset_name, dataset in weak_datasets.items():
         print(res)
 
         if detector is not None:
-            res["trust_scores"] = best_trust_scores.tolist()
+            res["trust_scores"] = trust_scores.tolist()
 
         final_output_dir = os.path.join(output_dir, detector_name)
         os.makedirs(final_output_dir, exist_ok=True)

@@ -64,9 +64,16 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
         for Multilingual Transformer Models: A Study on African Languages\
         (Hedderich et al., EMNLP 2020)
     """
-    # Download all lexicons
+    # Download all lexicons 
     rules = {}
-    for lexicon_name, (lexicon, lexicon_known_hash) in WALN_LEXICONS.items():
+    lexicons = WALN_LEXICONS
+
+    if name == "hausa":
+        lexicons = {
+            k: v for k, v in lexicons.items() if k not in ["entertainement", "sport"]
+        }
+
+    for lexicon_name, (lexicon, lexicon_known_hash) in lexicons.items():
         lexicon_file_name = pooch.retrieve(
             url=WALN_LEXICON_URL + "/" + lexicon,
             known_hash=lexicon_known_hash,
@@ -107,6 +114,6 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
         data=data,
         target=target,
         weak_targets=np.stack(weak_targets),
-        target_names=list(WALN_LEXICONS.keys()),
+        target_names=list(lexicons.keys()),
         description=None,
     )

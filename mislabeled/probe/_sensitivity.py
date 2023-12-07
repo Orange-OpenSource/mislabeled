@@ -119,7 +119,7 @@ class FiniteDiffSensitivity:
 
         directions_per_batch = self.directions_per_batch
 
-        def batched_probe(probe, estimator, X, y, directions, i):
+        def batched_probe(probe, estimator, X, y, directions):
             n_directions_batch = directions.shape[0]
             X_batch = np.tile(X, (n_directions_batch, 1))
             X_delta = np.repeat(directions, n_samples, axis=0) * self.epsilon
@@ -130,9 +130,9 @@ class FiniteDiffSensitivity:
 
         batched_probe_scores = Parallel(n_jobs=self.n_jobs)(
             delayed(batched_probe)(
-                probe, estimator, X_reference, y, self._directions[batch], i
+                probe, estimator, X_reference, y, self._directions[batch]
             )
-            for i, batch in enumerate(batches)
+            for batch in batches
         )
 
         probe_scores = np.concatenate(batched_probe_scores, axis=0)
@@ -179,7 +179,7 @@ class LinearSensitivity:
 
         if hasattr(estimator, "coef_"):
             coef = estimator.coef_
-        if hasattr(estimator, "coefs_"):
+        elif hasattr(estimator, "coefs_"):
             warnings.warn(
                 "LinearSensitivity treats the neural network as a linear combination"
                 " of all layer weights",

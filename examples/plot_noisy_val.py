@@ -36,16 +36,13 @@ y_noisy_train = wle.transform(train["weak_targets"])
 y_noisy_validation = wle.transform(validation["weak_targets"])
 y_noisy_test = wle.transform(test["weak_targets"])
 
-classifier = SGDClassifier(loss="log_loss", random_state=seed)
+classifier = SGDClassifier(
+    loss="log_loss", learning_rate="constant", eta0=0.1, random_state=seed
+)
 
-vosg = LinearVoSG(classifier)
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", category=ConvergenceWarning)
-    trust_scores = vosg.trust_score(X_train, y_noisy_train)
-
-n_runs = 5
+n_runs = 10
 n_splits = 200
-splits = np.linspace(0, 1.0, endpoint=False, num=n_splits)
+splits = np.linspace(0, 0.9, endpoint=False, num=n_splits)
 
 val_scores = np.empty((n_runs, n_splits))
 noisy_val_scores = np.empty((n_runs, n_splits))
@@ -57,6 +54,11 @@ none_scores = np.empty(n_runs)
 
 for i in range(n_runs):
     classifier.set_params(random_state=seed + i)
+
+    vosg = LinearVoSG(classifier)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        trust_scores = vosg.trust_score(X_train, y_noisy_train)
 
     gold_scores[i] = balanced_accuracy_score(
         y_test, classifier.fit(X_train, y_train).predict(X_test)
@@ -99,7 +101,7 @@ for scores, label, color in zip(
         splits,
         np.mean(scores, axis=0) + np.std(scores, axis=0),
         np.mean(scores, axis=0) - np.std(scores, axis=0),
-        alpha=0.5,
+        alpha=0.3,
         color=f"tab:{color}",
     )
 plt.axvline(
@@ -119,3 +121,5 @@ plt.ylabel("balanced accuracy")
 plt.title("Threshold selection on SMS dataset")
 plt.legend(loc="lower right")
 plt.show()
+
+# %%

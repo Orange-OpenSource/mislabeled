@@ -37,6 +37,7 @@ class WeakLabelEncoder(TransformerMixin, BaseEstimator):
             )
 
         Y[Y != -1] = self.le_.transform(Y[Y != -1].reshape(-1))
+        Y = Y.astype(int)
 
         rng = check_random_state(self.random_state)
 
@@ -55,7 +56,7 @@ class WeakLabelEncoder(TransformerMixin, BaseEstimator):
             y = stats.mode(Y, axis=1, nan_policy="omit")[0]
             n_nan = len(y[np.isnan(y)])
             y[np.isnan(y)] = rng.choice(
-                self.classes_, size=n_nan, p=priors / np.sum(priors)
+                range(n_classes), size=n_nan, p=priors / np.sum(priors)
             )
             y = y.astype(int)
 
@@ -65,6 +66,8 @@ class WeakLabelEncoder(TransformerMixin, BaseEstimator):
             y = y[:, :n_classes]
             y[np.all(y == 0, axis=1)] = priors
             y = y / np.sum(y, axis=1, keepdims=True)
+            y = y.astype(float)
+
         else:
             raise ValueError(f"unrecognized method: {self.method}")
 
