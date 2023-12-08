@@ -2,6 +2,8 @@ import os
 
 from joblib import load
 
+from ._moons_ground_truth_generate import generate_moons_ground_truth
+
 
 def moons_ground_truth_pyx(X, spread=0.2, dataset_cache_path=os.path.dirname(__file__)):
     spread_str = "0" + str(spread)[2:]
@@ -10,10 +12,7 @@ def moons_ground_truth_pyx(X, spread=0.2, dataset_cache_path=os.path.dirname(__f
             os.path.join(dataset_cache_path, f"moons_gt_pyx_{spread_str}.joblib")
         )
     except FileNotFoundError:
-        print(
-            "Please run moons_ground_truth_create.py first with the same spread level"
-        )
-        raise
+        gt_clf, _ = generate_moons_ground_truth(spread, dataset_cache_path)
 
     # p(y=1|x)
     # where classes = {0, 1}
@@ -27,9 +26,6 @@ def moons_ground_truth_px(X, spread=0.2, dataset_cache_path=os.path.dirname(__fi
             os.path.join(dataset_cache_path, f"moons_gt_px_{spread_str}.joblib")
         )
     except FileNotFoundError:
-        print(
-            "Please run moons_ground_truth_create.py first with the same spread level"
-        )
-        raise
+        _, gt_regr = generate_moons_ground_truth(spread, dataset_cache_path)
 
     return gt_regr.predict(X)
