@@ -1,12 +1,9 @@
 # %%
-import copy
-import csv
 import json
 import os
 import socket
 import subprocess
 import sys
-import tempfile
 import time
 import warnings
 
@@ -15,11 +12,10 @@ from functools import partial
 import numpy as np
 import scipy.sparse as sp
 from sklearn.base import clone
-from sklearn.preprocessing import LabelEncoder
 from sklearn.compose import make_column_transformer
 from sklearn.datasets import fetch_openml
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.kernel_approximation import Nystroem, RBFSampler
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import (
     accuracy_score,
@@ -41,7 +37,6 @@ from mislabeled.detect.detectors import (
     InfluenceDetector,
     ConfidentLearning,
     ForgetScores,
-    FiniteDiffComplexity,
     LinearVoSG,
     TracIn,
 )
@@ -114,90 +109,76 @@ else:
 fetch_wrench = partial(fetch_wrench, cache_folder=wrench_folder)
 
 cpu_datasets = [
-    # # ("agnews", fetch_wrench, TfidfVectorizer(strip_accents="unicode",stop_words="english", min_df=1e-3), "linear"),
+    # ("agnews", fetch_wrench, TfidfVectorizer(strip_accents="unicode",stop_words="english", min_df=1e-3), "linear"),
+    (
+        "bank-marketing",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore"),
+                [1, 2, 3, 8, 9, 10, 15],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
+    # ("basketball", fetch_wrench, None, "rbf"),
+    # ("bioresponse", fetch_wrench, None, "rbf"),
+    (
+        "census",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                [1, 3, 5, 6, 7, 8, 14],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
+    # ("commercial", fetch_wrench, None, "rbf"),
     # (
-    #     "bank-marketing",
+    #     "imdb",
     #     fetch_wrench,
-    #     make_column_transformer(
-    #         (
-    #             OneHotEncoder(handle_unknown="ignore"),
-    #             [1, 2, 3, 8, 9, 10, 15],
-    #         ),
-    #         remainder="passthrough",
-    #     ),
-    #     "rbf",
-    # ),
-    # # ("basketball", fetch_wrench, None, "rbf"),
-    # # ("bioresponse", fetch_wrench, None, "rbf"),
-    # (
-    #     "census",
-    #     fetch_wrench,
-    #     make_column_transformer(
-    #         (
-    #             OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
-    #             [1, 3, 5, 6, 7, 8, 14],
-    #         ),
-    #         remainder="passthrough",
-    #     ),
-    #     "rbf",
-    # ),
-    # # ("commercial", fetch_wrench, None, "rbf"),
-    # # (
-    # #     "imdb",
-    # #     fetch_wrench,
-    # #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
-    # #     "linear",
-    # # ),
-    # (
-    #     "mushroom",
-    #     fetch_wrench,
-    #     make_column_transformer(
-    #         (
-    #             OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
-    #             [0, 1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20],
-    #         ),
-    #         remainder="passthrough",
-    #     ),
-    #     "rbf",
-    # ),
-    # (
-    #     "phishing",
-    #     fetch_wrench,
-    #     make_column_transformer(
-    #         (
-    #             OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
-    #             [1, 6, 7, 13, 14, 15, 25, 28],
-    #         ),
-    #         remainder="passthrough",
-    #     ),
-    #     "rbf",
-    # ),
-    # ("spambase", fetch_wrench, None, "rbf"),
-    # (
-    #     "sms",
-    #     fetch_wrench,
-    #     TfidfVectorizer(
-    #         strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
-    #     ),
+    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
     #     "linear",
     # ),
-    # # ("tennis", fetch_wrench, None, "rbf"),
-    # # (
-    # #     "trec",
-    # #     fetch_wrench,
-    # #     TfidfVectorizer(
-    # #         strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
-    # #     ),
-    # #     "linear",
-    # # ),
-    # # (
-    # #     "yelp",
-    # #     fetch_wrench,
-    # #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
-    # #     "linear",
-    # # ),
+    (
+        "mushroom",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                [0, 1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
+    (
+        "phishing",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                [1, 6, 7, 13, 14, 15, 25, 28],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
+    ("spambase", fetch_wrench, None, "rbf"),
+    (
+        "sms",
+        fetch_wrench,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+        ),
+        "linear",
+    ),
+    # ("tennis", fetch_wrench, None, "rbf"),
     # (
-    #     "youtube",
+    #     "trec",
     #     fetch_wrench,
     #     TfidfVectorizer(
     #         strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
@@ -205,36 +186,48 @@ cpu_datasets = [
     #     "linear",
     # ),
     # (
-    #     "hausa",
-    #     fetch_west_african_language_news,
-    #     TfidfVectorizer(
-    #         strip_accents="unicode", min_df=5, max_df=0.5
-    #     ),
+    #     "yelp",
+    #     fetch_wrench,
+    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
     #     "linear",
     # ),
+    (
+        "youtube",
+        fetch_wrench,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+        ),
+        "linear",
+    ),
     (
         "yoruba",
         fetch_west_african_language_news,
         TfidfVectorizer(strip_accents="unicode", min_df=5, max_df=0.5),
         "linear",
-    )
+    ),
 ]
 
 weak_datasets = {}
 for name, fetch, preprocessing, kernel in cpu_datasets:
-    weak_dataset = {}
+    weak_dataset = {
+        split: fetch(name, split=split) for split in ["train", "validation", "test"]
+    }
+
+    weak_targets = [
+        weak_dataset[split]["weak_targets"] for split in ["train", "validation", "test"]
+    ]
+    weak_targets = np.concatenate(weak_targets)
+    wle = WeakLabelEncoder(random_state=seed).fit(weak_targets)
+    soft_wle = WeakLabelEncoder(random_state=seed, method="soft").fit(weak_targets)
+
     for split in ["train", "validation", "test"]:
-        weak_dataset_split = fetch(name, split=split)
-        weak_dataset_split["noisy_target"] = WeakLabelEncoder(
-            random_state=seed
-        ).fit_transform(weak_dataset_split["weak_targets"])
-        weak_dataset_split["soft_targets"] = WeakLabelEncoder(
-            random_state=seed, method="soft"
-        ).fit_transform(weak_dataset_split["weak_targets"])
-        weak_dataset_split["target"] = LabelEncoder().fit_transform(
-            weak_dataset_split["target"]
+        weak_dataset[split]["noisy_target"] = wle.transform(
+            weak_dataset[split]["weak_targets"]
         )
-        weak_dataset[split] = weak_dataset_split
+        weak_dataset[split]["soft_targets"] = soft_wle.transform(
+            weak_dataset[split]["weak_targets"]
+        )
+
     if preprocessing is not None:
         data = [
             weak_dataset[split]["data"] for split in ["train", "validation", "test"]
@@ -347,7 +340,7 @@ agra = ModelBasedDetector(klm, NoEnsemble(), LinearGradSimilarity(), "sum")
 param_grid_agra = param_grid_detector(param_grid_klm)
 
 detectors = [
-    # ("gold", None, None),
+    ("gold", None, None),
     ("silver", None, None),
     # ("bronze", None, None),
     ("none", None, None),
@@ -506,7 +499,6 @@ for dataset_name, dataset in weak_datasets.items():
             gscv.fit(X_train, y_train)
         elif detector_name == "silver":
             clean = y_train == y_noisy
-            print(np.mean(clean), y_train, y_noisy)
             gscv.set_params(cv=PredefinedSplit(split[clean]))
             gscv.fit(X_train[clean, :], y_noisy[clean])
         # elif detector_name == "bronze":
@@ -558,8 +550,8 @@ for dataset_name, dataset in weak_datasets.items():
                 idx = indices[i]
                 print(
                     f"Top {i} instance : {raw_train[idx]} was labeled"
-                    f" {y_noisy[idx]} but soft label was {y_soft[idx]} and true"
-                    f" label was {y_train[idx]}."
+                    f" {labels[y_noisy[idx]]} but soft label was {y_soft[idx]} and true"
+                    f" label was {labels[y_train[idx]]}."
                 )
 
         else:
@@ -574,10 +566,10 @@ for dataset_name, dataset in weak_datasets.items():
             "dataset_name": dataset_name,
             "noise_ratio": noise_ratio,
             "noisy_class_distribution": (
-                np.bincount(y_noisy[train]) / len(y_noisy[train])
+                np.bincount(y_noisy[train], minlength=n_classes) / len(y_noisy[train])
             ).tolist(),
             "class_distribution": (
-                np.bincount(y_train[train]) / len(y_train[train])
+                np.bincount(y_train[train], minlength=n_classes) / len(y_train[train])
             ).tolist(),
             "accuracy": round(acc, 4),
             "balanced_accuracy": round(bacc, 4),

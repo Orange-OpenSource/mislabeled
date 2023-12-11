@@ -27,7 +27,7 @@ class WeakLabelEncoder(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, Y):
-        Y = check_array(Y, dtype=(int, float, object))
+        Y = check_array(Y, dtype=(int, float, object), copy=True)
 
         if Y.dtype.kind in ["U", "S"]:
             raise ValueError(
