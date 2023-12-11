@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as sp
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.extmath import safe_sparse_dot
 
@@ -83,10 +84,14 @@ class LinearGradNorm2:
         if isinstance(estimator, Pipeline):
             X = make_pipeline(estimator[:-1]).transform(X)
             estimator = estimator[-1]
-        p = estimator.predict_proba(X)
 
         # grads of the cross entropy w.r.t. pre-activations before the softmax
-        grad_pre_act = p
+        grad_pre_act = estimator.predict_proba(X)
         grad_pre_act[np.arange(grad_pre_act.shape[0]), y] -= 1
 
-        return -(grad_pre_act**2).sum(axis=1) * (X**2).sum(axis=1)
+        grad_pre_act_norm = np.linalg.norm(grad_pre_act, axis=1)
+        X_norm = (
+            sp.linalg.norm(X, axis=1) if sp.issparse(X) else np.linalg.norm(X, axis=1)
+        )
+
+        return -(grad_pre_act_norm**2) * X_norm**2

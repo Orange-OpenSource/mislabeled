@@ -1,12 +1,9 @@
 # %%
-import copy
-import csv
 import json
 import os
 import socket
 import subprocess
 import sys
-import tempfile
 import time
 import warnings
 
@@ -14,9 +11,10 @@ from functools import partial
 
 import numpy as np
 import scipy.sparse as sp
+from sklearn.base import clone
+from sklearn.compose import make_column_transformer
 from sklearn.datasets import fetch_openml
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import (
@@ -25,6 +23,7 @@ from sklearn.metrics import (
     brier_score_loss,
     cohen_kappa_score,
     log_loss,
+    make_scorer,
     roc_auc_score,
 )
 from sklearn.model_selection import PredefinedSplit, GridSearchCV
@@ -38,8 +37,8 @@ from mislabeled.detect.detectors import (
     InfluenceDetector,
     ConfidentLearning,
     ForgetScores,
-    FiniteDiffComplexity,
     LinearVoSG,
+    TracIn,
 )
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble
@@ -48,11 +47,12 @@ from mislabeled.handle._filter import FilterClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from mislabeled.datasets.wrench import fetch_wrench
+from mislabeled.datasets.west_african_languages import fetch_west_african_language_news
 from mislabeled.preprocessing import WeakLabelEncoder
-from mislabeled.split import QuantileSplitter
+from mislabeled.split import QuantileSplitter, ThresholdSplitter
 from uuid import uuid1
 from mislabeled.ensemble._progressive import staged_fit
-from mislabeled.probe import LinearSensitivity
+from mislabeled.probe import LinearSensitivity, LinearGradSimilarity
 
 from catboost import CatBoostClassifier
 
@@ -99,20 +99,6 @@ kernels["linear"] = ("passthrough", {})
 
 # %%
 
-## PREPROCESSING OF UCI DATASETS
-
-# uci_datasets_to_fetch = [
-#     ("phishing", fetch_openml(data_id=4534, return_X_y=True, parser="pandas")),
-# ]
-
-# n_noise_ratios = 10
-# noises = {
-#     "uniform": np.linspace(0, 1, num=n_noise_ratios, endpoint=True),
-#     "permutation": np.linspace(0, 0.5, num=n_noise_ratios, endpoint=True),
-# }
-
-# %%
-
 ## PREPROCESSING OF WRENCH AND WALN DATASETS
 
 if socket.gethostname() == "l-neobi-8":
@@ -122,12 +108,34 @@ else:
 
 fetch_wrench = partial(fetch_wrench, cache_folder=wrench_folder)
 
-weak_datasets_to_fetch = [
+cpu_datasets = [
     # ("agnews", fetch_wrench, TfidfVectorizer(strip_accents="unicode",stop_words="english", min_df=1e-3), "linear"),
-    # ("bank-marketing", fetch_wrench, None, "rbf"),
+    (
+        "bank-marketing",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore"),
+                [1, 2, 3, 8, 9, 10, 15],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
     # ("basketball", fetch_wrench, None, "rbf"),
     # ("bioresponse", fetch_wrench, None, "rbf"),
-    # ("census", fetch_wrench, None, "rbf"),
+    (
+        "census",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                [1, 3, 5, 6, 7, 8, 14],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
     # ("commercial", fetch_wrench, None, "rbf"),
     # (
     #     "imdb",
@@ -135,20 +143,46 @@ weak_datasets_to_fetch = [
     #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
     #     "linear",
     # ),
-    # ("mushroom", fetch_wrench, None, "rbf"),
-    # ("phishing", fetch_wrench, None, "rbf"),
-    # ("spambase", fetch_wrench, None, "rbf"),
-    # (
-    #     "sms",
-    #     fetch_wrench,
-    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=10),
-    #     "linear",
-    # ),
+    (
+        "mushroom",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                [0, 1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
+    (
+        "phishing",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                [1, 6, 7, 13, 14, 15, 25, 28],
+            ),
+            remainder="passthrough",
+        ),
+        "rbf",
+    ),
+    ("spambase", fetch_wrench, None, "rbf"),
+    (
+        "sms",
+        fetch_wrench,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+        ),
+        "linear",
+    ),
     # ("tennis", fetch_wrench, None, "rbf"),
     # (
     #     "trec",
     #     fetch_wrench,
-    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=10),
+    #     TfidfVectorizer(
+    #         strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+    #     ),
     #     "linear",
     # ),
     # (
@@ -160,28 +194,49 @@ weak_datasets_to_fetch = [
     (
         "youtube",
         fetch_wrench,
-        TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-2),
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+        ),
+        "linear",
+    ),
+    (
+        "yoruba",
+        fetch_west_african_language_news,
+        TfidfVectorizer(strip_accents="unicode", min_df=5, max_df=0.5),
         "linear",
     ),
 ]
 
 weak_datasets = {}
-for name, fetch, preprocessing, kernel in weak_datasets_to_fetch:
-    weak_dataset = {}
+for name, fetch, preprocessing, kernel in cpu_datasets:
+    weak_dataset = {
+        split: fetch(name, split=split) for split in ["train", "validation", "test"]
+    }
+
+    weak_targets = [
+        weak_dataset[split]["weak_targets"] for split in ["train", "validation", "test"]
+    ]
+    weak_targets = np.concatenate(weak_targets)
+    wle = WeakLabelEncoder(random_state=seed).fit(weak_targets)
+    soft_wle = WeakLabelEncoder(random_state=seed, method="soft").fit(weak_targets)
+
     for split in ["train", "validation", "test"]:
-        weak_dataset_split = fetch(name, split=split)
-        weak_dataset_split["noisy_target"] = WeakLabelEncoder(
-            random_state=seed
-        ).fit_transform(weak_dataset_split["weak_targets"])
-        weak_dataset_split["soft_targets"] = WeakLabelEncoder(
-            random_state=seed, method="soft"
-        ).fit_transform(weak_dataset_split["weak_targets"])
-        weak_dataset[split] = weak_dataset_split
+        weak_dataset[split]["noisy_target"] = wle.transform(
+            weak_dataset[split]["weak_targets"]
+        )
+        weak_dataset[split]["soft_targets"] = soft_wle.transform(
+            weak_dataset[split]["weak_targets"]
+        )
+
     if preprocessing is not None:
         data = [
             weak_dataset[split]["data"] for split in ["train", "validation", "test"]
         ]
-        preprocessing.fit(sum(data, []))
+        if isinstance(data[0], list):
+            whole = sum(data, [])
+        else:
+            whole = np.concatenate(data)
+        preprocessing.fit(whole)
         for split in ["train", "validation", "test"]:
             weak_dataset[split]["raw"] = weak_dataset[split]["data"]
             weak_dataset[split]["data"] = preprocessing.transform(
@@ -226,7 +281,7 @@ klm = Pipeline(
     ],
 )
 param_grid_klm = {
-    "sgd__alpha": [1e-7, 1e-4],
+    "sgd__alpha": [1e-4],
     "sgd__eta0": [1e-4, 1e-2, 0.1],  # AKA Learning Rate
 }
 
@@ -275,29 +330,33 @@ param_grid_klm_consensus["n_repeats"] = [5]
 influence = InfluenceDetector(klm)
 param_grid_influence = param_grid_detector(param_grid_klm)
 
-klm_sensitivity = ModelBasedDetector(klm, NoEnsemble(), LinearSensitivity(), "sum")
-param_grid_klm_sensitivity = param_grid_detector(param_grid_klm)
+tracin = TracIn(klm)
+param_grid_tracin = param_grid_detector(param_grid_klm)
 
 klm_vosg = LinearVoSG(klm)
 param_grid_klm_vosg = param_grid_detector(param_grid_klm)
 
+agra = ModelBasedDetector(klm, NoEnsemble(), LinearGradSimilarity(), "sum")
+param_grid_agra = param_grid_detector(param_grid_klm)
+
 detectors = [
-    # ("gold", None, None),
-    # ("silver", None, None),
+    ("gold", None, None),
+    ("silver", None, None),
     # ("bronze", None, None),
-    # ("none", None, None),
+    ("none", None, None),
     # ("knn_loo", knn_loo, param_grid_knn_loo),
-    # ("gb_aum", gb_aum, param_grid_gb_aum),
-    # ("klm_aum", klm_aum, param_grid_klm_aum),
+    ("gb_aum", gb_aum, param_grid_gb_aum),
+    ("klm_aum", klm_aum, param_grid_klm_aum),
     # ("gb_forget", gb_forget, param_grid_gb_forget),
     # ("klm_forget", klm_forget, param_grid_klm_forget),
-    # ("gb_cleanlab", gb_cleanlab, param_grid_gb_cleanlab),
-    # ("klm_cleanlab", klm_cleanlab, param_grid_klm_cleanlab),
-    # ("gb_consensus", gb_consensus, param_grid_gb_consensus),
-    # ("klm_consensus", klm_consensus, param_grid_klm_consensus),
-    # ("influence", influence, param_grid_influence),
-    ("klm_sensitivity", klm_sensitivity, param_grid_klm_sensitivity),
+    ("gb_cleanlab", gb_cleanlab, param_grid_gb_cleanlab),
+    ("klm_cleanlab", klm_cleanlab, param_grid_klm_cleanlab),
+    ("gb_consensus", gb_consensus, param_grid_gb_consensus),
+    ("klm_consensus", klm_consensus, param_grid_klm_consensus),
+    ("influence", influence, param_grid_influence),
+    ("tracin", tracin, param_grid_tracin),
     ("klm_vosg", klm_vosg, param_grid_klm_vosg),
+    ("agra", agra, param_grid_agra),
 ]
 
 # %%
@@ -311,10 +370,17 @@ param_grid_classifier = param_grid_gb
 
 ## SPLITTER DEFINITION
 
-splitter = QuantileSplitter()
-param_grid_splitter = {
-    "quantile": [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5],
+splitters = {}
+
+quantile_splitter = QuantileSplitter()
+param_grid_quantile_splitter = {
+    "quantile": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
 }
+
+for detector_name, _, _ in detectors:
+    splitters[detector_name] = (quantile_splitter, param_grid_quantile_splitter)
+
+splitters["agra"] = (ThresholdSplitter(0), {})
 
 # %%
 
@@ -355,6 +421,7 @@ for dataset_name, dataset in weak_datasets.items():
     )
 
     split = np.concatenate([-np.ones(X_train.shape[0]), np.zeros(X_val.shape[0])])
+    train = split == -1
 
     # FASTER TRAINING
     X_train = X_train.astype(np.float32)
@@ -367,12 +434,13 @@ for dataset_name, dataset in weak_datasets.items():
         X_train = np.vstack([X_train, X_val])
 
     y_train = np.concatenate([y_train, y_val])
-    y_noisy = np.concatenate([y_noisy_train, y_noisy_val])
+    y_noisy = np.concatenate([y_noisy_train, y_val])
     y_soft = np.concatenate([y_soft_train, y_soft_val])
 
     print(X_train.shape)
 
-    y = np.concatenate([y_train, y_val, y_test])
+    labels = np.unique(y_train)
+    n_classes = len(labels)
 
     if "raw" in dataset["train"]:
         raw_train = dataset["train"]["raw"]
@@ -388,6 +456,7 @@ for dataset_name, dataset in weak_datasets.items():
         cache = f"cache/{uuid1(seed)}"
 
         if detector is not None:
+            splitter, param_grid_splitter = splitters[detector_name]
             detect_handle = FilterClassifier(
                 detector,
                 splitter,
@@ -415,33 +484,43 @@ for dataset_name, dataset in weak_datasets.items():
             detect_handle = classifier
             param_grid = param_grid_classifier
 
-        model = GridSearchCV(
+        gscv = GridSearchCV(
             estimator=detect_handle,
             param_grid=param_grid,
             cv=PredefinedSplit(split),
-            scoring="balanced_accuracy",
+            scoring="neg_log_loss",
+            refit=False,
             verbose=3,
             n_jobs=1,
         )
 
         start = time.perf_counter()
         if detector_name == "gold":
-            model.fit(X_train, y_train)
+            gscv.fit(X_train, y_train)
         elif detector_name == "silver":
             clean = y_train == y_noisy
-            model.set_params(cv=PredefinedSplit(split[clean]))
-            model.fit(X_train[safe_mask(X_train, clean)], y_noisy[clean])
-        elif detector_name == "bronze":
-            clean = y_train == y_noisy
-            clean = clean | (split == 0)
-            model.set_params(cv=PredefinedSplit(split[clean]))
-            model.fit(X_train[safe_mask(X_train, clean)], y_noisy[clean])
+            gscv.set_params(cv=PredefinedSplit(split[clean]))
+            gscv.fit(X_train[clean, :], y_noisy[clean])
+        # elif detector_name == "bronze":
+        #     clean = y_train == y_noisy
+        #     clean = clean | (split == 0)
+        #     model.set_params(cv=PredefinedSplit(split[clean]))
+        #     model.fit(X_train[safe_mask(X_train, clean)], y_noisy[clean])
         else:
-            model.fit(X_train, y_noisy)
+            gscv.fit(X_train, y_noisy)
 
         end = time.perf_counter()
 
-        best_params = model.best_params_
+        best_params = gscv.best_params_
+
+        model = clone(detect_handle).set_params(**best_params)
+        if detector_name == "gold":
+            model.fit(X_train[train, :], y_train[train])
+        elif detector_name in ["silver", "bronze"]:
+            clean = y_train == y_noisy
+            model.fit(X_train[clean & train, :], y_noisy[clean & train])
+        else:
+            model.fit(X_train[train, :], y_noisy[train])
 
         y_pred = model.predict(X_test)
         y_proba = model.predict_proba(X_test)
@@ -452,40 +531,50 @@ for dataset_name, dataset in weak_datasets.items():
         logl = log_loss(y_test, y_proba)
 
         if detector is not None:
-            best_trust_scores = model.best_estimator_.trust_scores_
+            trust_scores = model.trust_scores_
 
-            if np.all(np.equal(y_train, y_noisy)):
-                ranking_quality = 1
-            else:
-                ranking_quality = roc_auc_score(y_noisy == y_train, best_trust_scores)
+            ranking_quality = np.full(n_classes, np.nan)
+            for c in range(n_classes):
+                mask_c = y_train[train] == c
+                mislabeled_train_c = (y_noisy[train] == y_train[train])[mask_c]
+
+                if len(np.unique(mislabeled_train_c)) > 1:
+                    ranking_quality[c] = roc_auc_score(
+                        mislabeled_train_c,
+                        trust_scores[mask_c],
+                    )
 
             print("Most untrusted instances :")
-            indices = np.argsort(best_trust_scores, axis=None)
+            indices = np.argsort(trust_scores, axis=None)
             for i in range(5):
                 idx = indices[i]
                 print(
                     f"Top {i} instance : {raw_train[idx]} was labeled"
-                    f" {y_noisy[idx]} but soft label was {y_soft[idx]} and true"
-                    f" label was {y_train[idx]}."
+                    f" {labels[y_noisy[idx]]} but soft label was {y_soft[idx]} and true"
+                    f" label was {labels[y_train[idx]]}."
                 )
 
         else:
             if detector_name == "gold":
                 ranking_quality = None
             if detector_name in ["silver", "bronze"]:
-                ranking_quality = 1
+                ranking_quality = np.ones(n_classes)
             else:
-                ranking_quality = 0
+                ranking_quality = np.zeros(n_classes)
 
         res = {
             "dataset_name": dataset_name,
             "noise_ratio": noise_ratio,
-            "noisy_class_distribution": (np.bincount(y_noisy) / len(y_noisy)).tolist(),
-            "class_distribution": (np.bincount(y) / len(y)).tolist(),
+            "noisy_class_distribution": (
+                np.bincount(y_noisy[train], minlength=n_classes) / len(y_noisy[train])
+            ).tolist(),
+            "class_distribution": (
+                np.bincount(y_train[train], minlength=n_classes) / len(y_train[train])
+            ).tolist(),
             "accuracy": round(acc, 4),
             "balanced_accuracy": round(bacc, 4),
             "log_loss": round(logl, 4),
-            "ranking_quality": round(ranking_quality, 4),
+            "ranking_quality": np.around(ranking_quality, 4).tolist(),
             "detector_name": detector_name,
             "handler_name": "filter",
             "fitting_time": end - start,
@@ -497,7 +586,7 @@ for dataset_name, dataset in weak_datasets.items():
         print(res)
 
         if detector is not None:
-            res["trust_scores"] = best_trust_scores.tolist()
+            res["trust_scores"] = trust_scores.tolist()
 
         final_output_dir = os.path.join(output_dir, detector_name)
         os.makedirs(final_output_dir, exist_ok=True)

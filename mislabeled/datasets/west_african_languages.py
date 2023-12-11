@@ -1,3 +1,5 @@
+from functools import reduce
+
 import numpy as np
 import pandas as pd
 import pooch
@@ -64,9 +66,16 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
         for Multilingual Transformer Models: A Study on African Languages\
         (Hedderich et al., EMNLP 2020)
     """
-    # Download all lexicons
     rules = {}
-    for lexicon_name, (lexicon, lexicon_known_hash) in WALN_LEXICONS.items():
+    lexicons = WALN_LEXICONS
+
+    if name == "hausa":
+        lexicons = {
+            k: v for k, v in lexicons.items() if k not in ["entertainment", "sport"]
+        }
+
+    # Download all lexicons
+    for lexicon_name, (lexicon, lexicon_known_hash) in lexicons.items():
         lexicon_file_name = pooch.retrieve(
             url=WALN_LEXICON_URL + "/" + lexicon,
             known_hash=lexicon_known_hash,
@@ -91,13 +100,24 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
     data = blob["news_title"].tolist()
     target = blob["label"].str.lower().values
 
+    # Encode target given lexicons order
+    target_names = list(lexicons.keys())
+    table = {k: i for i, k in enumerate(target_names)}
+    target = [table[t] for t in target]
+
     # Apply rules to generate weak targets manually
     weak_targets = []
     for verbatim in data:
+        # 1-gram and 2-gram
+        tokens = verbatim.lower().split()
+        tokens = tokens + [
+            reduce(lambda t1, t2: " ".join((t1, t2)), tokens[i : i + 2])
+            for i in range(len(tokens) - 2 + 1)
+        ]
         weak_target = []
         for rule_name, keywords in rules.items():
             for keyword in keywords:
-                if keyword in verbatim:
+                if keyword.lower() in tokens:
                     weak_target.append(rule_name)
                 else:
                     weak_target.append(-1)
@@ -107,6 +127,6 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
         data=data,
         target=target,
         weak_targets=np.stack(weak_targets),
-        target_names=list(WALN_LEXICONS.keys()),
+        target_names=target_names,
         description=None,
     )

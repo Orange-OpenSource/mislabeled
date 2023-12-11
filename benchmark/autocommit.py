@@ -1,17 +1,13 @@
 import subprocess
 
 
-def autocommit(working_branch="benchmark"):
+def autocommit():
     # check that source branch is actually the current branch
-    branch = (
+    working_branch = (
         subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"])
         .decode("ascii")
         .strip()
     )
-    if branch != working_branch:
-        raise ValueError(
-            "working_branch is different from the branch of the working directory"
-        )
 
     # saves the current state of the directory into branch
     stash_msg = subprocess.check_output(["git", "stash"]).decode("ascii").strip()
