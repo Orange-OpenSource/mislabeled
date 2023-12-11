@@ -75,6 +75,50 @@ def test_supervised_pro_classif(n_classes, probe_scorer):
     simple_detect_test(n_classes, detector)
 
 
+@pytest.mark.parametrize("n_classes", [2, 5])
+@pytest.mark.parametrize(
+    "probe_scorer",
+    filter(
+        lambda name: "adjusted" in name,
+        _PROBE_SCORERS.keys(),
+    ),
+)
+def test_supervised_adjusted_pro_classif(n_classes, probe_scorer):
+    detector = ModelBasedDetector(
+        base_model=make_pipeline(
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LogisticRegression(),
+        ),
+        ensemble=NoEnsemble(),
+        probe="accuracy",
+        aggregate="sum",
+    )
+    detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
+    simple_detect_test(n_classes, detector)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+@pytest.mark.parametrize(
+    "probe_scorer",
+    filter(
+        lambda name: "peered" in name,
+        _PROBE_SCORERS.keys(),
+    ),
+)
+def test_supervised_peered_pro_classif(n_classes, probe_scorer):
+    detector = ModelBasedDetector(
+        base_model=make_pipeline(
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LogisticRegression(),
+        ),
+        ensemble=NoEnsemble(),
+        probe="accuracy",
+        aggregate="sum",
+    )
+    detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
+    simple_detect_test(n_classes, detector)
+
+
 @pytest.mark.parametrize("n_classes", [2])
 @pytest.mark.parametrize("n_outliers", [5, 10, 30])
 @pytest.mark.parametrize(

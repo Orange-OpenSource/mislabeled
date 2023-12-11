@@ -7,7 +7,7 @@ import numpy as np
 import scipy.sparse as sp
 from joblib import delayed, Parallel
 from sklearn.dummy import check_random_state
-from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.utils import gen_batches
 
 from mislabeled.probe import check_probe, confidence
@@ -173,13 +173,14 @@ class LinearSensitivity:
             direction
         """
 
+        softmax = estimator.predict_proba(X)
+
         if isinstance(estimator, Pipeline):
-            X = make_pipeline(estimator[:-1]).transform(X)
             estimator = estimator[-1]
 
         if hasattr(estimator, "coef_"):
             coef = estimator.coef_
-        if hasattr(estimator, "coefs_"):
+        elif hasattr(estimator, "coefs_"):
             warnings.warn(
                 "LinearSensitivity treats the neural network as a linear combination"
                 " of all layer weights",
@@ -191,7 +192,6 @@ class LinearSensitivity:
                 f"estimator {estimator.__class__.__name__} is not a linear model."
             )
 
-        softmax = estimator.predict_proba(X)
         proba = confidence(y, softmax)[..., None]
 
         if coef.shape[0] == 1:

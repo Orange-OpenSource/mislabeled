@@ -28,7 +28,7 @@ def entropy_normalization(probe, y_true, y_prob, **kwargs):
     )
 
 
-def confidence_normalization(probe, y_true, y_prob, labels=None, **kwargs):
+def confidence_normalization(probe, y_true, y_prob, *, labels=None, **kwargs):
     from ._confidence import confidence
 
     y_prob = check_array_prob(y_prob)
@@ -57,5 +57,7 @@ def confidence_normalization(probe, y_true, y_prob, labels=None, **kwargs):
         confidence(None, y_prob_avg[y_encoded], supervised=False)
         / confidence(y_true, y_prob_avg[y_encoded], labels=labels),
     )
+
+    kwargs["labels"] = labels
 
     return weighted_probe(probe, sample_weight, y_true, y_prob, **kwargs)
