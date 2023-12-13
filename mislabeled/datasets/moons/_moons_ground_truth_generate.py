@@ -2,12 +2,13 @@ import os
 
 import numpy as np
 from joblib import dump
-from ._make_moons import make_moons
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.kernel_approximation import Nystroem
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeRegressor
+
+from ._make_moons import make_moons
 
 
 def generate_moons_ground_truth(
