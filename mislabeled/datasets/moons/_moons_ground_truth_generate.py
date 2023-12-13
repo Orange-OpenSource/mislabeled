@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 from joblib import dump
-from sklearn.datasets import make_moons
+from ._make_moons import make_moons
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.kernel_approximation import Nystroem
 from sklearn.linear_model import LogisticRegression
@@ -11,14 +11,20 @@ from sklearn.tree import DecisionTreeRegressor
 
 
 def generate_moons_ground_truth(
-    spread=0.2, dataset_cache_path=os.path.dirname(__file__), n_samples=1000000
+    spread=0.2,
+    bias="none",
+    class_imbalance=1,
+    dataset_cache_path=os.path.dirname(__file__),
+    n_samples=1000000,
 ):
-    spread_str = "0" + str(spread)[2:]
+    spread_str = f"s{spread}_b{bias}_ci{class_imbalance}"
 
     ###################
     # prepare p(y|x)
     ###################
-    X, y = make_moons(n_samples=n_samples, noise=spread)
+    X, y = make_moons(
+        n_examples=n_samples, spread=spread, class_imbalance=class_imbalance, bias=bias
+    )
     clf = make_pipeline(
         StandardScaler(),
         Nystroem(gamma=0.5, n_components=100),
