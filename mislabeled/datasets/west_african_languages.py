@@ -54,6 +54,13 @@ WALN_LEXICONS = {
     ),
 }
 
+HAUSA_KEYWORDS = {
+    "health": ["cutar"],
+    "politics": ["inec", "zaben", "pdp", "apc"],
+    "nigeria": ["buhari", "legas", "kano", "kaduna", "sokoto"],
+    "africa": ["afurka", "kamaru", "nijar"],
+}
+
 
 # Define functions that your users can call to get back the data in memory
 def fetch_west_african_language_news(name, cache_folder=None, split="train"):
@@ -108,19 +115,51 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
     # Apply rules to generate weak targets manually
     weak_targets = []
     for verbatim in data:
+
+        # remove punctuations
+        verbatim = (
+            verbatim.replace(":", "")
+            .replace(",", "")
+            .replace(".", "")
+            .replace("?", "")
+            .replace("!", "")
+            .replace('"', "")
+        )
+
         # 1-gram and 2-gram
         tokens = verbatim.lower().split()
         tokens = tokens + [
             reduce(lambda t1, t2: " ".join((t1, t2)), tokens[i : i + 2])
             for i in range(len(tokens) - 2 + 1)
         ]
+
         weak_target = []
-        for rule_name, keywords in rules.items():
-            for keyword in keywords:
-                if keyword.lower() in tokens:
-                    weak_target.append(rule_name)
-                else:
-                    weak_target.append(-1)
+        n_rules = sum(map(lambda keywords: len(keywords), rules.values()))
+
+        matched = False
+        # prioritize important tokens for hausa
+        if name == "hausa":
+            for rule_name, keywords in HAUSA_KEYWORDS.items():
+                for keyword in keywords:
+                    if keyword.lower() in tokens and not matched:
+                        weak_target.append(rule_name)
+                        matched = True
+                    else:
+                        weak_target.append(-1)
+
+        # fast path when hausa important token matched
+        if matched:
+            weak_target.extend([-1] * n_rules)
+
+        # resume to lexicons
+        else:
+            for rule_name, keywords in rules.items():
+                for keyword in keywords:
+                    if keyword.lower() in tokens:
+                        weak_target.append(rule_name)
+                    else:
+                        weak_target.append(-1)
+
         weak_targets.append(np.asarray(weak_target, dtype=object))
 
     return dict(
