@@ -170,11 +170,10 @@ def fetch_cifar_n(name, cache_folder=None, split="train"):
 
     data = []
     target = []
-    for file in dataset_files:
+    for file in sorted(dataset_files):
         if any(map(lambda cfile: cfile in file, CIFAR_SPLIT_FILES[split])):
             with open(file, "rb") as fo:
                 blob = pickle.load(fo, encoding="bytes")
-                print(blob.keys(), split)
                 data.append(blob[b"data"])
                 target.append(blob[CIFAR_TARGET_KEY[name]])
 
