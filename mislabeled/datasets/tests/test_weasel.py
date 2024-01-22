@@ -8,7 +8,7 @@ from mislabeled.datasets.weasel import fetch_weasel
 
 def test_imdb():
     with TemporaryDirectory() as tmpdir:
-        imdb = fetch_weasel("imdb", cache_folder=tmpdir)
+        imdb = fetch_weasel("imdb136", cache_folder=tmpdir)
         assert os.path.exists(tmpdir)
 
     assert len(imdb["data"]) == 25000
