@@ -38,7 +38,7 @@ def mean_of_neg_var(scores, masks):
 
 def mean_oob(scores, masks):
     return np.nansum(
-        (scores * (1 - masks)) / np.nansum(masks, axis=2, keepdims=True), axis=(1, 2)
+        (scores * (1 - masks)) / np.sum(1 - masks, axis=2, keepdims=True), axis=(1, 2)
     )
 
 

@@ -174,8 +174,8 @@ docs/api/
 docs/auto_examples/
 
 # Benchmark
-benchmark/output
-output/
+output*/
+archive/
 cache/
 catboost_info/
 

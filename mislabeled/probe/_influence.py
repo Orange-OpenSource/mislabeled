@@ -90,8 +90,9 @@ class LinearGradNorm2:
         grad_pre_act[np.arange(grad_pre_act.shape[0]), y] -= 1
 
         grad_pre_act_norm = np.linalg.norm(grad_pre_act, axis=1)
-        X_norm = (
-            sp.linalg.norm(X, axis=1) if sp.issparse(X) else np.linalg.norm(X, axis=1)
-        )
+        if sp.issparse(X):
+            X_norm = sp.linalg.norm(X, axis=1)
+        else:
+            X_norm = np.linalg.norm(X, axis=1)
 
         return -(grad_pre_act_norm**2) * X_norm**2

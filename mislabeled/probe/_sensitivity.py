@@ -7,7 +7,7 @@ import numpy as np
 import scipy.sparse as sp
 from joblib import delayed, Parallel
 from sklearn.dummy import check_random_state
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils import gen_batches
 
 from mislabeled.probe import check_probe, confidence
@@ -92,6 +92,9 @@ class FiniteDiffSensitivity:
             n x n_directions array of the finite difference computed along each
             direction
         """
+        if isinstance(estimator, Pipeline):
+            X = make_pipeline(estimator[:-1]).transform(X)
+            estimator = estimator[-1]
 
         if isinstance(self.n_directions, numbers.Integral):
             n_directions = self.n_directions
@@ -192,11 +195,15 @@ class LinearSensitivity:
                 f"estimator {estimator.__class__.__name__} is not a linear model."
             )
 
-        proba = confidence(y, softmax)[..., None]
-
         if coef.shape[0] == 1:
             coef = np.vstack((-coef, coef))
 
-        softmax_gradient = coef[y] * proba * (1 - proba)
+        proba = confidence(y, softmax)[..., None]
 
-        return -softmax_gradient
+        softmax_gradient = coef[y] * proba * (1 - proba)
+        softmax_gradient = softmax_gradient.astype(coef.dtype)
+
+        # Higher gradient samples are low trust
+        softmax_gradient *= -1
+
+        return softmax_gradient
