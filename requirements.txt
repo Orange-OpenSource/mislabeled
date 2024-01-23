@@ -1,6 +1,6 @@
 numpy
 scipy
-scikit-learn
+scikit-learn==1.3.2
 biquality-learn
 gdown
 pooch

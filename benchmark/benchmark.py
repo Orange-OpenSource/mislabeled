@@ -1,4 +1,5 @@
 # %%
+import argparse
 import json
 import os
 import socket
@@ -6,59 +7,75 @@ import subprocess
 import sys
 import time
 import warnings
-
 from functools import partial
+from uuid import uuid1
 
 import numpy as np
 import scipy.sparse as sp
+from autocommit import autocommit
+from catboost import CatBoostClassifier
 from sklearn.base import clone
 from sklearn.compose import make_column_transformer
-from sklearn.datasets import fetch_openml
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
-    brier_score_loss,
     cohen_kappa_score,
     log_loss,
-    make_scorer,
     roc_auc_score,
 )
-from sklearn.model_selection import PredefinedSplit, GridSearchCV
+from sklearn.model_selection import (
+    GridSearchCV,
+    PredefinedSplit,
+    RepeatedStratifiedKFold,
+    StratifiedShuffleSplit,
+    train_test_split,
+)
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.utils import safe_mask
 
+from bqlearn.corruptions import make_label_noise
+
+from mislabeled.datasets.west_african_languages import fetch_west_african_language_news
+from mislabeled.datasets.wrench import fetch_wrench
+from mislabeled.datasets.weasel import fetch_weasel
+from mislabeled.datasets.cifar_n import fetch_cifar_n
+from mislabeled.detect import ModelBasedDetector
 from mislabeled.detect.detectors import (
-    ConsensusConsistency,
     AreaUnderMargin,
-    InfluenceDetector,
     ConfidentLearning,
+    ConsensusConsistency,
     ForgetScores,
+    InfluenceDetector,
     LinearVoSG,
     TracIn,
+    VoSG,
 )
-from mislabeled.detect import ModelBasedDetector
-from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble
-from mislabeled.handle._filter import FilterClassifier
-
-from sklearn.feature_extraction.text import TfidfVectorizer
-
-from mislabeled.datasets.wrench import fetch_wrench
-from mislabeled.datasets.west_african_languages import fetch_west_african_language_news
-from mislabeled.preprocessing import WeakLabelEncoder
-from mislabeled.split import QuantileSplitter, ThresholdSplitter
-from uuid import uuid1
+from mislabeled.ensemble import (
+    LeaveOneOutEnsemble,
+    NoEnsemble,
+    IndependentEnsemble,
+    ProgressiveEnsemble,
+)
 from mislabeled.ensemble._progressive import staged_fit
-from mislabeled.probe import LinearSensitivity, LinearGradSimilarity
-
-from catboost import CatBoostClassifier
+from mislabeled.handle._filter import FilterClassifier
+from mislabeled.preprocessing import WeakLabelEncoder
+from mislabeled.probe import LinearGradSimilarity
+from mislabeled.split import QuantileSplitter, ThresholdSplitter
 
 # %%
 
-from autocommit import autocommit
+parser = argparse.ArgumentParser(prog="Mislabeled exemples detection benchmark")
+parser.add_argument("-c", "--corruption", choices=["weak", "noise"], default="weak")
+parser.add_argument("-m", "--mode", choices=["full", "agra-ablation"], default="full")
+args = parser.parse_args()
+
+# %%
+
 
 commit_hash = autocommit()
 print(f"I saved the working directory as (possibly detached) commit {commit_hash}")
@@ -90,68 +107,58 @@ if not sys.warnoptions:
 
 ## KERNELS DEFINITIONS
 
-rbf = RBFSampler(random_state=seed)
-param_grid_rbf = {"n_components": [100, 1000]}
+rbf = RBFSampler(gamma="scale", n_components=1000, random_state=seed)
 
 kernels = {}
-kernels["rbf"] = (rbf, param_grid_rbf)
+kernels["rbf"] = (rbf, {})
 kernels["linear"] = ("passthrough", {})
 
 # %%
 
-## PREPROCESSING OF WRENCH AND WALN DATASETS
+## PREPROCESSING OF WRENCH, WALN, AND WEASEL DATASETS
 
-if socket.gethostname() == "l-neobi-8":
-    wrench_folder = "/data1/userstorage/pnodet/wrench"
-else:
-    wrench_folder = None
 
-fetch_wrench = partial(fetch_wrench, cache_folder=wrench_folder)
+def ohe_bioresponse(X, n_categories=100):
+    n_features = X.shape[1]
+    to_ohe = []
+    for i in range(n_features):
+        if len(np.unique(X[:, i])) < n_categories:
+            to_ohe.append(i)
+    return to_ohe
 
-cpu_datasets = [
-    # ("agnews", fetch_wrench, TfidfVectorizer(strip_accents="unicode",stop_words="english", min_df=1e-3), "linear"),
-    (
-        "bank-marketing",
-        fetch_wrench,
-        make_column_transformer(
-            (
-                OneHotEncoder(handle_unknown="ignore"),
-                [1, 2, 3, 8, 9, 10, 15],
-            ),
-            remainder="passthrough",
-        ),
-        "rbf",
-    ),
-    # ("basketball", fetch_wrench, None, "rbf"),
-    # ("bioresponse", fetch_wrench, None, "rbf"),
-    (
-        "census",
-        fetch_wrench,
-        make_column_transformer(
-            (
-                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
-                [1, 3, 5, 6, 7, 8, 14],
-            ),
-            remainder="passthrough",
-        ),
-        "rbf",
-    ),
-    # ("commercial", fetch_wrench, None, "rbf"),
+
+cpu_datasets = (
     # (
-    #     "imdb",
+    #     "bank-marketing",
     #     fetch_wrench,
-    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
-    #     "linear",
+    #     make_column_transformer(
+    #         (
+    #             OneHotEncoder(handle_unknown="ignore"),
+    #             [1, 2, 3, 8, 9, 10, 15],
+    #         ),
+    #         remainder=StandardScaler(),
+    #     ),
+    #     "rbf",
     # ),
+    (
+        "bioresponse",
+        fetch_wrench,
+        make_column_transformer(
+            (OneHotEncoder(handle_unknown="ignore", dtype=np.float32), ohe_bioresponse),
+            remainder=StandardScaler(),
+        ),
+        "rbf",
+    ),
+    ("census", fetch_wrench, StandardScaler(), "rbf"),
     (
         "mushroom",
         fetch_wrench,
         make_column_transformer(
             (
-                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                OneHotEncoder(handle_unknown="ignore"),
                 [0, 1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20],
             ),
-            remainder="passthrough",
+            remainder=StandardScaler(),
         ),
         "rbf",
     ),
@@ -160,14 +167,14 @@ cpu_datasets = [
         fetch_wrench,
         make_column_transformer(
             (
-                OneHotEncoder(handle_unknown="ignore", dtype=np.float32),
+                OneHotEncoder(handle_unknown="ignore"),
                 [1, 6, 7, 13, 14, 15, 25, 28],
             ),
-            remainder="passthrough",
+            remainder=StandardScaler(),
         ),
         "rbf",
     ),
-    ("spambase", fetch_wrench, None, "rbf"),
+    ("spambase", fetch_wrench, StandardScaler(), "rbf"),
     (
         "sms",
         fetch_wrench,
@@ -176,21 +183,6 @@ cpu_datasets = [
         ),
         "linear",
     ),
-    # ("tennis", fetch_wrench, None, "rbf"),
-    # (
-    #     "trec",
-    #     fetch_wrench,
-    #     TfidfVectorizer(
-    #         strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
-    #     ),
-    #     "linear",
-    # ),
-    # (
-    #     "yelp",
-    #     fetch_wrench,
-    #     TfidfVectorizer(strip_accents="unicode", stop_words="english", min_df=1e-3),
-    #     "linear",
-    # ),
     (
         "youtube",
         fetch_wrench,
@@ -205,38 +197,134 @@ cpu_datasets = [
         TfidfVectorizer(strip_accents="unicode", min_df=5, max_df=0.5),
         "linear",
     ),
-]
+    (
+        "hausa",
+        fetch_west_african_language_news,
+        TfidfVectorizer(strip_accents="unicode", min_df=5, max_df=0.5),
+        "linear",
+    ),
+)
+
+gpu_datasets = (
+    (
+        "agnews",
+        fetch_wrench,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=1e-3, max_df=0.5
+        ),
+        "linear",
+    ),
+    ("basketball", fetch_wrench, StandardScaler(), "rbf"),
+    ("commercial", fetch_wrench, StandardScaler(), "rbf"),
+    (
+        "imdb",
+        fetch_wrench,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=1e-3, max_df=0.5
+        ),
+        "linear",
+    ),
+    ("tennis", fetch_wrench, StandardScaler(), "rbf"),
+    (
+        "trec",
+        fetch_wrench,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
+        ),
+        "linear",
+    ),
+    (
+        "yelp",
+        fetch_wrench,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=1e-3, max_df=0.5
+        ),
+        "linear",
+    ),
+    (
+        "imdb136",
+        fetch_weasel,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=1e-3, max_df=0.5
+        ),
+        "linear",
+    ),
+    (
+        "amazon",
+        fetch_weasel,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=1e-4, max_df=0.5
+        ),
+        "linear",
+    ),
+    (
+        "professor_teacher",
+        fetch_weasel,
+        TfidfVectorizer(
+            strip_accents="unicode", stop_words="english", min_df=1e-3, max_df=0.5
+        ),
+        "linear",
+    ),
+    ("cifar10", fetch_cifar_n, StandardScaler(), "rbf"),
+)
+
+datasets = cpu_datasets + gpu_datasets
 
 weak_datasets = {}
-for name, fetch, preprocessing, kernel in cpu_datasets:
-    weak_dataset = {
-        split: fetch(name, split=split) for split in ["train", "validation", "test"]
-    }
-
-    weak_targets = [
-        weak_dataset[split]["weak_targets"] for split in ["train", "validation", "test"]
-    ]
-    weak_targets = np.concatenate(weak_targets)
-    wle = WeakLabelEncoder(random_state=seed).fit(weak_targets)
-    soft_wle = WeakLabelEncoder(random_state=seed, method="soft").fit(weak_targets)
-
-    for split in ["train", "validation", "test"]:
-        weak_dataset[split]["noisy_target"] = wle.transform(
-            weak_dataset[split]["weak_targets"]
+for name, fetch, preprocessing, kernel in datasets:
+    weak_dataset = {split: fetch(name, split=split) for split in ["train", "test"]}
+    # if exists, use validation set
+    try:
+        weak_dataset["validation"] = fetch(name, split="validation")
+    # otherwise split test set in two
+    except:
+        weak_dataset["validation"] = {}
+        (
+            weak_dataset["validation"]["data"],
+            weak_dataset["test"]["data"],
+            weak_dataset["validation"]["target"],
+            weak_dataset["test"]["target"],
+            weak_dataset["validation"]["weak_targets"],
+            weak_dataset["test"]["weak_targets"],
+        ) = train_test_split(
+            weak_dataset["test"]["data"],
+            weak_dataset["test"]["target"],
+            weak_dataset["test"]["weak_targets"],
+            train_size=0.2,
+            random_state=seed,
+            stratify=weak_dataset["test"]["target"],
         )
-        weak_dataset[split]["soft_targets"] = soft_wle.transform(
+
+    if args.corruption == "weak":
+        weak_targets = [
             weak_dataset[split]["weak_targets"]
-        )
+            for split in ["train", "validation", "test"]
+        ]
+        weak_targets = np.concatenate(weak_targets)
+        wle = WeakLabelEncoder(random_state=seed).fit(weak_targets)
+        soft_wle = WeakLabelEncoder(random_state=seed, method="soft").fit(weak_targets)
+
+        for split in ["train", "validation", "test"]:
+            weak_dataset[split]["noisy_target"] = wle.transform(
+                weak_dataset[split]["weak_targets"]
+            )
+            weak_dataset[split]["soft_targets"] = soft_wle.transform(
+                weak_dataset[split]["weak_targets"]
+            )
+
+    elif args.corruption == "noise":
+        for split in ["train", "validation", "test"]:
+            weak_dataset[split]["noisy_target"] = make_label_noise(
+                weak_dataset[split]["noisy_target"],
+                "uniform",
+                noise_ratio=0.3,
+                random_state=seed,
+            )
+    else:
+        raise ValueError(f"Unknown corruption : {args.corruption}")
 
     if preprocessing is not None:
-        data = [
-            weak_dataset[split]["data"] for split in ["train", "validation", "test"]
-        ]
-        if isinstance(data[0], list):
-            whole = sum(data, [])
-        else:
-            whole = np.concatenate(data)
-        preprocessing.fit(whole)
+        preprocessing.fit(weak_dataset["train"]["data"])
         for split in ["train", "validation", "test"]:
             weak_dataset[split]["raw"] = weak_dataset[split]["data"]
             weak_dataset[split]["data"] = preprocessing.transform(
@@ -258,6 +346,9 @@ gb = CatBoostClassifier(
     verbose=0,
     random_state=seed,
     thread_count=-1,
+    task_type="GPU",
+    max_bin=32,
+    boosting_type="Plain",
 )
 param_grid_gb = {
     "learning_rate": [1e-3, 1e-2, 1e-1, 1],
@@ -303,11 +394,21 @@ param_grid_knn_loo = param_grid_detector(param_grid_knn)
 gb_aum = AreaUnderMargin(gb)
 param_grid_gb_aum = param_grid_detector(param_grid_gb)
 
+sgb_aum = AreaUnderMargin(gb)
+param_grid_sgb_aum = param_grid_detector(param_grid_gb)
+param_grid_sgb_aum["base_model__subsample"] = [0.33]
+param_grid_sgb_aum["base_model__bootstrap_type"] = ["Poisson"]
+
 klm_aum = AreaUnderMargin(klm)
 param_grid_klm_aum = param_grid_detector(param_grid_klm)
 
 gb_forget = ForgetScores(gb)
 param_grid_gb_forget = param_grid_detector(param_grid_gb)
+
+sgb_forget = ForgetScores(gb)
+param_grid_sgb_forget = param_grid_detector(param_grid_gb)
+param_grid_sgb_forget["base_model__subsample"] = [0.33]
+param_grid_sgb_forget["base_model__bootstrap_type"] = ["Poisson"]
 
 klm_forget = ForgetScores(klm)
 param_grid_klm_forget = param_grid_detector(param_grid_klm)
@@ -321,11 +422,9 @@ param_grid_klm_cleanlab = param_grid_detector(param_grid_klm)
 
 gb_consensus = ConsensusConsistency(gb, random_state=seed)
 param_grid_gb_consensus = param_grid_detector(param_grid_gb)
-param_grid_gb_consensus["n_repeats"] = [5]
 
 klm_consensus = ConsensusConsistency(klm, n_jobs=-1, random_state=seed)
 param_grid_klm_consensus = param_grid_detector(param_grid_klm)
-param_grid_klm_consensus["n_repeats"] = [5]
 
 influence = InfluenceDetector(klm)
 param_grid_influence = param_grid_detector(param_grid_klm)
@@ -333,31 +432,115 @@ param_grid_influence = param_grid_detector(param_grid_klm)
 tracin = TracIn(klm)
 param_grid_tracin = param_grid_detector(param_grid_klm)
 
+gb_vosg = VoSG(
+    gb,
+    n_directions=500,
+    steps=10,
+    random_state=seed,
+)
+param_grid_gb_vosg = param_grid_detector(param_grid_gb)
+
 klm_vosg = LinearVoSG(klm)
 param_grid_klm_vosg = param_grid_detector(param_grid_klm)
 
 agra = ModelBasedDetector(klm, NoEnsemble(), LinearGradSimilarity(), "sum")
-param_grid_agra = param_grid_detector(param_grid_klm)
+param_grid_klm_agra = param_grid_klm.copy()
+param_grid_klm_agra["sgd__fit_intercept"] = [True, False]
+param_grid_agra = param_grid_detector(param_grid_klm_agra)
 
-detectors = [
+full_detectors = [
     ("gold", None, None),
     ("silver", None, None),
     # ("bronze", None, None),
     ("none", None, None),
-    # ("knn_loo", knn_loo, param_grid_knn_loo),
+    ("knn_loo", knn_loo, param_grid_knn_loo),
     ("gb_aum", gb_aum, param_grid_gb_aum),
+    # ("sgb_aum", sgb_aum, param_grid_sgb_aum),
     ("klm_aum", klm_aum, param_grid_klm_aum),
-    # ("gb_forget", gb_forget, param_grid_gb_forget),
-    # ("klm_forget", klm_forget, param_grid_klm_forget),
+    ("gb_forget", gb_forget, param_grid_gb_forget),
+    # ("sgb_forget", sgb_forget, param_grid_sgb_forget),
+    ("klm_forget", klm_forget, param_grid_klm_forget),
     ("gb_cleanlab", gb_cleanlab, param_grid_gb_cleanlab),
     ("klm_cleanlab", klm_cleanlab, param_grid_klm_cleanlab),
     ("gb_consensus", gb_consensus, param_grid_gb_consensus),
     ("klm_consensus", klm_consensus, param_grid_klm_consensus),
     ("influence", influence, param_grid_influence),
     ("tracin", tracin, param_grid_tracin),
+    # ("gb_vosg", gb_vosg, param_grid_gb_vosg),
     ("klm_vosg", klm_vosg, param_grid_klm_vosg),
     ("agra", agra, param_grid_agra),
 ]
+
+## AGRA SPECIFIC DETECTORS DEFINITION
+
+progressive_agra = ModelBasedDetector(
+    klm, ProgressiveEnsemble(), LinearGradSimilarity(), "sum"
+)
+param_grid_progressive_agra = param_grid_detector(param_grid_klm)
+
+
+def derivative(scores, masks):
+    return scores[:, :, -1] - scores[:, :, 0]
+
+
+forget_agra = ModelBasedDetector(
+    klm, ProgressiveEnsemble(), LinearGradSimilarity(), derivative
+)
+param_grid_forget_agra = param_grid_detector(param_grid_klm)
+
+independent_agra = ModelBasedDetector(
+    klm,
+    IndependentEnsemble(
+        StratifiedShuffleSplit(
+            train_size=0.7,
+            n_splits=50,
+            random_state=seed,
+        ),
+        n_jobs=-1,
+        in_the_bag=True,
+    ),
+    LinearGradSimilarity(),
+    "sum",
+)
+param_grid_independent_agra = param_grid_detector(param_grid_klm)
+
+oob_agra = ModelBasedDetector(
+    klm,
+    IndependentEnsemble(
+        RepeatedStratifiedKFold(
+            n_splits=5,
+            n_repeats=10,
+            random_state=seed,
+        ),
+        n_jobs=-1,
+    ),
+    LinearGradSimilarity(),
+    "mean_oob",
+)
+param_grid_oob_agra = param_grid_detector(param_grid_klm)
+
+loss = ModelBasedDetector(klm, NoEnsemble(), "entropy", "sum")
+param_grid_loss = param_grid_detector(param_grid_klm)
+
+agra_ablation_detectors = [
+    ("gold", None, None),
+    ("silver", None, None),
+    # ("bronze", None, None),
+    ("none", None, None),
+    ("agra", agra, param_grid_agra),
+    ("progressive_agra", progressive_agra, param_grid_progressive_agra),
+    ("independent_agra", independent_agra, param_grid_independent_agra),
+    ("oob_agra", oob_agra, param_grid_oob_agra),
+    ("loss", loss, param_grid_loss),
+]
+
+if args.mode == "full":
+    detectors = full_detectors
+elif args.mode == "agra-ablation":
+    detectors = agra_ablation_detectors
+else:
+    raise ValueError(f"unrecognized benchmark mode : {args.mode}")
+
 
 # %%
 
@@ -381,13 +564,28 @@ for detector_name, _, _ in detectors:
     splitters[detector_name] = (quantile_splitter, param_grid_quantile_splitter)
 
 splitters["agra"] = (ThresholdSplitter(0), {})
+splitters["progressive_agra"] = (ThresholdSplitter(0), {})
+splitters["independent_agra"] = (ThresholdSplitter(0), {})
+splitters["oob_agra"] = (ThresholdSplitter(0), {})
+
+splitters["knn_loo"] = (ThresholdSplitter(1), {})
+splitters["gb_consensus"] = (
+    ThresholdSplitter(),
+    {"threshold": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]},
+)
+splitters["klm_consensus"] = (
+    ThresholdSplitter(),
+    {"threshold": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]},
+)
 
 # %%
 
 if socket.gethostname() == "l-neobi-8":
     output_dir = "/data1/userstorage/pnodet/output"
 else:
-    output_dir = "output"
+    output_dir = "./output"
+
+output_dir = f"{output_dir}_{args.corruption}_{args.mode}"
 
 os.makedirs(output_dir, exist_ok=True)
 
@@ -433,24 +631,26 @@ for dataset_name, dataset in weak_datasets.items():
     else:
         X_train = np.vstack([X_train, X_val])
 
+    noise_ratio = np.mean(y_train != y_noisy_train)
+
     y_train = np.concatenate([y_train, y_val])
     y_noisy = np.concatenate([y_noisy_train, y_val])
     y_soft = np.concatenate([y_soft_train, y_soft_val])
 
-    print(X_train.shape)
+    print(dataset_name, X_train.shape, X_test.shape)
 
-    labels = np.unique(y_train)
+    labels = dataset["train"]["target_names"]
     n_classes = len(labels)
 
     if "raw" in dataset["train"]:
         raw_train = dataset["train"]["raw"]
-        raw_val = dataset["train"]["raw"]
-        raw_test = dataset["train"]["raw"]
-        raw_train = np.concatenate([raw_train, raw_val])
+        raw_val = dataset["validation"]["raw"]
+        if isinstance(raw_train, list):
+            raw_train.extend(raw_val)
+        else:
+            raw_train = np.concatenate([raw_train, raw_val])
     else:
         raw_train = X_train
-
-    noise_ratio = np.mean(y_train != y_noisy)
 
     for detector_name, detector, param_grid_detector in detectors:
         cache = f"cache/{uuid1(seed)}"
@@ -532,6 +732,7 @@ for dataset_name, dataset in weak_datasets.items():
 
         if detector is not None:
             trust_scores = model.trust_scores_
+            trust_scores = np.nan_to_num(trust_scores)
 
             ranking_quality = np.full(n_classes, np.nan)
             for c in range(n_classes):

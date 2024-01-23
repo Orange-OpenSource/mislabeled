@@ -259,6 +259,7 @@ class VoLG(ModelBasedDetector):
         self.n_directions = n_directions
         self.directions_per_batch = directions_per_batch
         self.steps = steps
+        self.n_jobs = n_jobs
         self.random_state = random_state
 
 
@@ -271,7 +272,9 @@ class VoSG(ModelBasedDetector):
         *,
         epsilon=0.1,
         n_directions=20,
+        directions_per_batch=1,
         steps=1,
+        n_jobs=None,
         random_state=None,
     ):
         super().__init__(
@@ -282,13 +285,17 @@ class VoSG(ModelBasedDetector):
                 adjust=False,
                 epsilon=epsilon,
                 n_directions=n_directions,
+                directions_per_batch=directions_per_batch,
+                n_jobs=n_jobs,
                 random_state=random_state,
             ),
             aggregate="mean_of_neg_var",
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
+        self.directions_per_batch = directions_per_batch
         self.steps = steps
+        self.n_jobs = n_jobs
         self.random_state = random_state
 
 
