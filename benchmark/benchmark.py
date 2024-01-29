@@ -267,6 +267,7 @@ gpu_datasets = (
         ),
         "linear",
     ),
+    ("cifar10", fetch_cifar_n, StandardScaler(), "rbf"),
 )
 
 datasets = cpu_datasets + gpu_datasets
