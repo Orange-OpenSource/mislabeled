@@ -756,8 +756,10 @@ for dataset_name, dataset in weak_datasets.items():
 
             ranking_quality = np.full(n_classes, np.nan)
             for c in range(n_classes):
-                mask_c = y_train[train] == c
-                mislabeled_train_c = (y_noisy[train] == y_train[train])[mask_c]
+                mask_c = y_train[train & ~unlabeled] == c
+                mislabeled_train_c = (
+                    y_noisy[train & ~unlabeled] == y_train[train & ~unlabeled]
+                )[mask_c]
 
                 if len(np.unique(mislabeled_train_c)) > 1:
                     ranking_quality[c] = roc_auc_score(
