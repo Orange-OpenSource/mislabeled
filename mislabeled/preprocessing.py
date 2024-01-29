@@ -56,9 +56,8 @@ class WeakLabelEncoder(TransformerMixin, BaseEstimator):
             y = np.apply_along_axis(np.bincount, 1, Y, minlength=n_classes + 1)
             y = y[:, :n_classes]
             y = y.astype(float)
-            non_zero = np.all(y == 0, axis=1)
-            y[non_zero] /= np.sum(y[non_zero], axis=1, keepdims=True)
-
+            with np.errstate(divide="ignore", invalid="ignore"):
+                y /= np.sum(y, axis=1, keepdims=True)
         else:
             raise ValueError(f"unrecognized method: {self.method}")
 
