@@ -71,7 +71,9 @@ from mislabeled.split import QuantileSplitter, ThresholdSplitter
 
 parser = argparse.ArgumentParser(prog="Mislabeled exemples detection benchmark")
 parser.add_argument("-c", "--corruption", choices=["weak", "noise"], default="weak")
-parser.add_argument("-m", "--mode", choices=["full", "agra-ablation"], default="full")
+parser.add_argument(
+    "-m", "--mode", choices=["full", "agra-ablation", "baselines"], default="full"
+)
 args = parser.parse_args()
 
 # %%
@@ -128,18 +130,18 @@ def ohe_bioresponse(X, n_categories=100):
 
 
 cpu_datasets = (
-    # (
-    #     "bank-marketing",
-    #     fetch_wrench,
-    #     make_column_transformer(
-    #         (
-    #             OneHotEncoder(handle_unknown="ignore"),
-    #             [1, 2, 3, 8, 9, 10, 15],
-    #         ),
-    #         remainder=StandardScaler(),
-    #     ),
-    #     "rbf",
-    # ),
+    (
+        "bank-marketing",
+        fetch_wrench,
+        make_column_transformer(
+            (
+                OneHotEncoder(handle_unknown="ignore"),
+                [1, 2, 3, 8, 9, 10, 15],
+            ),
+            remainder=StandardScaler(),
+        ),
+        "rbf",
+    ),
     (
         "bioresponse",
         fetch_wrench,
@@ -386,6 +388,16 @@ def param_grid_detector(param_grid_base_model):
     return param_grid
 
 
+## BASELINES DEFINITION
+
+baseline_detectors = [
+    ("gold", None, None),
+    ("silver", None, None),
+    # ("bronze", None, None),
+    ("none", None, None),
+    ("wood", None, None),
+]
+
 ## DETECTORS DEFINITION
 
 knn_loo = ModelBasedDetector(knn, LeaveOneOutEnsemble(n_jobs=-1), "accuracy", "sum")
@@ -449,16 +461,10 @@ param_grid_klm_agra["sgd__fit_intercept"] = [True, False]
 param_grid_agra = param_grid_detector(param_grid_klm_agra)
 
 full_detectors = [
-    ("gold", None, None),
-    ("silver", None, None),
-    # ("bronze", None, None),
-    ("none", None, None),
-    ("knn_loo", knn_loo, param_grid_knn_loo),
+    # ("knn_loo", knn_loo, param_grid_knn_loo),
     ("gb_aum", gb_aum, param_grid_gb_aum),
-    # ("sgb_aum", sgb_aum, param_grid_sgb_aum),
     ("klm_aum", klm_aum, param_grid_klm_aum),
     ("gb_forget", gb_forget, param_grid_gb_forget),
-    # ("sgb_forget", sgb_forget, param_grid_sgb_forget),
     ("klm_forget", klm_forget, param_grid_klm_forget),
     ("gb_cleanlab", gb_cleanlab, param_grid_gb_cleanlab),
     ("klm_cleanlab", klm_cleanlab, param_grid_klm_cleanlab),
@@ -523,10 +529,6 @@ loss = ModelBasedDetector(klm, NoEnsemble(), "entropy", "sum")
 param_grid_loss = param_grid_detector(param_grid_klm)
 
 agra_ablation_detectors = [
-    ("gold", None, None),
-    ("silver", None, None),
-    # ("bronze", None, None),
-    ("none", None, None),
     ("agra", agra, param_grid_agra),
     ("progressive_agra", progressive_agra, param_grid_progressive_agra),
     ("independent_agra", independent_agra, param_grid_independent_agra),
@@ -534,10 +536,15 @@ agra_ablation_detectors = [
     ("loss", loss, param_grid_loss),
 ]
 
+
+detectors = baseline_detectors
+
 if args.mode == "full":
-    detectors = full_detectors
+    detectors.extend(full_detectors)
 elif args.mode == "agra-ablation":
-    detectors = agra_ablation_detectors
+    detectors.extend(agra_ablation_detectors)
+elif args.mode == "baselines":
+    detectors = detectors
 else:
     raise ValueError(f"unrecognized benchmark mode : {args.mode}")
 
@@ -631,11 +638,15 @@ for dataset_name, dataset in weak_datasets.items():
     else:
         X_train = np.vstack([X_train, X_val])
 
-    noise_ratio = np.mean(y_train != y_noisy_train)
-
     y_train = np.concatenate([y_train, y_val])
     y_noisy = np.concatenate([y_noisy_train, y_val])
     y_soft = np.concatenate([y_soft_train, y_soft_val])
+
+    unlabeled = y_noisy == -1
+    coverage = 1 - np.mean(unlabeled[train])
+
+    clean = y_noisy == y_train
+    noise_ratio = 1 - np.mean(clean[train & ~unlabeled])
 
     print(dataset_name, X_train.shape, X_test.shape)
 
@@ -688,7 +699,7 @@ for dataset_name, dataset in weak_datasets.items():
             estimator=detect_handle,
             param_grid=param_grid,
             cv=PredefinedSplit(split),
-            scoring="neg_log_loss",
+            scoring="balanced_accuracy",
             refit=False,
             verbose=3,
             n_jobs=1,
@@ -698,7 +709,6 @@ for dataset_name, dataset in weak_datasets.items():
         if detector_name == "gold":
             gscv.fit(X_train, y_train)
         elif detector_name == "silver":
-            clean = y_train == y_noisy
             gscv.set_params(cv=PredefinedSplit(split[clean]))
             gscv.fit(X_train[clean, :], y_noisy[clean])
         # elif detector_name == "bronze":
@@ -706,8 +716,14 @@ for dataset_name, dataset in weak_datasets.items():
         #     clean = clean | (split == 0)
         #     model.set_params(cv=PredefinedSplit(split[clean]))
         #     model.fit(X_train[safe_mask(X_train, clean)], y_noisy[clean])
+        elif detector_name == "wood":
+            rng = np.random.RandomState(seed)
+            y_wood = y_noisy.copy()
+            y_wood[unlabeled] = rng.choice(n_classes - 1, size=np.sum(unlabeled))
+            gscv.fit(X_train, y_wood)
         else:
-            gscv.fit(X_train, y_noisy)
+            gscv.set_params(cv=PredefinedSplit(split[~unlabeled]))
+            gscv.fit(X_train[~unlabeled, :], y_noisy[~unlabeled])
 
         end = time.perf_counter()
 
@@ -717,10 +733,15 @@ for dataset_name, dataset in weak_datasets.items():
         if detector_name == "gold":
             model.fit(X_train[train, :], y_train[train])
         elif detector_name in ["silver", "bronze"]:
-            clean = y_train == y_noisy
             model.fit(X_train[clean & train, :], y_noisy[clean & train])
+        elif detector_name == "wood":
+            rng = np.random.RandomState(seed)
+            y_wood = y_noisy.copy()
+            y_wood[unlabeled] = rng.choice(n_classes - 1, size=np.sum(unlabeled))
+            model.fit(X_train[train, :], y_wood[train])
         else:
-            model.fit(X_train[train, :], y_noisy[train])
+            unlabeled = y_noisy == -1
+            model.fit(X_train[train & ~unlabeled, :], y_noisy[train & ~unlabeled])
 
         y_pred = model.predict(X_test)
         y_proba = model.predict_proba(X_test)
@@ -736,8 +757,10 @@ for dataset_name, dataset in weak_datasets.items():
 
             ranking_quality = np.full(n_classes, np.nan)
             for c in range(n_classes):
-                mask_c = y_train[train] == c
-                mislabeled_train_c = (y_noisy[train] == y_train[train])[mask_c]
+                mask_c = y_train[train & ~unlabeled] == c
+                mislabeled_train_c = (
+                    y_noisy[train & ~unlabeled] == y_train[train & ~unlabeled]
+                )[mask_c]
 
                 if len(np.unique(mislabeled_train_c)) > 1:
                     ranking_quality[c] = roc_auc_score(
@@ -766,8 +789,10 @@ for dataset_name, dataset in weak_datasets.items():
         res = {
             "dataset_name": dataset_name,
             "noise_ratio": noise_ratio,
+            "coverage": coverage,
             "noisy_class_distribution": (
-                np.bincount(y_noisy[train], minlength=n_classes) / len(y_noisy[train])
+                np.bincount(y_noisy[train & ~unlabeled], minlength=n_classes)
+                / len(y_noisy[train & ~unlabeled])
             ).tolist(),
             "class_distribution": (
                 np.bincount(y_train[train], minlength=n_classes) / len(y_train[train])
