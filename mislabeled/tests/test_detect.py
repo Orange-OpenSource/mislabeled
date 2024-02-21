@@ -25,7 +25,7 @@ from mislabeled.detect.detectors import (
     TracIn,
     VoLG,
 )
-from mislabeled.ensemble import NoEnsemble, ProgressiveEnsemble
+from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble, ProgressiveEnsemble
 from mislabeled.probe import LinearGradSimilarity
 
 from .utils import blobs_1_mislabeled
@@ -72,12 +72,6 @@ detectors = [
             ),
         )
     ),
-    RANSAC(
-        make_pipeline(
-            Nystroem(gamma=0.1, n_components=100, random_state=seed),
-            LogisticRegression(),
-        )
-    ),
     InfluenceDetector(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
@@ -85,6 +79,9 @@ detectors = [
         )
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
+    ModelBasedDetector(
+        KNeighborsClassifier(), LeaveOneOutEnsemble(n_jobs=-1), "accuracy", "sum_oob"
+    ),
     FiniteDiffComplexity(
         GradientBoostingClassifier(random_state=seed), random_state=seed
     ),
@@ -94,8 +91,8 @@ detectors = [
             LogisticRegression(),
         )
     ),
-    ConsensusConsistency(KNeighborsClassifier(n_neighbors=3)),
-    ConfidentLearning(KNeighborsClassifier(n_neighbors=3)),
+    ConsensusConsistency(KNeighborsClassifier(n_neighbors=3), random_state=seed),
+    ConfidentLearning(KNeighborsClassifier(n_neighbors=3), random_state=seed),
     AreaUnderMargin(
         GradientBoostingClassifier(n_estimators=100, max_depth=1, random_state=seed),
         steps=10,

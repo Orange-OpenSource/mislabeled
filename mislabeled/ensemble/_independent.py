@@ -26,11 +26,9 @@ class IndependentEnsemble(AbstractEnsemble):
         ensemble_strategy,
         *,
         n_jobs=None,
-        in_the_bag=False,
     ):
         self.ensemble_strategy = ensemble_strategy
         self.n_jobs = n_jobs
-        self.in_the_bag = in_the_bag
 
     def probe_model(self, base_model, X, y, probe):
         """A reference implementation of a fitting function.
@@ -50,48 +48,37 @@ class IndependentEnsemble(AbstractEnsemble):
         """
         n_samples = _num_samples(X)
 
-        self.ensemble_strategy_ = check_cv(
-            self.ensemble_strategy, y, classifier=is_classifier(base_model)
-        )
-
         def no_scoring(estimator, X, y):
             return 0
 
-        self.probe_scorer_ = check_probe(probe)
         results = cross_validate(
             base_model,
             X,
             y,
-            cv=self.ensemble_strategy_,
+            cv=self.ensemble_strategy,
             n_jobs=self.n_jobs,
             scoring=no_scoring,
             return_indices=True,
             return_estimator=True,
         )
 
-        estimators = results["estimator"]
-        n_ensemble_members = len(estimators)
+        probe = check_probe(probe)
 
-        # atm we only support a single probe here
-        probe_scores = np.full((n_samples, 1, n_ensemble_members), fill_value=np.nan)
-        masks = np.zeros_like(probe_scores)
+        probe_scores = []
+
+        ensemble_members = results["estimator"]
+        n_ensemble_members = len(ensemble_members)
 
         # TODO: parallel
-        for e, (estimator, indices_oob, indices_itb) in enumerate(
-            zip(estimators, results["indices"]["test"], results["indices"]["train"])
-        ):
-            if self.in_the_bag:
-                probe_scores[:, 0, e] = self.probe_scorer_(estimator, X, y)
-            else:
-                # only compute OOB probe scores
-                probe_scores[safe_mask(X, indices_oob), 0, e] = self.probe_scorer_(
-                    estimator, X[safe_mask(X, indices_oob)], y[indices_oob]
-                )
-            # mask indicates whether the examples was ITB or OOB when training
-            # the base model
-            masks[safe_mask(X, indices_itb), 0, e] = 1
+        for ensemble_member in ensemble_members:
+            probe_scores.append(probe(ensemble_member, X, y))
 
-        return probe_scores, masks
+        masks = np.zeros((n_ensemble_members, n_samples), dtype=bool)
+
+        for e, indices_oob in enumerate(results["indices"]["test"]):
+            masks[e, indices_oob] = True
+
+        return probe_scores, dict(masks=masks)
 
 
 class LeaveOneOutEnsemble(AbstractEnsemble):
@@ -129,17 +116,18 @@ class LeaveOneOutEnsemble(AbstractEnsemble):
         self : object
             Returns self.
         """
+        probe = check_probe(probe)
+
         scores = cross_validate(
             base_model,
             X,
             y,
             cv=LeaveOneOut(),
-            scoring=check_probe(probe),
+            scoring=probe,
             n_jobs=self.n_jobs,
         )
 
-        probe_scores = np.expand_dims(np.diag(scores["test_score"]), axis=1)
+        probe_scores = np.diag(scores["test_score"])
+        masks = np.eye(len(scores["test_score"]), dtype=bool)
 
-        masks = 1 * (probe_scores != 0)
-
-        return probe_scores, masks
+        return probe_scores, dict(masks=masks)

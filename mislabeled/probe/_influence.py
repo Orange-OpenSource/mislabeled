@@ -42,7 +42,8 @@ class Influence:
         # binary case
         if coef.shape[0] == 1:
             H = safe_sparse_dot(X, coef.T, dense_output=True)
-            return H * (y - 0.5).reshape(-1, 1)
+            H = np.ravel(H)
+            return H * (y - 0.5)
         # multiclass case
         else:
             H = safe_sparse_dot(X, coef.T, dense_output=True)

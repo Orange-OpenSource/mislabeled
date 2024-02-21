@@ -29,12 +29,12 @@ from mislabeled.split import GMMSplitter, PerClassSplitter, QuantileSplitter
 seed = 42
 
 detectors = [
-    ModelBasedDetector(
-        base_model=LogisticRegression(),
-        ensemble=NoEnsemble(),
-        probe="accuracy",
-        aggregate="sum",
-    ),
+    # ModelBasedDetector(
+    #     base_model=LogisticRegression(),
+    #     ensemble=NoEnsemble(),
+    #     probe="accuracy",
+    #     aggregate="sum",
+    # ),
     ModelBasedDetector(
         base_model=KNeighborsClassifier(n_neighbors=3),
         ensemble=IndependentEnsemble(
@@ -43,37 +43,37 @@ detectors = [
         probe="accuracy",
         aggregate="mean_oob",
     ),
-    ModelBasedDetector(
-        base_model=GradientBoostingClassifier(max_depth=1, random_state=seed),
-        ensemble=ProgressiveEnsemble(),
-        probe="soft_margin",
-        aggregate="sum",
-    ),
+    # ModelBasedDetector(
+    #     base_model=GradientBoostingClassifier(max_depth=1, random_state=seed),
+    #     ensemble=ProgressiveEnsemble(),
+    #     probe="soft_margin",
+    #     aggregate="sum",
+    # ),
 ]
 
 splitters = [
-    PerClassSplitter(
-        GMMSplitter(
-            GaussianMixture(
-                n_components=2,
-                max_iter=10,
-                random_state=seed,
-            )
-        )
-    ),
+    # PerClassSplitter(
+    #     GMMSplitter(
+    #         GaussianMixture(
+    #             n_components=2,
+    #             max_iter=10,
+    #             random_state=seed,
+    #         )
+    #     )
+    # ),
     PerClassSplitter(QuantileSplitter(quantile=0.5)),
 ]
 
 handlers = [
     partial(FilterClassifier, estimator=LogisticRegression()),
-    partial(
-        SemiSupervisedClassifier,
-        estimator=SelfTrainingClassifier(LogisticRegression(), max_iter=2),
-    ),
-    partial(
-        BiqualityClassifier,
-        estimator=make_baseline(LogisticRegression(), "no_correction"),
-    ),
+    # partial(
+    #     SemiSupervisedClassifier,
+    #     estimator=SelfTrainingClassifier(LogisticRegression(), max_iter=2),
+    # ),
+    # partial(
+    #     BiqualityClassifier,
+    #     estimator=make_baseline(LogisticRegression(), "no_correction"),
+    # ),
 ]
 
 

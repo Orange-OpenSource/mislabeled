@@ -9,6 +9,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect.detectors import RANSAC
 from mislabeled.ensemble import LeaveOneOutEnsemble
 from mislabeled.probe import Complexity
 
@@ -42,7 +43,7 @@ detectors = [
                 random_state=seed,
             ),
         ),
-        ensemble=LeaveOneOutEnsemble(),
+        ensemble=LeaveOneOutEnsemble(n_jobs=-1),
         probe=Complexity(complexity_proxy="n_weak_learners"),
         aggregate="sum",
     ),
@@ -52,9 +53,19 @@ detectors = [
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
             LogisticRegression(C=1e3, warm_start=True),
         ),
-        ensemble=LeaveOneOutEnsemble(),
+        ensemble=LeaveOneOutEnsemble(n_jobs=-1),
         probe=Complexity(complexity_proxy="weight_norm"),
         aggregate="sum",
+    ),
+    RANSAC(
+        make_pipeline(
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
+            LogisticRegression(),
+        ),
+        n_samples=0.2,
+        n_iterations=100,
+        n_jobs=-1,
+        random_state=seed,
     ),
 ]
 

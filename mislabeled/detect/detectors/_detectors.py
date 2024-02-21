@@ -1,14 +1,18 @@
+from functools import partial
+
+import numpy as np
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-from mislabeled.detect import ModelBasedDetector
-from mislabeled.ensemble import (
+from ...aggregate.aggregators import forget, mean_of_neg_var, sum
+from ...detect import ModelBasedDetector
+from ...ensemble import (
     IndependentEnsemble,
     LeaveOneOutEnsemble,
     NoEnsemble,
     OutlierEnsemble,
     ProgressiveEnsemble,
 )
-from mislabeled.probe import (
+from ...probe import (
     Complexity,
     FiniteDiffSensitivity,
     Influence,
@@ -57,7 +61,7 @@ class DecisionTreeComplexity(ModelBasedDetector):
             base_model=base_model,
             ensemble=LeaveOneOutEnsemble(n_jobs=n_jobs),
             probe=Complexity(complexity_proxy="n_leaves"),
-            aggregate="sum",
+            aggregate="sum_oob",
         )
         self.n_jobs = n_jobs
 
@@ -84,7 +88,7 @@ class FiniteDiffComplexity(ModelBasedDetector):
                 n_jobs=n_jobs,
                 random_state=random_state,
             ),
-            aggregate="sum",
+            aggregate=sum.map(partial(np.mean, axis=-1)),
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -215,7 +219,7 @@ class ForgetScores(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe="accuracy",
-            aggregate="forget",
+            aggregate=forget,
         )
         self.steps = steps
 
@@ -253,7 +257,7 @@ class VoLG(ModelBasedDetector):
                 n_jobs=n_jobs,
                 random_state=random_state,
             ),
-            aggregate="mean_of_neg_var",
+            aggregate=mean_of_neg_var,
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -289,7 +293,7 @@ class VoSG(ModelBasedDetector):
                 n_jobs=n_jobs,
                 random_state=random_state,
             ),
-            aggregate="mean_of_neg_var",
+            aggregate=mean_of_neg_var,
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -313,6 +317,6 @@ class LinearVoSG(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearSensitivity(),
-            aggregate="mean_of_neg_var",
+            aggregate=mean_of_neg_var,
         )
         self.steps = steps

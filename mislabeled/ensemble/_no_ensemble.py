@@ -1,4 +1,3 @@
-import numpy as np
 from sklearn.base import clone
 
 from mislabeled.probe import check_probe
@@ -34,14 +33,9 @@ class NoEnsemble(AbstractEnsemble):
         self : object
             Returns self.
         """
-        base_model_ = clone(base_model)
-        base_model_.fit(X, y)
-        probe_scorer = check_probe(probe)
-        probe_scores = probe_scorer(base_model_, X, y)
+        base_model = clone(base_model)
+        base_model.fit(X, y)
+        probe = check_probe(probe)
+        probe_scores = probe(base_model, X, y)
 
-        if probe_scores.ndim == 1:
-            probe_scores = np.expand_dims(probe_scores, axis=(1, 2))
-        elif probe_scores.ndim == 2:
-            probe_scores = np.expand_dims(probe_scores, axis=1)
-
-        return probe_scores, np.ones_like(probe_scores)
+        return [probe_scores], {}
