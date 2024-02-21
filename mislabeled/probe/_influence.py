@@ -1,10 +1,13 @@
 import numpy as np
+import scipy.sparse as sp
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.extmath import safe_sparse_dot
 
 
 def norm2(x, axis=1):
-    return (x**2).sum(axis=axis)
+    if sp.issparse(x):
+        return x.multiply(x).sum(axis=axis)
+    return (x * x).sum(axis=axis)
 
 
 class Influence:
