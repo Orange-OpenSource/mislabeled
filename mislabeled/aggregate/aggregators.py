@@ -1,6 +1,7 @@
 import inspect
 import math
 import operator
+from abc import ABCMeta, abstractmethod
 from functools import partial, reduce
 
 import numpy as np
@@ -26,40 +27,27 @@ def routing(probes, kwargs):
     return zip(probes, routed)
 
 
-def append_fold(l, a):
-    l.append(a)
-    return l
+class Aggregator(metaclass=ABCMeta):
+    def prepare(self, a):
+        return a
 
+    def finalize(self, c):
+        return c
 
-def identity(x):
-    return x
+    @property
+    @abstractmethod
+    def unit(self):
+        pass
 
+    @abstractmethod
+    def combine(self, a, b):
+        pass
 
-class Aggregator:
-    def __init__(self, prepare, unit, combine, finalize):
-        self.prepare = prepare
-        self.unit = unit
-        self._combine = combine
-        self.finalize = finalize
-
-    def combine(self, a, b, **kwargs):
-        if inspect.getfullargspec(self._combine).varkw is not None:
-            return partial(self._combine, **kwargs)(a, b)
+    def _combine(self, a, b, **kwargs):
+        if inspect.getfullargspec(self.combine).varkw is not None:
+            return partial(self.combine, **kwargs)(a, b)
         else:
-            return self._combine(a, b)
-
-    @classmethod
-    def from_numpy(cls, f):
-        return cls(
-            identity,
-            [],
-            append_fold,
-            partial(np.stack, axis=-1),
-        ).map(f)
-
-    @classmethod
-    def from_fold(cls, combine, unit):
-        return cls(identity, unit, combine, identity)
+            return self.combine(a, b)
 
     def zip(self, other):
         return ZipAggregator(self, other)
@@ -85,7 +73,7 @@ class Aggregator:
     def __call__(self, probes, **kwargs):
         return self.finalize(
             reduce(
-                lambda agg, x: self.combine(agg, x[0], **x[1]),
+                lambda agg, x: self._combine(agg, x[0], **x[1]),
                 routing(map(self.prepare, probes), kwargs),
                 self.unit,
             )
@@ -97,7 +85,9 @@ class ZipAggregator(Aggregator):
         self.left = left
         self.right = right
 
-        self.unit = (self.left.unit, self.right.unit)
+    @property
+    def unit(self):
+        return (self.left.unit, self.right.unit)
 
     def prepare(self, a):
         return (self.left.prepare(a), self.right.prepare(a))
@@ -114,11 +104,18 @@ class ZipAggregator(Aggregator):
 
 class MapAggregator(Aggregator):
     def __init__(self, aggregator, f):
-        self.prepare = aggregator.prepare
-        self.unit = aggregator.unit
-        self._combine = aggregator.combine
         self.aggregator = aggregator
         self.f = f
+
+    def prepare(self, a):
+        return self.aggregator.prepare(a)
+
+    @property
+    def unit(self):
+        return self.aggregator.unit
+
+    def combine(self, a, b):
+        return self.aggregator.combine(a, b)
 
     def finalize(self, c):
         if isinstance(self.aggregator, ZipAggregator):
@@ -129,14 +126,21 @@ class MapAggregator(Aggregator):
 
 class PreMapAggregator(Aggregator):
     def __init__(self, aggregator, p):
-        self.unit = aggregator.unit
-        self._combine = aggregator.combine
-        self.finalize = aggregator.finalize
         self.aggregator = aggregator
         self.p = p
 
     def prepare(self, a):
         return self.aggregator.prepare(self.p(a))
+
+    @property
+    def unit(self):
+        return self.aggregator.unit
+
+    def combine(self, a, b):
+        return self.aggregator.combine(a, b)
+
+    def finalize(self, c):
+        return self.aggregator.finalize(c)
 
 
 def validate_masks(probes, **kwargs):
@@ -150,13 +154,21 @@ def validate_masks(probes, **kwargs):
 
 class OOBAggregator(Aggregator):
     def __init__(self, aggregator):
-        super().__init__(
-            aggregator.prepare, aggregator.unit, aggregator.combine, aggregator.finalize
-        )
+        self.aggregator = aggregator
+
+    def prepare(self, a):
+        return self.aggregator.prepare(a)
+
+    @property
+    def unit(self):
+        return self.aggregator.unit
 
     def combine(self, agg, probes, **kwargs):
         masks = validate_masks(probes, **kwargs)
-        return super().combine(agg, probes * masks)
+        return self.aggregator.combine(agg, probes * masks)
+
+    def finalize(self, c):
+        return self.aggregator.finalize(c)
 
 
 def oob(aggregator):
@@ -165,72 +177,115 @@ def oob(aggregator):
 
 class ITBAggregator(Aggregator):
     def __init__(self, aggregator):
-        super().__init__(
-            aggregator.prepare, aggregator.unit, aggregator.combine, aggregator.finalize
-        )
+        self.aggregator = aggregator
+
+    def prepare(self, a):
+        return self.aggregator.prepare(a)
+
+    @property
+    def unit(self):
+        return self.aggregator.unit
 
     def combine(self, agg, probes, **kwargs):
         masks = validate_masks(probes, **kwargs)
-        return super().combine(agg, probes * (~masks))
+        return self.aggregator.combine(agg, probes * (~masks))
+
+    def finalize(self, c):
+        return self.aggregator.finalize(c)
 
 
 def itb(aggregator):
     return ITBAggregator(aggregator)
 
 
-sum = Aggregator.from_fold(operator.iadd, 0)
+class NumpyAggregator(Aggregator):
+    def __init__(self, f):
+        self.f = f
+
+    @property
+    def unit(self):
+        return []
+
+    def combine(self, a, b):
+        a.append(b)
+        return b
+
+    def finalize(self, c):
+        return self.f(np.stack(c, axis=-1))
 
 
-def one(x):
-    return 1
+class SumAggregator(Aggregator):
+    @property
+    def unit(self):
+        return 0
+
+    def combine(self, a, b):
+        return a + b
 
 
-count = sum.premap(one)
+sum = SumAggregator()
+
+
+class CountAggregator(SumAggregator):
+    def prepare(self, a):
+        return 1
+
+
+count = CountAggregator()
 mean = sum / count
 
 mean_oob = oob(sum) / oob(count)
 sum_oob = oob(sum)
 
 
-def welford(agg, probes):
-    count, mean, M2 = agg
-    ones, values = probes
-    count += ones
-    delta = values - mean
-    mean += delta / count
-    delta2 = values - mean
-    M2 += delta * delta2
-    return (count, mean, M2)
+class CoutMeanVarAggregator(Aggregator):
+    def prepare(self, a):
+        return (1, a)
+
+    @property
+    def unit(self):
+        return (0, 0, 0)
+
+    def combine(self, a, b):
+        count, mean, M2 = a
+        ones, values = b
+        count += ones
+        delta = values - mean
+        mean += delta / count
+        delta2 = values - mean
+        M2 += delta * delta2
+        return (count, mean, M2)
+
+    def finalize(self, c):
+        return c[0], c[1], c[2] / c[0]
 
 
-count_mean_var = Aggregator(
-    lambda x: (1, x), (0, 0, 0), welford, lambda agg: (agg[0], agg[1], agg[2] / agg[0])
-)
-neg_var = count_mean_var.map(lambda cmv: cmv[2]).map(operator.neg)
+class VarAggregator(CoutMeanVarAggregator):
+    def finalize(self, c):
+        return super().finalize(c)[2]
+
+
+var = VarAggregator()
+neg_var = var.map(operator.neg)
 neg_var_oob = oob(neg_var)
 
 mean_of_neg_var = neg_var.map(partial(np.mean, axis=-1))
 
-forget = Aggregator(
-    lambda x: x,
-    (0, -math.inf),
-    lambda agg, probes: (agg[0] + (agg[1] > probes), probes),
-    lambda agg: agg[0],
-).map(operator.neg)
+
+class ForgetAggregator(Aggregator):
+    @property
+    def unit(self):
+        return (0, -math.inf)
+
+    def combine(self, agg, probes):
+        n_forget_events, previous = agg
+        return n_forget_events + (previous > probes), probes
+
+    def finalize(self, agg):
+        return agg[0]
 
 
-class AggregatorMixin:
-    _required_parameters = ["aggregator"]
-
-    def aggregate(self, uncertainties):
-        if isinstance(self.aggregator, str) and (self.aggregator in _AGGREGATORS):
-            aggregator = _AGGREGATORS[self.aggregator]
-        elif callable(self.aggregator):
-            aggregator = self.aggregator
-        else:
-            raise ValueError(f"{self.aggregator} is not a valid aggregator")
-
-        return aggregator(uncertainties)
+forget = ForgetAggregator().map(operator.neg)
 
 
 _AGGREGATORS = dict(
@@ -246,7 +301,7 @@ _AGGREGATORS = dict(
 def check_aggregate(aggregator):
     if isinstance(aggregator, str) and (aggregator in _AGGREGATORS.keys()):
         return _AGGREGATORS[aggregator]
-    elif callable(aggregator):
+    elif isinstance(aggregator, Aggregator):
         return aggregator
     else:
         raise ValueError(f"{aggregator} is not an aggregator")

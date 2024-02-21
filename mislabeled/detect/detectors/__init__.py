@@ -14,7 +14,6 @@ from ._detectors import (
     VoLG,
     VoSG,
 )
-from ._ransac import RANSAC
 
 __all__ = [
     "OutlierDetector",
@@ -30,6 +29,5 @@ __all__ = [
     "VoLG",
     "VoSG",
     "LinearVoSG",
-    "RANSAC",
     "TracIn",
 ]

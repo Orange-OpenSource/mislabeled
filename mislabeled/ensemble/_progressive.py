@@ -1,6 +1,6 @@
 import copy
 import numbers
-from functools import partial, singledispatch
+from functools import singledispatch
 from itertools import islice
 
 import numpy as np

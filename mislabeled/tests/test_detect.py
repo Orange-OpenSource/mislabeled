@@ -21,7 +21,6 @@ from mislabeled.detect.detectors import (
     ForgetScores,
     InfluenceDetector,
     OutlierDetector,
-    RANSAC,
     TracIn,
     VoLG,
 )

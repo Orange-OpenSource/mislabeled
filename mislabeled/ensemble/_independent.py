@@ -1,7 +1,5 @@
 import numpy as np
-from sklearn.base import is_classifier
-from sklearn.model_selection import check_cv, cross_validate, LeaveOneOut
-from sklearn.utils import safe_mask
+from sklearn.model_selection import cross_validate, LeaveOneOut
 from sklearn.utils.validation import _num_samples
 
 from mislabeled.probe import check_probe
@@ -62,16 +60,12 @@ class IndependentEnsemble(AbstractEnsemble):
             return_estimator=True,
         )
 
-        probe = check_probe(probe)
-
-        probe_scores = []
-
         ensemble_members = results["estimator"]
         n_ensemble_members = len(ensemble_members)
 
-        # TODO: parallel
-        for ensemble_member in ensemble_members:
-            probe_scores.append(probe(ensemble_member, X, y))
+        probe = check_probe(probe)
+
+        probe_scores = (probe(member, X, y) for member in ensemble_members)
 
         masks = np.zeros((n_ensemble_members, n_samples), dtype=bool)
 
