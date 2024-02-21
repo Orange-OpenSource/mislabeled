@@ -6,7 +6,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 
 def norm2(x, axis=1):
     if sp.issparse(x):
-        return x.multiply(x).sum(axis=axis)
+        return np.asarray(x.multiply(x).sum(axis=axis))
     return (x * x).sum(axis=axis)
 
 
