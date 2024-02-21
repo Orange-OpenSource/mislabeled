@@ -1,7 +1,10 @@
 import numpy as np
-import scipy.sparse as sp
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.extmath import safe_sparse_dot
+
+
+def norm2(x, axis=1):
+    return (x**2).sum(axis=axis)
 
 
 class Influence:
@@ -89,13 +92,7 @@ class LinearGradNorm2:
         grad_pre_act = estimator.predict_proba(X)
         grad_pre_act[np.arange(grad_pre_act.shape[0]), y] -= 1
 
-        grad_pre_act_norm = np.linalg.norm(grad_pre_act, axis=1)
-        if sp.issparse(X):
-            X_norm = sp.linalg.norm(X, axis=1)
-        else:
-            X_norm = np.linalg.norm(X, axis=1)
-
-        return -(grad_pre_act_norm**2) * X_norm**2
+        return -norm2(grad_pre_act) * norm2(X)
 
 
 class Representer:
@@ -125,7 +122,7 @@ class Representer:
             X = make_pipeline(estimator[:-1]).transform(X)
             estimator = estimator[-1]
 
-        diag_k = (X**2).sum(axis=1)
+        diag_k = norm2(X)
 
         # grads of the cross entropy w.r.t. pre-activations before the softmax
         grad_pre_act = estimator.predict_proba(X)

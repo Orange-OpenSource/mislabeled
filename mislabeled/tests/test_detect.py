@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import scipy.sparse as sp
 from sklearn.ensemble import GradientBoostingClassifier, IsolationForest
 from sklearn.kernel_approximation import Nystroem
 from sklearn.linear_model import LogisticRegression
@@ -147,6 +148,22 @@ detectors = [
 @pytest.mark.parametrize("detector", detectors)
 def test_detect(n_classes, detector):
     simple_detect_test(n_classes, detector)
+
+
+def sparse_X_test(n_classes, detector):
+    # we just detect whether computing trust scores works
+    X, y, _ = blobs_1_mislabeled(n_classes, n_samples=100)
+    percentile = np.percentile(np.abs(X), 50)
+    X[np.abs(X) < percentile] = 0
+    X = sp.csr_matrix(X)
+
+    detector.trust_score(X, y)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+@pytest.mark.parametrize("detector", detectors)
+def test_detector_with_sparse_X(n_classes, detector):
+    sparse_X_test(n_classes, detector)
 
 
 @pytest.mark.parametrize("n_classes", [2, 5])
