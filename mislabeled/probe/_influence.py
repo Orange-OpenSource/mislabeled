@@ -96,3 +96,39 @@ class LinearGradNorm2:
             X_norm = np.linalg.norm(X, axis=1)
 
         return -(grad_pre_act_norm**2) * X_norm**2
+
+
+class Representer:
+    """Representer values"""
+
+    def __call__(self, estimator, X, y):
+        """Evaluate the probe
+
+        Parameters
+        ----------
+        estimator : object
+            Trained classifier to probe
+
+        X : {array-like, sparse matrix}
+            Test data
+
+        y : array-like
+            Dataset target values for X
+
+        Returns
+        -------
+        probe_scores : np.array
+            n x 1 array of the per-examples gradients
+        """
+
+        if isinstance(estimator, Pipeline):
+            X = make_pipeline(estimator[:-1]).transform(X)
+            estimator = estimator[-1]
+
+        diag_k = (X**2).sum(axis=1)
+
+        # grads of the cross entropy w.r.t. pre-activations before the softmax
+        grad_pre_act = estimator.predict_proba(X)
+        grad_pre_act_observed = grad_pre_act[np.arange(grad_pre_act.shape[0]), y] - 1
+
+        return grad_pre_act_observed * diag_k

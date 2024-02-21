@@ -3,7 +3,7 @@ from ._complexity import Complexity
 from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy, jensen_shannon, weighted_jensen_shannon
 from ._grads import LinearGradSimilarity
-from ._influence import Influence, LinearGradNorm2
+from ._influence import Influence, LinearGradNorm2, Representer
 from ._margin import hard_margin, soft_margin
 from ._outlier import OutlierProbe
 from ._peer import peered_probe
@@ -39,4 +39,5 @@ __all__ = [
     "OutlierProbe",
     "LinearGradSimilarity",
     "peered_probe",
+    "Representer",
 ]

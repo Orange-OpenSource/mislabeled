@@ -26,7 +26,7 @@ from mislabeled.detect.detectors import (
     VoLG,
 )
 from mislabeled.ensemble import NoEnsemble, ProgressiveEnsemble
-from mislabeled.probe import LinearGradSimilarity
+from mislabeled.probe import LinearGradSimilarity, Representer
 
 from .utils import blobs_1_mislabeled
 
@@ -46,6 +46,20 @@ def simple_detect_test(n_classes, detector):
 seed = 42
 
 detectors = [
+    ModelBasedDetector(
+        base_model=make_pipeline(
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
+            MLPClassifier(
+                hidden_layer_sizes=(),
+                solver="sgd",
+                batch_size=1000,
+                random_state=seed,
+            ),
+        ),
+        ensemble=NoEnsemble(),
+        probe=Representer(),
+        aggregate="sum",
+    ),
     ModelBasedDetector(
         base_model=make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
