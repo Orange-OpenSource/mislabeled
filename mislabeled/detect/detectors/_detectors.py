@@ -19,6 +19,7 @@ from ...probe import (
     LinearGradNorm2,
     LinearSensitivity,
     OutlierProbe,
+    Representer,
 )
 
 # A detector zoo of techniques found in the litterature
@@ -51,6 +52,25 @@ class InfluenceDetector(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe=Influence(),
+            aggregate="sum",
+        )
+
+
+class RepresenterDetector(ModelBasedDetector):
+    """Detector based on representer values
+
+    References
+    ----------
+    .. [1] Jaeckel, Louis A. "Estimating regression coefficients by minimizing\
+        the dispersion of the residuals." The Annals of Mathematical Statistics (1972).
+
+    """
+
+    def __init__(self, base_model):
+        super().__init__(
+            base_model=base_model,
+            ensemble=NoEnsemble(),
+            probe=Representer(),
             aggregate="sum",
         )
 

@@ -3,7 +3,7 @@
 # Check that source code meets quality standards
 
 quality:
-	black --check examples mislabeled
+	black --check mislabeled examples
 	flake8 mislabeled examples
 	isort --check-only mislabeled examples
 
