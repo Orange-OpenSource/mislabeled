@@ -35,26 +35,28 @@ def simple_split_test(n_classes, detectors, splitter):
 @pytest.mark.parametrize("n_classes", [2, 5])
 @pytest.mark.parametrize(
     "detectors",
-    [[
-        ModelBasedDetector(
-            base_model=make_pipeline(
-                RBFSampler(gamma="scale", n_components=100, random_state=seed),
-                LogisticRegression(),
+    [
+        [
+            ModelBasedDetector(
+                base_model=make_pipeline(
+                    RBFSampler(gamma="scale", n_components=100, random_state=seed),
+                    LogisticRegression(),
+                ),
+                ensemble=NoEnsemble(),
+                probe="accuracy",
+                aggregate="sum",
             ),
-            ensemble=NoEnsemble(),
-            probe="accuracy",
-            aggregate="sum",
-        ),
-        ModelBasedDetector(
-            base_model=make_pipeline(
-                RBFSampler(gamma="scale", n_components=100, random_state=seed),
-                LogisticRegression(),
+            ModelBasedDetector(
+                base_model=make_pipeline(
+                    RBFSampler(gamma="scale", n_components=100, random_state=seed),
+                    LogisticRegression(),
+                ),
+                ensemble=NoEnsemble(),
+                probe="soft_margin",
+                aggregate="sum",
             ),
-            ensemble=NoEnsemble(),
-            probe="soft_margin",
-            aggregate="sum",
-        ),
-    ]],
+        ]
+    ],
     ids=_get_check_estimator_ids,
 )
 @pytest.mark.parametrize(

@@ -4,6 +4,12 @@ from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.extmath import safe_sparse_dot
 
 
+def norm2(x, axis=1):
+    if sp.issparse(x):
+        return np.asarray(x.multiply(x).sum(axis=axis))
+    return (x * x).sum(axis=axis)
+
+
 class Influence:
     """A template estimator to be used as a reference implementation.
 
@@ -89,10 +95,40 @@ class LinearGradNorm2:
         grad_pre_act = estimator.predict_proba(X)
         grad_pre_act[np.arange(grad_pre_act.shape[0]), y] -= 1
 
-        grad_pre_act_norm = np.linalg.norm(grad_pre_act, axis=1)
-        if sp.issparse(X):
-            X_norm = sp.linalg.norm(X, axis=1)
-        else:
-            X_norm = np.linalg.norm(X, axis=1)
+        return -norm2(grad_pre_act) * norm2(X)
 
-        return -(grad_pre_act_norm**2) * X_norm**2
+
+class Representer:
+    """Representer values"""
+
+    def __call__(self, estimator, X, y):
+        """Evaluate the probe
+
+        Parameters
+        ----------
+        estimator : object
+            Trained classifier to probe
+
+        X : {array-like, sparse matrix}
+            Test data
+
+        y : array-like
+            Dataset target values for X
+
+        Returns
+        -------
+        probe_scores : np.array
+            n x 1 array of the per-examples gradients
+        """
+
+        if isinstance(estimator, Pipeline):
+            X = make_pipeline(estimator[:-1]).transform(X)
+            estimator = estimator[-1]
+
+        diag_k = norm2(X)
+
+        # grads of the cross entropy w.r.t. pre-activations before the softmax
+        grad_pre_act = estimator.predict_proba(X)
+        grad_pre_act_observed = grad_pre_act[np.arange(grad_pre_act.shape[0]), y] - 1
+
+        return grad_pre_act_observed * diag_k
