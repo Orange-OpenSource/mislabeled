@@ -60,17 +60,14 @@ class IndependentEnsemble(AbstractEnsemble):
             return_estimator=True,
         )
 
-        ensemble_members = results["estimator"]
-        n_ensemble_members = len(ensemble_members)
-
         probe = check_probe(probe)
+        probe_scores = (probe(member, X, y) for member in results["estimator"])
 
-        probe_scores = (probe(member, X, y) for member in ensemble_members)
-
-        masks = np.zeros((n_ensemble_members, n_samples), dtype=bool)
-
-        for e, indices_oob in enumerate(results["indices"]["test"]):
-            masks[e, indices_oob] = True
+        masks = []
+        for indices_oob in results["indices"]["test"]:
+            mask = np.zeros(n_samples, dtype=bool)
+            mask[indices_oob] = True
+            masks.append(mask)
 
         return probe_scores, dict(masks=masks)
 

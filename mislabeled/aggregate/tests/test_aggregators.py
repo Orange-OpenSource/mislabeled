@@ -1,29 +1,29 @@
-import pytest
-from pytest import raises
-from sklearn.datasets import make_classification
-from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import make_pipeline
+import math
 
-from mislabeled.detect import ModelBasedDetector
-from mislabeled.ensemble import NoEnsemble
+import numpy as np
 
-seed = 42
+from mislabeled.aggregate.aggregators import count, mean, sum, var
 
 
-@pytest.mark.parametrize("fake_aggregator", ["kek", 2])
-def test_not_authorized_aggregator(fake_aggregator):
-    X, y = make_classification()
+def test_uniform_sum():
+    data = np.random.rand(1000)
 
-    fake_detector = ModelBasedDetector(
-        base_model=make_pipeline(
-            RBFSampler(gamma="scale", n_components=100, random_state=seed),
-            LogisticRegression(),
-        ),
-        ensemble=NoEnsemble(),
-        probe="accuracy",
-        aggregate=fake_aggregator,
-    )
+    assert math.isclose(sum(data), np.sum(data))
 
-    with raises(ValueError):
-        fake_detector.trust_score(X, y)
+
+def test_uniform_count():
+    data = np.random.rand(1000)
+
+    assert math.isclose(count(data), len(data))
+
+
+def test_uniform_mean():
+    data = np.random.rand(1000)
+
+    assert math.isclose(mean(data), np.mean(data))
+
+
+def test_uniform_var():
+    data = np.random.rand(1000)
+
+    assert math.isclose(var(data), np.var(data))

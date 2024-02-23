@@ -11,7 +11,7 @@ from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
-from mislabeled.aggregate.aggregators import forget
+from mislabeled.aggregate.aggregators import forget, oob, sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
@@ -28,6 +28,36 @@ from mislabeled.probe import Complexity
 from mislabeled.split import GMMSplitter, PerClassSplitter, QuantileSplitter
 
 seed = 42
+
+
+detectors = [
+    ModelBasedDetector(
+        base_model=LogisticRegression(),
+        ensemble=NoEnsemble(),
+        probe="accuracy",
+        aggregate=sum,
+    ),
+    ModelBasedDetector(
+        base_model=KNeighborsClassifier(n_neighbors=3),
+        ensemble=IndependentEnsemble(
+            RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=seed),
+        ),
+        probe="accuracy",
+        aggregate=oob(sum),
+    ),
+    ModelBasedDetector(
+        base_model=GradientBoostingClassifier(max_depth=1, random_state=seed),
+        ensemble=ProgressiveEnsemble(),
+        probe="accuracy",
+        aggregate=forget,
+    ),
+    ModelBasedDetector(
+        base_model=DecisionTreeClassifier(random_state=seed),
+        ensemble=LeaveOneOutEnsemble(),
+        probe=Complexity(complexity_proxy="n_leaves"),
+        aggregate=oob(sum),
+    ),
+]
 
 
 splitters = [
@@ -55,35 +85,6 @@ handlers = [
     ),
 ]
 
-
-detectors = [
-    ModelBasedDetector(
-        base_model=LogisticRegression(),
-        ensemble=NoEnsemble(),
-        probe="accuracy",
-        aggregate="sum",
-    ),
-    ModelBasedDetector(
-        base_model=KNeighborsClassifier(n_neighbors=3),
-        ensemble=IndependentEnsemble(
-            RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=seed),
-        ),
-        probe="accuracy",
-        aggregate="mean_oob",
-    ),
-    ModelBasedDetector(
-        base_model=GradientBoostingClassifier(max_depth=1, random_state=seed),
-        ensemble=ProgressiveEnsemble(),
-        probe="accuracy",
-        aggregate=forget,
-    ),
-    ModelBasedDetector(
-        base_model=DecisionTreeClassifier(random_state=seed),
-        ensemble=LeaveOneOutEnsemble(),
-        probe=Complexity(complexity_proxy="n_leaves"),
-        aggregate="sum_oob",
-    ),
-]
 
 parametrize = parametrize_with_checks(
     list(

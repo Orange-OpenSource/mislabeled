@@ -11,6 +11,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
+from mislabeled.aggregate.aggregators import oob, sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.detect.detectors import (
     AreaUnderMargin,
@@ -70,7 +71,7 @@ detectors = [
         ),
         ensemble=ProgressiveEnsemble(),
         probe=LinearGradSimilarity(),
-        aggregate="sum",
+        aggregate=sum,
     ),
     TracIn(
         make_pipeline(
@@ -92,7 +93,7 @@ detectors = [
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
     ModelBasedDetector(
-        KNeighborsClassifier(), LeaveOneOutEnsemble(n_jobs=-1), "accuracy", "sum_oob"
+        KNeighborsClassifier(), LeaveOneOutEnsemble(n_jobs=-1), "accuracy", oob(sum)
     ),
     FiniteDiffComplexity(
         GradientBoostingClassifier(random_state=seed), random_state=seed
@@ -175,7 +176,7 @@ def test_detector_with_sparse_X(n_classes, detector):
             ),
             ensemble=NoEnsemble(),
             probe="accuracy",
-            aggregate="sum",
+            aggregate=sum,
         ),
     ],
 )

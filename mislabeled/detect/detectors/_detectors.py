@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-from ...aggregate.aggregators import forget, mean_of_neg_var, sum
+from ...aggregate.aggregators import finalize, forget, mean, mean_of_neg_var, oob, sum
 from ...detect import ModelBasedDetector
 from ...ensemble import (
     IndependentEnsemble,
@@ -31,7 +31,7 @@ class OutlierDetector(ModelBasedDetector):
             base_model=base_model,
             ensemble=OutlierEnsemble(),
             probe=OutlierProbe(),
-            aggregate="sum",
+            aggregate=sum,
         )
         self.n_jobs = n_jobs
 
@@ -52,7 +52,7 @@ class InfluenceDetector(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe=Influence(),
-            aggregate="sum",
+            aggregate=sum,
         )
 
 
@@ -71,7 +71,7 @@ class RepresenterDetector(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe=Representer(),
-            aggregate="sum",
+            aggregate=sum,
         )
 
 
@@ -81,7 +81,7 @@ class DecisionTreeComplexity(ModelBasedDetector):
             base_model=base_model,
             ensemble=LeaveOneOutEnsemble(n_jobs=n_jobs),
             probe=Complexity(complexity_proxy="n_leaves"),
-            aggregate="sum_oob",
+            aggregate=oob(sum),
         )
         self.n_jobs = n_jobs
 
@@ -108,8 +108,8 @@ class FiniteDiffComplexity(ModelBasedDetector):
                 n_jobs=n_jobs,
                 random_state=random_state,
             ),
-            aggregate=sum.map(partial(np.mean, axis=-1)),
-        )
+            aggregate=finalize(partial(np.mean, axis=(-1, -2))),
+        ),
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.directions_per_batch = directions_per_batch
@@ -123,7 +123,7 @@ class Classifier(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe="accuracy",
-            aggregate="sum",
+            aggregate=sum,
         )
 
 
@@ -133,7 +133,7 @@ class Regressor(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe="l1",
-            aggregate="sum",
+            aggregate=sum,
         )
 
 
@@ -152,7 +152,7 @@ class ConsensusConsistency(ModelBasedDetector):
                 n_jobs=n_jobs,
             ),
             probe="accuracy",
-            aggregate="mean_oob",
+            aggregate=oob(mean),
         )
         self.n_splits = n_splits
         self.n_repeats = n_repeats
@@ -175,7 +175,7 @@ class ConfidentLearning(ModelBasedDetector):
                 n_jobs=n_jobs,
             ),
             probe="confidence",
-            aggregate="mean_oob",
+            aggregate=oob(mean),
         )
         self.n_splits = n_splits
         self.n_repeats = n_repeats
@@ -198,7 +198,7 @@ class AreaUnderMargin(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe="soft_margin",
-            aggregate="sum",
+            aggregate=sum,
         )
         self.steps = steps
 
@@ -218,7 +218,7 @@ class TracIn(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearGradNorm2(),
-            aggregate="sum",
+            aggregate=sum,
         )
         self.steps = steps
 

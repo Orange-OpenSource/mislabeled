@@ -1,6 +1,6 @@
 from sklearn.base import BaseEstimator
 
-from mislabeled.aggregate import check_aggregate
+from mislabeled.aggregate.aggregators import check_aggregate
 
 
 class ModelBasedDetector(BaseEstimator):
@@ -20,5 +20,5 @@ class ModelBasedDetector(BaseEstimator):
         # p: #probes
         # e: #ensemble members
 
-        self.aggregate_ = check_aggregate(self.aggregate)
-        return self.aggregate_(probe_scores, **kwargs)
+        aggregator = check_aggregate(self.aggregate, **kwargs)
+        return aggregator(probe_scores)

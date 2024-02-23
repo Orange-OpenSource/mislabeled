@@ -3,6 +3,7 @@ import pytest
 from sklearn.model_selection import StratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 
+from mislabeled.aggregate.aggregators import mean, oob
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import IndependentEnsemble
 from mislabeled.split import PerClassSplitter, QuantileSplitter
@@ -20,7 +21,7 @@ def test_per_class_with_quantile_conserves_class_priors(n_classes):
             StratifiedKFold(n_splits=5),
         ),
         probe="accuracy",
-        aggregate="mean_oob",
+        aggregate=oob(mean),
     )
     splitter = PerClassSplitter(QuantileSplitter())
 
