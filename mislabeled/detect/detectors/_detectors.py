@@ -5,9 +5,9 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 
 from mislabeled.aggregate.aggregators import (
     finalize,
-    neg_forget,
     mean,
     mean_of_neg_var,
+    neg_forget,
     oob,
     sum,
 )
