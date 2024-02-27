@@ -5,7 +5,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 
 from mislabeled.aggregate.aggregators import (
     finalize,
-    forget,
+    neg_forget,
     mean,
     mean_of_neg_var,
     oob,
@@ -246,7 +246,7 @@ class ForgetScores(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe="accuracy",
-            aggregate=forget,
+            aggregate=neg_forget,
         )
         self.steps = steps
 

@@ -17,11 +17,13 @@ def count(iterable, weights=repeat(1)):
 
 def mean(iterable, weights=repeat(1)):
     sum = 0
-    count = 0
+    weight_sum = 0
+
     for data, weight in zip(iterable, weights):
         sum += data * weight
-        count += weight
-    return sum / count
+        weight_sum += weight
+
+    return sum / weight_sum
 
 
 class oob(object):
@@ -53,27 +55,29 @@ class finalize(object):
 
 
 def forget(iterable, weights=repeat(1)):
+
     def f(a, b):
         n_forget_events, previous_probes = a
         probes, weight = b
         return n_forget_events + weight * (previous_probes > probes), probes
 
-    return -reduce(f, zip(iterable, weights), (0, -math.inf))[0]
+    return reduce(f, zip(iterable, weights), (0, -math.inf))[0]
+
+
+neg_forget = finalize(operator.neg, forget)
 
 
 # TODO: use blinded's version
 def var(iterable, weights=repeat(1)):
     weight_sum = 0
-    weight_sum_squared = 0
     mean = 0
     S = 0
 
     for data, weight in zip(iterable, weights):
+        previous_mean = mean
         weight_sum += weight
-        weight_sum_squared += weight**2
-        old_mean = mean
-        mean = old_mean + (weight / weight_sum) * (data - old_mean)
-        S += weight * (data - old_mean) * (data - mean)
+        mean += (weight / weight_sum) * (data - mean)
+        S += weight * (data - previous_mean) * (data - mean)
 
     return S / weight_sum
 
