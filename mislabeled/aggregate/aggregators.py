@@ -6,13 +6,6 @@ from itertools import repeat
 
 import numpy as np
 
-# def smooth(a, b, gamma):
-#     return a + gamma * (b - a)
-
-
-# def uniform():
-#     return map(partial(operator.truediv, 1), count(start=1))
-
 
 def sum(iterable, weights=repeat(1)):
     return reduce(operator.add, map(operator.mul, iterable, weights))
