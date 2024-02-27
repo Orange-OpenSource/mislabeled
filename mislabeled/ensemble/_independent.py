@@ -63,13 +63,13 @@ class IndependentEnsemble(AbstractEnsemble):
         probe = check_probe(probe)
         probe_scores = (probe(member, X, y) for member in results["estimator"])
 
-        masks = []
+        oobs = []
         for indices_oob in results["indices"]["test"]:
-            mask = np.zeros(n_samples, dtype=bool)
-            mask[indices_oob] = True
-            masks.append(mask)
+            oob = np.zeros(n_samples, dtype=bool)
+            oob[indices_oob] = True
+            oobs.append(oob)
 
-        return probe_scores, dict(masks=masks)
+        return probe_scores, dict(oobs=oobs)
 
 
 class LeaveOneOutEnsemble(AbstractEnsemble):
@@ -120,14 +120,14 @@ class LeaveOneOutEnsemble(AbstractEnsemble):
 
         n_samples = _num_samples(X)
         probe_scores = []
-        masks = []
+        oobs = []
         for e, oob_score in enumerate(scores["test_score"]):
             loo_scores = np.zeros(n_samples)
             loo_scores[e] = oob_score
             probe_scores.append(loo_scores)
 
-            mask = np.zeros(n_samples, dtype=bool)
-            mask[e] = True
-            masks.append(mask)
+            oob = np.zeros(n_samples, dtype=bool)
+            oob[e] = True
+            oobs.append(oob)
 
-        return probe_scores, dict(masks=masks)
+        return probe_scores, dict(oobs=oobs)

@@ -29,7 +29,7 @@ class oob(object):
         self.aggregator = aggregator
 
     def __call__(self, iterable, **kwargs):
-        return self.aggregator(iterable, weights=kwargs.get("masks", repeat(False)))
+        return self.aggregator(iterable, weights=kwargs.get("oobs", repeat(False)))
 
 
 class itb(object):
@@ -39,7 +39,7 @@ class itb(object):
     def __call__(self, iterable, **kwargs):
         return self.aggregator(
             iterable,
-            weights=map(operator.inv, kwargs.get("masks", repeat(np.array(False)))),
+            weights=map(operator.inv, kwargs.get("oobs", repeat(np.array(False)))),
         )
 
 
