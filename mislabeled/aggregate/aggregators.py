@@ -67,7 +67,6 @@ def forget(iterable, weights=repeat(1)):
 neg_forget = finalize(operator.neg, forget)
 
 
-# TODO: use blinded's version
 def var(iterable, weights=repeat(1)):
     weight_sum = 0
     mean = 0
