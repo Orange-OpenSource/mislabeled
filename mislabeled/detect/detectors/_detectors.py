@@ -3,16 +3,23 @@ from functools import partial
 import numpy as np
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-from ...aggregate.aggregators import finalize, forget, mean, mean_of_neg_var, oob, sum
-from ...detect import ModelBasedDetector
-from ...ensemble import (
+from mislabeled.aggregate.aggregators import (
+    finalize,
+    forget,
+    mean,
+    mean_of_neg_var,
+    oob,
+    sum,
+)
+from mislabeled.detect import ModelBasedDetector
+from mislabeled.ensemble import (
     IndependentEnsemble,
     LeaveOneOutEnsemble,
     NoEnsemble,
     OutlierEnsemble,
     ProgressiveEnsemble,
 )
-from ...probe import (
+from mislabeled.probe import (
     Complexity,
     FiniteDiffSensitivity,
     Influence,
