@@ -118,7 +118,16 @@ class LeaveOneOutEnsemble(AbstractEnsemble):
             n_jobs=self.n_jobs,
         )
 
-        probe_scores = np.diag(scores["test_score"])
-        masks = np.eye(len(scores["test_score"]), dtype=bool)
+        n_samples = _num_samples(X)
+        probe_scores = []
+        masks = []
+        for e, oob_score in enumerate(scores["test_score"]):
+            loo_scores = np.zeros(n_samples)
+            loo_scores[e] = oob_score
+            probe_scores.append(loo_scores)
+
+            mask = np.zeros(n_samples, dtype=bool)
+            mask[e] = True
+            masks.append(mask)
 
         return probe_scores, dict(masks=masks)
