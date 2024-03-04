@@ -147,9 +147,5 @@ class ProgressiveEnsemble(AbstractEnsemble):
 
         stages = staged_fit(base_model, X, y)
         stages = islice(stages, None, None, self.steps)
-        probe_scores = np.stack([probe(stage, X, y) for stage in stages], axis=-1)
-
-        if probe_scores.ndim == 2:
-            probe_scores = probe_scores[:, None, :]
-
-        return probe_scores, np.ones_like(probe_scores)
+        probe_scores = (probe(stage, X, y) for stage in stages)
+        return probe_scores, {}

@@ -11,6 +11,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
+from mislabeled.aggregate.aggregators import oob, sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.detect.detectors import (
     AreaUnderMargin,
@@ -22,12 +23,11 @@ from mislabeled.detect.detectors import (
     ForgetScores,
     InfluenceDetector,
     OutlierDetector,
-    RANSAC,
     RepresenterDetector,
     TracIn,
     VoLG,
 )
-from mislabeled.ensemble import NoEnsemble, ProgressiveEnsemble
+from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble, ProgressiveEnsemble
 from mislabeled.probe import LinearGradSimilarity
 
 from .utils import blobs_1_mislabeled
@@ -71,7 +71,7 @@ detectors = [
         ),
         ensemble=ProgressiveEnsemble(),
         probe=LinearGradSimilarity(),
-        aggregate="sum",
+        aggregate=sum,
     ),
     TracIn(
         make_pipeline(
@@ -85,12 +85,6 @@ detectors = [
             ),
         )
     ),
-    RANSAC(
-        make_pipeline(
-            Nystroem(gamma=0.1, n_components=100, random_state=seed),
-            LogisticRegression(),
-        )
-    ),
     InfluenceDetector(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
@@ -98,6 +92,9 @@ detectors = [
         )
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
+    ModelBasedDetector(
+        KNeighborsClassifier(), LeaveOneOutEnsemble(n_jobs=-1), "accuracy", oob(sum)
+    ),
     FiniteDiffComplexity(
         GradientBoostingClassifier(random_state=seed), random_state=seed
     ),
@@ -107,8 +104,8 @@ detectors = [
             LogisticRegression(),
         )
     ),
-    ConsensusConsistency(KNeighborsClassifier(n_neighbors=3)),
-    ConfidentLearning(KNeighborsClassifier(n_neighbors=3)),
+    ConsensusConsistency(KNeighborsClassifier(n_neighbors=3), random_state=seed),
+    ConfidentLearning(KNeighborsClassifier(n_neighbors=3), random_state=seed),
     AreaUnderMargin(
         GradientBoostingClassifier(n_estimators=100, max_depth=1, random_state=seed),
         steps=10,
@@ -179,7 +176,7 @@ def test_detector_with_sparse_X(n_classes, detector):
             ),
             ensemble=NoEnsemble(),
             probe="accuracy",
-            aggregate="sum",
+            aggregate=sum,
         ),
     ],
 )

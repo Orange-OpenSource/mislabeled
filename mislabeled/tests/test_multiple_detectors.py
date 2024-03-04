@@ -4,8 +4,8 @@ from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
 from sklearn.mixture import GaussianMixture
 from sklearn.pipeline import make_pipeline
-from sklearn.utils.estimator_checks import _get_check_estimator_ids
 
+from mislabeled.aggregate.aggregators import sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import NoEnsemble
 from mislabeled.split import GMMSplitter, QuantileSplitter
@@ -44,7 +44,7 @@ def simple_split_test(n_classes, detectors, splitter):
                 ),
                 ensemble=NoEnsemble(),
                 probe="accuracy",
-                aggregate="sum",
+                aggregate=sum,
             ),
             ModelBasedDetector(
                 base_model=make_pipeline(
@@ -53,11 +53,10 @@ def simple_split_test(n_classes, detectors, splitter):
                 ),
                 ensemble=NoEnsemble(),
                 probe="soft_margin",
-                aggregate="sum",
+                aggregate=sum,
             ),
         ]
     ],
-    ids=_get_check_estimator_ids,
 )
 @pytest.mark.parametrize(
     "splitter",
@@ -71,7 +70,6 @@ def simple_split_test(n_classes, detectors, splitter):
         ),
         QuantileSplitter(),
     ],
-    ids=_get_check_estimator_ids,
 )
 def test_splitters_with_multiple_scores(n_classes, detectors, splitter):
     if isinstance(splitter, QuantileSplitter):

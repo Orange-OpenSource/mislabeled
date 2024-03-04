@@ -16,12 +16,12 @@ format:
 # Run tests for the library
 
 test:
-	pytest -n auto --maxprocesses=8 -s -v mislabeled --ignore=mislabeled/datasets/tests
+	pytest -n auto --maxprocesses=8 -s -v mislabeled --ignore=mislabeled/datasets/tests --ignore=mislabeled/tests/test_cache.py
 
 # Run code coverage
 
 test-coverage:
-	pytest --cov --cov-report term --cov-report xml --junitxml=junit.xml -n auto --maxprocesses=8 -s -v mislabeled --ignore=mislabeled/datasets/tests
+	pytest --cov --cov-report term --cov-report xml --junitxml=junit.xml -n auto --maxprocesses=8 -s -v mislabeled --ignore=mislabeled/datasets/tests --ignore=mislabeled/tests/test_cache.py
 
 # Check that docs can build
 

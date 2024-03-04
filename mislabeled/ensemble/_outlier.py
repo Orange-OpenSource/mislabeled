@@ -38,13 +38,13 @@ class OutlierEnsemble(AbstractEnsemble):
         classes, counts = np.unique(y, return_counts=True)
         class_priors = counts / n_samples
 
-        probe_scorer = check_probe(probe)
+        probe = check_probe(probe)
 
         def one_vs_rest_fit_probe(base_model, X, y, c):
             base_model = clone(base_model)
             X_c, y_c = X[safe_mask(X, y == c)], y[y == c]
             base_model.fit(X_c, y_c)
-            probe_scores = probe_scorer(base_model, X_c, y_c)
+            probe_scores = probe(base_model, X_c, y_c)
             return probe_scores
 
         per_class_probe_scores = Parallel(n_jobs=self.n_jobs)(
@@ -56,4 +56,4 @@ class OutlierEnsemble(AbstractEnsemble):
         for i, c in enumerate(classes):
             probe_scores[y == c] = class_priors[i] * per_class_probe_scores[i]
 
-        return probe_scores[:, None, None], np.ones_like(probe_scores)
+        return [probe_scores], {}
