@@ -1,6 +1,5 @@
 import numpy as np
 import scipy.sparse as sp
-from sklearn.model_selection import LeaveOneOut, cross_val_score
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.extmath import safe_sparse_dot
 
@@ -9,6 +8,28 @@ def norm2(x, axis=1):
     if sp.issparse(x):
         return np.asarray(x.multiply(x).sum(axis=axis))
     return (x * x).sum(axis=axis)
+
+
+class L2Influence:
+
+    def __call__(self, estimator, X, y):
+        if isinstance(estimator, Pipeline):
+            X = make_pipeline(estimator[:-1]).transform(X)
+            coef = estimator[-1].coef_
+        else:
+            coef = estimator.coef_
+
+        # binary case
+        if coef.shape[0] == 1:
+            H = safe_sparse_dot(X, coef.T, dense_output=True)
+            H = np.ravel(H)
+            return H * (y - 0.5)
+        # multiclass case
+        else:
+            H = safe_sparse_dot(X, coef.T, dense_output=True)
+            mask = np.zeros_like(H, dtype=bool)
+            mask[np.arange(H.shape[0]), y] = True
+            return H[mask]
 
 
 class Influence:
