@@ -160,6 +160,12 @@ def fetch_cifar_n(name, cache_folder=None, split="train"):
     .. [1] "Learning with Noisy Labels Revisited: A Study Using\
         Real-World Human Annotations." Wei and Zhu et al. ICLR 2022.
     """
+
+    if cache_folder is None:
+        cache_folder = os.path.expanduser("~")
+
+    cache_folder = os.path.join(cache_folder, "cifar-n")
+
     # Download cifar dataset
     dataset_files = pooch.retrieve(
         url=CIFAR_DATASETS_URL[name][0],
@@ -171,7 +177,9 @@ def fetch_cifar_n(name, cache_folder=None, split="train"):
     data = []
     target = []
     for file in sorted(dataset_files):
-        if any(map(lambda cfile: cfile in file, CIFAR_SPLIT_FILES[split])):
+        if any(
+            map(lambda cfile: cfile in file.split("/")[-1], CIFAR_SPLIT_FILES[split])
+        ):
             with open(file, "rb") as fo:
                 blob = pickle.load(fo, encoding="bytes")
                 data.append(blob[b"data"])

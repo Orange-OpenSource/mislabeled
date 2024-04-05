@@ -1,3 +1,4 @@
+import os
 from functools import reduce
 
 import numpy as np
@@ -59,6 +60,11 @@ def fetch_weasel(name, cache_folder=None, split="train"):
         (Rühling Cachay, S., Boecking, B., & Dubrawski, A., NeurIPS 2021)
     """
     rules = {}
+
+    if cache_folder is None:
+        cache_folder = os.path.expanduser("~")
+
+    cache_folder = os.path.join(cache_folder, "weasel")
 
     # Download appropriate lexicon
     lexicon_file_name = pooch.retrieve(
