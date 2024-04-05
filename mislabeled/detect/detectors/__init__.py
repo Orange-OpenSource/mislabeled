@@ -11,6 +11,7 @@ from ._detectors import (
     OutlierDetector,
     Regressor,
     RepresenterDetector,
+    SmallLoss,
     TracIn,
     VoLG,
     VoSG,
@@ -32,4 +33,5 @@ __all__ = [
     "LinearVoSG",
     "TracIn",
     "RepresenterDetector",
+    "SmallLoss",
 ]

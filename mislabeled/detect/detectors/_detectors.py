@@ -347,3 +347,16 @@ class LinearVoSG(ModelBasedDetector):
             aggregate=mean_of_neg_var,
         )
         self.steps = steps
+
+
+class SmallLoss(ModelBasedDetector):
+    """Detector based on cross-entropy loss between predicted probabilities
+    and one-hot observed target"""
+
+    def __init__(self, base_model):
+        super().__init__(
+            base_model=base_model,
+            ensemble=NoEnsemble(),
+            probe="entropy",
+            aggregate=sum,
+        )
