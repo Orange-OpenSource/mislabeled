@@ -38,11 +38,16 @@ class Influence:
         self.dampening = dampening
 
     def __call__(self, estimator, X, y):
+
         if isinstance(estimator, Pipeline):
             X = make_pipeline(estimator[:-1]).transform(X)
             estimator = estimator[-1]
 
         p = estimator.predict_proba(X)
+
+        # for line 56
+        if sp.issparse(X):
+            X = X.toarray()
 
         n_samples, n_features = X.shape
         n_classes = p.shape[1]
@@ -52,12 +57,20 @@ class Influence:
         grad = diff[:, :, None] * X[:, None, :]
         grad = grad.reshape(n_samples, n_features * n_classes)
 
-        P = np.eye(n_classes) * p[:, None, :]
-        P -= p[:, None, :] * p[:, :, None]
-        XXt = X[:, None, :] * X[:, :, None]
-        H = P[:, :, None, :, None] * XXt[:, None, :, None, :]
-        H = H.reshape(n_samples, n_features * n_classes, n_features * n_classes)
-        H = np.mean(H, axis=0)
+        H = np.zeros((n_features * n_classes, n_features * n_classes))
+        for i in range(n_samples):
+            P = np.diagflat(p[i]) - np.outer(p[i], p[i])
+            H += np.kron(P, np.outer(X[i], X[i]))
+        H /= n_samples
+
+        # Full Batch version
+        # P = np.eye(n_classes) * p[:, None, :]
+        # P -= p[:, None, :] * p[:, :, None]
+        # XXt = X[:, None, :] * X[:, :, None]
+        # H = P[:, :, None, :, None] * XXt[:, None, :, None, :]
+        # H = H.reshape(n_samples, n_features * n_classes, n_features * n_classes)
+        # H = np.mean(H, axis=0)
+
         H += self.dampening * np.eye(n_features * n_classes)
         H_inv = np.linalg.pinv(H)
 
