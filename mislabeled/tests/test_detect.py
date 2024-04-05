@@ -24,6 +24,7 @@ from mislabeled.detect.detectors import (
     InfluenceDetector,
     OutlierDetector,
     RepresenterDetector,
+    SmallLoss,
     TracIn,
     VoLG,
 )
@@ -58,6 +59,12 @@ detectors = [
                 random_state=seed,
             ),
         ),
+    ),
+    SmallLoss(
+        make_pipeline(
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
+            LogisticRegression(),
+        )
     ),
     ModelBasedDetector(
         base_model=make_pipeline(
