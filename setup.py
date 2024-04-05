@@ -22,7 +22,6 @@ INSTALL_REQUIRES = [
     "scipy",
     "scikit-learn",
     "biquality-learn",
-    "gdown",
     "pooch",
     "pandas",
 ]

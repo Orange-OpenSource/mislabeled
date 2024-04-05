@@ -14,6 +14,7 @@ from ..west_african_languages import (
 def test_fetch_west_african_languages(name):
     with TemporaryDirectory() as tmpdir:
         dataset = fetch_west_african_language_news(name, cache_folder=tmpdir)
+        assert os.path.exists(tmpdir)
 
     assert "data" in dataset
     assert "target" in dataset
@@ -31,7 +32,6 @@ def test_fetch_yoruba():
         yoruba = fetch_west_african_language_news(
             "yoruba", split="train", cache_folder=tmpdir
         )
-        assert os.path.exists(tmpdir)
 
     assert len(yoruba["data"]) == 1340
     assert isinstance(yoruba["data"][0], str)
@@ -45,7 +45,6 @@ def test_fetch_hausa():
         hausa = fetch_west_african_language_news(
             "hausa", split="train", cache_folder=tmpdir
         )
-        assert os.path.exists(tmpdir)
 
     assert len(hausa["data"]) == 2045
     assert isinstance(hausa["data"][0], str)

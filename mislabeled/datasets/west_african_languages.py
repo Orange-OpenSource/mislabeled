@@ -1,3 +1,4 @@
+import os
 from functools import reduce
 
 import numpy as np
@@ -80,6 +81,11 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
         lexicons = {
             k: v for k, v in lexicons.items() if k not in ["entertainment", "sport"]
         }
+
+    if cache_folder is None:
+        cache_folder = os.path.expanduser("~")
+
+    cache_folder = os.path.join(cache_folder, "waln")
 
     # Download all lexicons
     for lexicon_name, (lexicon, lexicon_known_hash) in lexicons.items():
