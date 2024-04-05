@@ -45,22 +45,30 @@ class Influence:
 
         p = estimator.predict_proba(X)
 
-        # for line 56
-        if sp.issparse(X):
-            X = X.toarray()
+        # if sp.issparse(X):
+        #     X = X.toarray()
 
         n_samples, n_features = X.shape
         n_classes = p.shape[1]
 
         diff = np.copy(p)
         diff[np.arange(n_samples), y] -= 1
-        grad = diff[:, :, None] * X[:, None, :]
+
+        grad = []
+        for i in range(n_samples):
+            d = diff[i].reshape(1, -1)
+            g = sp.kron(d, X[i]) if sp.issparse(X) else np.kron(d, X[i])
+            grad.append(g)
+
+        grad = sp.vstack(grad) if sp.issparse(X) else np.vstack(grad)
+        # grad = diff[:, :, None] * X[:, None, :]
         grad = grad.reshape(n_samples, n_features * n_classes)
 
         H = np.zeros((n_features * n_classes, n_features * n_classes))
         for i in range(n_samples):
             P = np.diagflat(p[i]) - np.outer(p[i], p[i])
-            H += np.kron(P, np.outer(X[i], X[i]))
+            xxt = X[i].T @ X[i] if sp.issparse(X) else np.outer(X[i], X[i])
+            H += sp.kron(P, xxt) if sp.issparse(X) else np.kron(P, xxt)
         H /= n_samples
 
         # Full Batch version
