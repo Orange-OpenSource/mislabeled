@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.sparse as sp
+from scipy.linalg import pinvh
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.extmath import safe_sparse_dot
 
@@ -45,46 +46,58 @@ class Influence:
 
         p = estimator.predict_proba(X)
 
-        # if sp.issparse(X):
-        #     X = X.toarray()
-
         n_samples, n_features = X.shape
         n_classes = p.shape[1]
 
         diff = np.copy(p)
         diff[np.arange(n_samples), y] -= 1
 
-        grad = []
-        for i in range(n_samples):
-            d = diff[i].reshape(1, -1)
-            g = sp.kron(d, X[i]) if sp.issparse(X) else np.kron(d, X[i])
-            grad.append(g)
+        if sp.issparse(X):
 
-        grad = sp.vstack(grad) if sp.issparse(X) else np.vstack(grad)
-        # grad = diff[:, :, None] * X[:, None, :]
-        grad = grad.reshape(n_samples, n_features * n_classes)
+            X = sp.csr_matrix(X)
+            grad = []
+            for i in range(n_samples):
+                d = diff[i].reshape(1, n_classes)
+                g = sp.kron(d, X[i])
+                grad.append(g)
 
-        H = np.zeros((n_features * n_classes, n_features * n_classes))
-        for i in range(n_samples):
-            P = np.diagflat(p[i]) - np.outer(p[i], p[i])
-            xxt = X[i].T @ X[i] if sp.issparse(X) else np.outer(X[i], X[i])
-            H += sp.kron(P, xxt) if sp.issparse(X) else np.kron(P, xxt)
-        H /= n_samples
+            grad = sp.vstack(grad).toarray()
+
+            H = np.zeros((n_features * n_classes, n_features * n_classes))
+            for i in range(n_samples):
+                P = np.diagflat(p[i]) - np.outer(p[i], p[i])
+                xxt = X[i].T @ X[i]
+                h = sp.kron(P, xxt, format="coo")
+                H[h.row, h.col] += h.data
+            H /= n_samples
+
+        else:
+            grad = diff[:, :, None] * X[:, None, :]
+            grad = grad.reshape(n_samples, n_features * n_classes)
+            P = np.eye(n_classes) * p[:, None, :]
+            P -= p[:, None, :] * p[:, :, None]
+            H = np.einsum("ijl,ik,im->jklm", P, X, X)
+            H /= n_samples
+            H = H.reshape(n_features * n_classes, n_features * n_classes)
 
         # Full Batch version
+        # grad = diff[:, :, None] * X[:, None, :]
+        # grad = grad.reshape(n_samples, n_features * n_classes)
         # P = np.eye(n_classes) * p[:, None, :]
         # P -= p[:, None, :] * p[:, :, None]
         # XXt = X[:, None, :] * X[:, :, None]
         # H = P[:, :, None, :, None] * XXt[:, None, :, None, :]
         # H = H.reshape(n_samples, n_features * n_classes, n_features * n_classes)
         # H = np.mean(H, axis=0)
+        # influence = -grad @ H_inv @ grad.T
+        # self_influence = np.diag(influence)
 
         H += self.dampening * np.eye(n_features * n_classes)
-        H_inv = np.linalg.pinv(H)
+        H_inv = pinvh(H)
 
-        influence = -grad @ H_inv @ grad.T
+        self_influence = -np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
 
-        return np.diag(influence)
+        return self_influence
 
 
 class LinearGradNorm2:
