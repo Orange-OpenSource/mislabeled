@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.sparse as sp
+from scipy.linalg import pinvh
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils.extmath import safe_sparse_dot
 
@@ -10,35 +11,9 @@ def norm2(x, axis=1):
     return (x * x).sum(axis=axis)
 
 
-class Influence:
-    """A template estimator to be used as a reference implementation.
-
-    For more information regarding how to build your own estimator, read more
-    in the :ref:`User Guide <user_guide>`.
-
-    Parameters
-    ----------
-    demo_param : str, default='demo_param'
-        A parameter used for demonstation of how to pass and store paramters.
-    """
+class L2Influence:
 
     def __call__(self, estimator, X, y):
-        """A reference implementation of a fitting function.
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix}, shape (n_samples, n_features)
-            The training input samples.
-        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
-            The target values (class labels in classification, real numbers in
-            regression).
-
-        Returns
-        -------
-        self : object
-            Returns self.
-        """
-
         if isinstance(estimator, Pipeline):
             X = make_pipeline(estimator[:-1]).transform(X)
             coef = estimator[-1].coef_
@@ -56,6 +31,73 @@ class Influence:
             mask = np.zeros_like(H, dtype=bool)
             mask[np.arange(H.shape[0]), y] = True
             return H[mask]
+
+
+class Influence:
+
+    def __init__(self, dampening=0):
+        self.dampening = dampening
+
+    def __call__(self, estimator, X, y):
+
+        if isinstance(estimator, Pipeline):
+            X = make_pipeline(estimator[:-1]).transform(X)
+            estimator = estimator[-1]
+
+        p = estimator.predict_proba(X)
+
+        n_samples, n_features = X.shape
+        n_classes = p.shape[1]
+
+        diff = np.copy(p)
+        diff[np.arange(n_samples), y] -= 1
+
+        if sp.issparse(X):
+
+            X = sp.csr_matrix(X)
+            grad = []
+            for i in range(n_samples):
+                d = diff[i].reshape(1, n_classes)
+                g = sp.kron(d, X[i])
+                grad.append(g)
+
+            grad = sp.vstack(grad).toarray()
+
+            H = np.zeros((n_features * n_classes, n_features * n_classes))
+            for i in range(n_samples):
+                P = np.diagflat(p[i]) - np.outer(p[i], p[i])
+                xxt = X[i].T @ X[i]
+                h = sp.kron(P, xxt, format="coo")
+                H[h.row, h.col] += h.data
+            H /= n_samples
+
+        else:
+            grad = diff[:, :, None] * X[:, None, :]
+            grad = grad.reshape(n_samples, n_features * n_classes)
+            P = np.eye(n_classes) * p[:, None, :]
+            P -= p[:, None, :] * p[:, :, None]
+            H = np.einsum("ijl,ik,im->jklm", P, X, X)
+            H /= n_samples
+            H = H.reshape(n_features * n_classes, n_features * n_classes)
+
+        # Full Batch version
+        # grad = diff[:, :, None] * X[:, None, :]
+        # grad = grad.reshape(n_samples, n_features * n_classes)
+        # P = np.eye(n_classes) * p[:, None, :]
+        # P -= p[:, None, :] * p[:, :, None]
+        # XXt = X[:, None, :] * X[:, :, None]
+        # H = P[:, :, None, :, None] * XXt[:, None, :, None, :]
+        # H = H.reshape(n_samples, n_features * n_classes, n_features * n_classes)
+        # H = np.mean(H, axis=0)
+        # influence = -grad @ H_inv @ grad.T
+        # self_influence = np.diag(influence)
+
+        H += self.dampening * np.eye(n_features * n_classes)
+        H_inv = pinvh(H)
+
+        self_influence = -np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
+
+        return self_influence
 
 
 class LinearGradNorm2:
