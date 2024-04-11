@@ -35,6 +35,16 @@ test:
     - make test
   parallel: !reference [.parallel,parallel]
 
+test-datasets:
+  stage: test
+  when: manual
+  needs: [quality]
+  image: $PYTHON_IMAGE
+  script:
+    - pip install -r datasets-requirements.txt
+    - make test-datasets
+  parallel: !reference [.parallel,parallel]
+
 coverage:
   stage: quality
   image: 'python:3.9'

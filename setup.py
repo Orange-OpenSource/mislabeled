@@ -22,8 +22,6 @@ INSTALL_REQUIRES = [
     "scipy",
     "scikit-learn",
     "biquality-learn",
-    "pooch",
-    "pandas",
 ]
 CLASSIFIERS = [
     "Intended Audience :: Science/Research",
@@ -41,10 +39,7 @@ CLASSIFIERS = [
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
 ]
-EXTRAS_REQUIRE = {
-    "tests": ["pytest", "pytest-cov"],
-    "docs": ["sphinx", "sphinx-gallery", "sphinx_rtd_theme", "numpydoc", "matplotlib"],
-}
+EXTRAS_REQUIRE = {"datasets": ["pooch", "pandas"]}
 
 setup(
     name=DISTNAME,
