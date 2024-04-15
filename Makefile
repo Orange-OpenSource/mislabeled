@@ -24,7 +24,7 @@ test-datasets:
 # Run code coverage
 
 test-coverage:
-	pytest --cov --cov-report term --cov-report xml --junitxml=junit.xml -n auto --maxprocesses=8 -s -v mislabeled --ignore=mislabeled/datasets/tests --ignore=mislabeled/tests/test_cache.py
+	pytest --cov --cov-report term --cov-report xml --junitxml=junit.xml -n auto --maxprocesses=8 -s -v mislabeled --ignore=mislabeled/datasets --ignore=mislabeled/tests/test_cache.py
 
 # Check that docs can build
 
