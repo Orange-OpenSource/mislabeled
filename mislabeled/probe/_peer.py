@@ -47,8 +47,9 @@ class CORE:
         self.alpha = alpha
 
     def core(self, estimator, X, y):
-        classes = np.unique(y)
-        return np.mean([self.probe(estimator, X, np.full_like(y, c)) for c in classes])
+        classes, counts = np.unique(y, return_counts=True)
+        probes = [self.probe(estimator, X, np.full_like(y, c)) for c in classes]
+        return np.average(probes, weights=counts, axis=0)
 
     def __call__(self, estimator, X, y):
         return self.probe(estimator, X, y) - self.alpha * self.core(estimator, X, y)
