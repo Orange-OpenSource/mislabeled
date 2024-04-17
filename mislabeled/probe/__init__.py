@@ -6,7 +6,7 @@ from ._grads import LinearGradSimilarity
 from ._influence import Influence, LinearGradNorm2, Representer
 from ._margin import hard_margin, soft_margin
 from ._outlier import OutlierProbe
-from ._peer import peered_probe
+from ._peer import CORE, Peer
 from ._scorer import (
     check_probe,
     get_probe_scorer,
@@ -38,6 +38,7 @@ __all__ = [
     "LinearGradNorm2",
     "OutlierProbe",
     "LinearGradSimilarity",
-    "peered_probe",
+    "Peer",
+    "CORE",
     "Representer",
 ]
