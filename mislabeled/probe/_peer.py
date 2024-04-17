@@ -3,8 +3,8 @@ import numpy as np
 
 class Peer:
     """Peered probing computes the deviation of the probe value
-    to the probe of a peer example. A peer example is a sample made
-    combining two randomly sampled examples, using the features
+    to the probe of a peer example. A peer example is an example made
+    by combining two randomly sampled examples, using the features
     from the first and the label from the second [1]_.
 
     References
