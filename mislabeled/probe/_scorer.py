@@ -10,7 +10,6 @@ from ._adjust import adjusted_probe
 from ._confidence import confidence, confidence_entropy_ratio
 from ._entropy import entropy, jensen_shannon, weighted_jensen_shannon
 from ._margin import accuracy, hard_margin, soft_margin
-from ._peer import peered_probe
 from ._regression import l1, l2
 from .utils import check_array_prob
 
@@ -349,12 +348,6 @@ for key, probe in _PROBES.items():
             partial(adjusted_probe, probe), needs_proba=True
         )
 
-for key, probe in _PROBES.items():
-    if key not in ["accuracy", "l2", "l1"]:
-        _PROBE_SCORERS["peered_" + key] = make_probe_scorer(
-            partial(peered_probe, probe), needs_proba=True
-        )
-
 
 def get_probe_scorer(probe):
     """Get a probe_scorer from string.
@@ -450,6 +443,7 @@ def check_probe(probe, adjust=False):
             and not module.startswith("mislabeled.probe._influence")
             and not module.startswith("mislabeled.probe._outlier")
             and not module.startswith("mislabeled.probe._grads")
+            and not module.startswith("mislabeled.probe._peer")
             and not module.startswith("mislabeled.probe.tests.")
         ):
             raise ValueError(
