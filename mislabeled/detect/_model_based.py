@@ -6,11 +6,6 @@ from mislabeled.aggregate import check_aggregate
 from mislabeled.probe import check_probe
 
 
-def check_probe_scores(probe_scores, probe):
-
-    return probe_scores
-
-
 class ModelBasedDetector(BaseEstimator):
     def __init__(self, base_model, ensemble, probe, aggregate):
         self.base_model = base_model
