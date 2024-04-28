@@ -1,6 +1,9 @@
+import operator
+
 from sklearn.base import BaseEstimator
 
-from mislabeled.aggregate.aggregators import check_aggregate
+from mislabeled.aggregate import check_aggregate
+from mislabeled.probe import check_probe
 
 
 class ModelBasedDetector(BaseEstimator):
@@ -11,8 +14,13 @@ class ModelBasedDetector(BaseEstimator):
         self.aggregate = aggregate
 
     def trust_score(self, X, y):
-        probe_scores, kwargs = self.ensemble.probe_model(
-            self.base_model, X, y, self.probe
+        probe = check_probe(self.probe)
+        ensemble_probe_scores, kwargs = self.ensemble.probe_model(
+            self.base_model, X, y, probe
+        )
+        ensemble_probe_scores = (
+            probe_scores if probe.maximize else operator.neg(probe_scores)
+            for probe_scores in ensemble_probe_scores
         )
         # probe_scores is an iterator of size e
         # of numpy arrays of shape n x p
@@ -21,4 +29,4 @@ class ModelBasedDetector(BaseEstimator):
         # e: #ensemble members
 
         aggregate = check_aggregate(self.aggregate, **kwargs)
-        return aggregate(probe_scores)
+        return aggregate(ensemble_probe_scores)

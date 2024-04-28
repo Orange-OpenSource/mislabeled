@@ -1,7 +1,5 @@
 from sklearn.base import clone
 
-from mislabeled.probe import check_probe
-
 from ._base import AbstractEnsemble
 
 
@@ -35,7 +33,6 @@ class NoEnsemble(AbstractEnsemble):
         """
         base_model = clone(base_model)
         base_model.fit(X, y)
-        probe = check_probe(probe)
         probe_scores = probe(base_model, X, y)
 
         return [probe_scores], {}
