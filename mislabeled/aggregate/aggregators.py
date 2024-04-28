@@ -46,7 +46,9 @@ class itb(object):
 
 
 class finalize(object):
-    def __init__(self, f, aggregator=partial(np.stack, axis=-1)):
+    def __init__(
+        self, f, aggregator=lambda iterable: np.stack(list(iterable), axis=-1)
+    ):
         self.f = f
         self.aggregator = aggregator
 

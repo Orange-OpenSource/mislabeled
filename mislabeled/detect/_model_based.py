@@ -6,6 +6,11 @@ from mislabeled.aggregate import check_aggregate
 from mislabeled.probe import check_probe
 
 
+def check_probe_scores(probe_scores, probe):
+
+    return probe_scores
+
+
 class ModelBasedDetector(BaseEstimator):
     def __init__(self, base_model, ensemble, probe, aggregate):
         self.base_model = base_model
@@ -19,7 +24,11 @@ class ModelBasedDetector(BaseEstimator):
             self.base_model, X, y, probe
         )
         ensemble_probe_scores = (
-            probe_scores if probe.maximize else operator.neg(probe_scores)
+            (
+                operator.neg(probe_scores)
+                if hasattr(probe, "maximize") and not probe.maximize
+                else probe_scores
+            )
             for probe_scores in ensemble_probe_scores
         )
         # probe_scores is an iterator of size e

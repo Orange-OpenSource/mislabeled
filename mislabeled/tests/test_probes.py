@@ -8,11 +8,13 @@ from mislabeled.aggregate.aggregators import sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import NoEnsemble
 from mislabeled.probe import (
+    Accuracy,
     Adjust,
     Confidence,
     CrossEntropy,
     L1,
     L2,
+    Logits,
     Margin,
     Predictions,
     Probabilities,
@@ -65,8 +67,11 @@ def simple_ood_test(n_classes, n_outliers, detector):
     "probe",
     [
         Confidence(Probabilities()),
-        CrossEntropy(Probabilities()),
         Margin(Probabilities()),
+        Confidence(Logits()),
+        Margin(Logits()),
+        CrossEntropy(Probabilities()),
+        Accuracy(Predictions()),
     ],
 )
 def test_supervised_probe_classif(n_classes, probe):
