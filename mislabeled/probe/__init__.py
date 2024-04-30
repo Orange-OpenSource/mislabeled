@@ -85,37 +85,37 @@ class Maximize:
 class Confidence(Maximize):
 
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        scores = self.probe(estimator, X, y)
+        scores = self.inner(estimator, X, y)
         return scores[np.arange(len(y)), y]
 
 
 class TopK(Maximize):
-    def __init__(self, probe, k=1):
-        self.probe = probe
+    def __init__(self, inner, k=1):
+        self.inner = inner
         self.k = k
 
     def __call__(self, estimator, X, y):
-        scores = self.probe(estimator, X, y)
+        scores = self.inner(estimator, X, y)
         return np.partition(scores, kth=-self.k, axis=1)[:, -self.k]
 
 
 class Accuracy(Maximize):
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        return (self.probe(estimator, X, y) == y).astype(int)
+        return (self.inner(estimator, X, y) == y).astype(int)
 
 
 class Margin(Maximize):
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        scores = self.probe(estimator, X, y)
+        scores = self.inner(estimator, X, y)
         mask = np.zeros_like(scores, dtype=bool)
         mask[np.arange(len(y)), y] = True
         margins = scores[mask] - scores[~mask].reshape(len(y), -1).max(axis=1)
@@ -125,10 +125,10 @@ class Margin(Maximize):
 # TODO: better name than supervised/unsupervised margin ?
 class UnsupervisedMargin(Maximize):
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        scores = np.partition(self.probe(estimator, X, y), kth=-1, axis=1)
+        scores = np.partition(self.inner(estimator, X, y), kth=-1, axis=1)
         return scores[:, -1] - scores[:, -2]
 
 
@@ -141,31 +141,31 @@ def one_hot(y):
 
 class CrossEntropy(Minimize):
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        return -xlogy(one_hot(y), self.probe(estimator, X, y)).sum(axis=1)
+        return -xlogy(one_hot(y), self.inner(estimator, X, y)).sum(axis=1)
 
 
 class Entropy(Minimize):
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        return entropy(self.probe(estimator, X, y), base=len(np.unique(y)), axis=1)
+        return entropy(self.inner(estimator, X, y), base=len(np.unique(y)), axis=1)
 
 
 class Unsupervised:
 
     @property
     def maximize(self):
-        return unsupervised(self.probe).maximize
+        return unsupervised(self.inner).maximize
 
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        return unsupervised(self.probe)(estimator, X, y)
+        return unsupervised(self.inner)(estimator, X, y)
 
 
 @singledispatch
@@ -178,33 +178,33 @@ def unsupervised(probe):
 
 @unsupervised.register(Confidence)
 def unsupervised_confidence(probe: Confidence):
-    return TopK(probe.probe, k=1)
+    return TopK(probe.inner, k=1)
 
 
 @unsupervised.register(CrossEntropy)
 def unsupervised_entropy(probe: CrossEntropy):
-    return Entropy(probe.probe)
+    return Entropy(probe.inner)
 
 
 @unsupervised.register(Margin)
 def unsupervised_margin(probe: Margin):
-    return UnsupervisedMargin(probe.probe)
+    return UnsupervisedMargin(probe.inner)
 
 
 class L1(Minimize):
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        return np.abs(y - self.probe(estimator, X, y))
+        return np.abs(y - self.inner(estimator, X, y))
 
 
 class L2(Minimize):
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        return (y - self.probe(estimator, X, y)) ** 2
+        return (y - self.inner(estimator, X, y)) ** 2
 
 
 class Outliers:

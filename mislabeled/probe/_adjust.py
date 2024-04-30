@@ -28,7 +28,7 @@ class Adjust:
     """
 
     def __init__(self, probe):
-        self.probe = probe
+        self.inner = probe
 
     def __call__(self, estimator, X, y):
-        return adjust_probabilities(y, self.probe(estimator, X, y))
+        return adjust_probabilities(y, self.inner(estimator, X, y))

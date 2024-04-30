@@ -14,7 +14,7 @@ class Peer:
     """
 
     def __init__(self, probe, alpha=1.0, seed=None):
-        self.probe = probe
+        self.inner = probe
         self.alpha = alpha
         self.seed = seed
 
@@ -26,7 +26,7 @@ class Peer:
         return X[j], y[k]
 
     def __call__(self, estimator, X, y):
-        return self.probe(estimator, X, y) - self.alpha * self.probe(
+        return self.inner(estimator, X, y) - self.alpha * self.inner(
             estimator, *self.peer(X, y)
         )
 
@@ -43,13 +43,13 @@ class CORE:
     """
 
     def __init__(self, probe, alpha=1.0):
-        self.probe = probe
+        self.inner = probe
         self.alpha = alpha
 
     def core(self, estimator, X, y):
         classes, counts = np.unique(y, return_counts=True)
-        probes = [self.probe(estimator, X, np.full_like(y, c)) for c in classes]
+        probes = [self.inner(estimator, X, np.full_like(y, c)) for c in classes]
         return np.average(probes, weights=counts, axis=0)
 
     def __call__(self, estimator, X, y):
-        return self.probe(estimator, X, y) - self.alpha * self.core(estimator, X, y)
+        return self.inner(estimator, X, y) - self.alpha * self.core(estimator, X, y)
