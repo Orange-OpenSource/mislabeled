@@ -1,5 +1,5 @@
 from ._adjust import Adjust
-from ._complexity import Complexity
+from ._complexity import LinearParamNorm2, ParameterCount
 from ._grads import LinearGradSimilarity
 from ._influence import Influence, LinearGradNorm2, Representer
 from ._peer import CORE, Peer
@@ -9,7 +9,8 @@ __all__ = [
     "Adjust",
     "FiniteDiffSensitivity",
     "LinearSensitivity",
-    "Complexity",
+    "ParameterCount",
+    "LinearParamNorm2",
     "Influence",
     "LinearGradNorm2",
     "LinearGradSimilarity",

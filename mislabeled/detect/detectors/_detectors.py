@@ -20,7 +20,6 @@ from mislabeled.ensemble import (
     ProgressiveEnsemble,
 )
 from mislabeled.probe import (
-    Complexity,
     Confidence,
     FiniteDiffSensitivity,
     Influence,
@@ -29,6 +28,7 @@ from mislabeled.probe import (
     Logits,
     Margin,
     Outliers,
+    ParameterCount,
     Probabilities,
     Representer,
     Scores,
@@ -92,7 +92,7 @@ class DecisionTreeComplexity(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=LeaveOneOutEnsemble(n_jobs=n_jobs),
-            probe=Complexity(complexity_proxy="n_leaves"),
+            probe=ParameterCount(),
             aggregate=oob(sum),
         )
         self.n_jobs = n_jobs
