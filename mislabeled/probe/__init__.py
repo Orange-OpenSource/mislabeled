@@ -25,25 +25,6 @@ from scipy.special import xlogy
 from scipy.stats import entropy
 
 
-# TODO: better names for min/max?
-class Minimize:
-    maximize = False
-
-
-class Maximize:
-    maximize = True
-
-
-class Confidence(Maximize):
-
-    def __init__(self, probe):
-        self.probe = probe
-
-    def __call__(self, estimator, X, y):
-        scores = self.probe(estimator, X, y)
-        return scores[np.arange(len(y)), y]
-
-
 class Probabilities:
 
     def __call__(self, estimator, X, y):
@@ -70,9 +51,45 @@ def logits(estimator, X, y):
     return logits
 
 
+# TODO: Better Name ?
+class Scores:
+    def __call__(self, estimator, X, y):
+        if hasattr(estimator, "decision_function"):
+            return logits(estimator, X, y)
+        else:
+            return probabilities(estimator, X, y)
+
+
 class Predictions:
     def __call__(self, estimator, X, y):
         return estimator.predict(X)
+
+
+class Precomputed:
+    def __init__(self, precomputed):
+        self.precomputed = precomputed
+
+    def __call__(self, estimator, X, y):
+        return self.precomputed
+
+
+# TODO: better names for min/max?
+class Minimize:
+    maximize = False
+
+
+class Maximize:
+    maximize = True
+
+
+class Confidence(Maximize):
+
+    def __init__(self, probe):
+        self.probe = probe
+
+    def __call__(self, estimator, X, y):
+        scores = self.probe(estimator, X, y)
+        return scores[np.arange(len(y)), y]
 
 
 class TopK(Maximize):
@@ -91,15 +108,6 @@ class Accuracy(Maximize):
 
     def __call__(self, estimator, X, y):
         return (self.probe(estimator, X, y) == y).astype(int)
-
-
-# TODO: Better Name ?
-class Scores:
-    def __call__(self, estimator, X, y):
-        if hasattr(estimator, "decision_function"):
-            return logits(estimator, X, y)
-        else:
-            return probabilities(estimator, X, y)
 
 
 class Margin(Maximize):
@@ -124,19 +132,6 @@ class UnsupervisedMargin(Maximize):
         return scores[:, -1] - scores[:, -2]
 
 
-class Unsupervised:
-
-    @property
-    def maximize(self):
-        return unsupervised(self.probe).maximize
-
-    def __init__(self, probe):
-        self.probe = probe
-
-    def __call__(self, estimator, X, y):
-        return unsupervised(self.probe)(estimator, X, y)
-
-
 def one_hot(y):
     n, c = len(y), len(np.unique(y))
     Y = np.zeros((n, c), dtype=y.dtype)
@@ -158,6 +153,19 @@ class Entropy(Minimize):
 
     def __call__(self, estimator, X, y):
         return entropy(self.probe(estimator, X, y), base=len(np.unique(y)), axis=1)
+
+
+class Unsupervised:
+
+    @property
+    def maximize(self):
+        return unsupervised(self.probe).maximize
+
+    def __init__(self, probe):
+        self.probe = probe
+
+    def __call__(self, estimator, X, y):
+        return unsupervised(self.probe)(estimator, X, y)
 
 
 @singledispatch

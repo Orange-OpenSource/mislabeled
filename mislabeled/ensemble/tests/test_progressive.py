@@ -4,7 +4,7 @@ from sklearn.datasets import make_classification
 from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
 
 from mislabeled.detect.detectors import AreaUnderMargin
-from mislabeled.probe import Margin
+from mislabeled.probe import Margin, Precomputed
 
 
 @pytest.mark.parametrize(
@@ -28,13 +28,10 @@ def test_progressive_staged(estimator):
     baseline_ts = []
     for y_pred in estimator.staged_decision_function(X):
 
-        def precomputed(estimator, X, y):
-            if y_pred.ndim == 1 or y_pred.shape[1] == 1:
-                return np.stack((-y_pred, y_pred), axis=1)
-            else:
-                return y_pred
+        if y_pred.ndim == 1 or y_pred.shape[1] == 1:
+            y_pred = np.stack((-y_pred, y_pred), axis=1)
 
-        baseline_ts.append(Margin(precomputed)(None, None, y))
+        baseline_ts.append(Margin(Precomputed(y_pred))(None, None, y))
     baseline_ts = np.sum(baseline_ts, axis=0)
 
     detector_incr = AreaUnderMargin(estimator)
