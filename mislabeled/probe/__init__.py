@@ -207,7 +207,7 @@ class L2(Minimize):
         return (y - self.inner(estimator, X, y)) ** 2
 
 
-class Outliers:
+class Outliers(Maximize):
 
     def __call__(self, estimator, X, y):
         return estimator.score_samples(X)
