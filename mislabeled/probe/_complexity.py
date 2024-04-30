@@ -46,16 +46,14 @@ def parameter_count(clf):
 @parameter_count.register(SGDClassifier)
 @parameter_count.register(SGDRegressor)
 def parameter_count_linear(estimator):
-    return (
-        estimator.coef_.size + estimator.intercept_.size
-        if estimator.fit_intercept
-        else 0
+    return estimator.coef_.size + (
+        estimator.intercept_.size if estimator.fit_intercept else 0
     )
 
 
 @parameter_count.register(DecisionTreeClassifier)
 @parameter_count.register(DecisionTreeRegressor)
-def parameter_count_tree(estimator: DecisionTreeRegressor | DecisionTreeClassifier):
+def parameter_count_tree(estimator):
     return estimator.get_n_leaves()
 
 
@@ -79,9 +77,7 @@ def parameter_count_gb(estimator):
 
 @parameter_count.register(HistGradientBoostingClassifier)
 @parameter_count.register(HistGradientBoostingRegressor)
-def parameter_count_hgb(
-    estimator: HistGradientBoostingClassifier | HistGradientBoostingRegressor,
-):
+def parameter_count_hgb(estimator):
     return sum(
         predictor.get_n_leaf_nodes()
         for predictors_at_ith_iteration in estimator._predictors
