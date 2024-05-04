@@ -1,7 +1,5 @@
 import math
 import numbers
-import warnings
-from functools import reduce
 
 import numpy as np
 import scipy.sparse as sp
@@ -9,6 +7,9 @@ from joblib import delayed, Parallel
 from sklearn.dummy import check_random_state
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils import gen_batches
+
+from mislabeled.probe._linear import coef, Linear
+from mislabeled.probe._minmax import Minimize
 
 
 class FiniteDiffSensitivity:
@@ -145,7 +146,7 @@ class FiniteDiffSensitivity:
         return probe_scores
 
 
-class LinearSensitivity:
+class LinearSensitivity(Linear, Minimize):
     """Detects likely mislabeled examples based on the
     softmax derivative with respect to the inputs for linear models."""
 
@@ -171,33 +172,9 @@ class LinearSensitivity:
         """
 
         softmax = estimator.predict_proba(X)
-
-        if isinstance(estimator, Pipeline):
-            estimator = estimator[-1]
-
-        if hasattr(estimator, "coef_"):
-            coef = estimator.coef_
-        elif hasattr(estimator, "coefs_"):
-            warnings.warn(
-                "LinearSensitivity treats the neural network as a linear combination"
-                " of all layer weights",
-                UserWarning,
-            )
-            coef = reduce(np.dot, estimator.coefs_)
-        else:
-            raise ValueError(
-                f"estimator {estimator.__class__.__name__} is not a linear model."
-            )
-
-        if coef.shape[0] == 1:
-            coef = np.vstack((-coef, coef))
-
         proba = softmax[np.arange(len(y)), y].reshape(-1, 1)
 
-        softmax_gradient = coef[y] * proba * (1 - proba)
-        softmax_gradient = softmax_gradient.astype(coef.dtype)
+        grad_softmax = coef(estimator)[y] * proba * (1 - proba)
+        grad_softmax = grad_softmax.astype(coef(estimator)[y].dtype)
 
-        # Higher gradient samples are low trust
-        softmax_gradient *= -1
-
-        return softmax_gradient
+        return grad_softmax

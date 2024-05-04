@@ -3,7 +3,7 @@ import operator
 from sklearn.base import BaseEstimator
 
 from mislabeled.aggregate import check_aggregate
-from mislabeled.probe import check_probe
+from mislabeled.probe.utils import check_probe
 
 
 class ModelBasedDetector(BaseEstimator):

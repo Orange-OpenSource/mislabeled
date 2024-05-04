@@ -1,7 +1,9 @@
 from ._adjust import Adjust
 from ._complexity import LinearParamNorm2, ParameterCount
 from ._grads import LinearGradSimilarity
-from ._influence import Influence, LinearGradNorm2, Representer
+from ._influence import Influence, L2Influence, LinearGradNorm2, Representer
+from ._linear import coef, Linear
+from ._minmax import Maximize, Minimize
 from ._peer import CORE, Peer
 from ._sensitivity import FiniteDiffSensitivity, LinearSensitivity
 
@@ -12,11 +14,14 @@ __all__ = [
     "ParameterCount",
     "LinearParamNorm2",
     "Influence",
+    "L2Influence",
     "LinearGradNorm2",
     "LinearGradSimilarity",
     "Peer",
     "CORE",
     "Representer",
+    "Linear",
+    "coef",
 ]
 
 from functools import singledispatch
@@ -72,15 +77,6 @@ class Precomputed:
 
     def __call__(self, estimator, X, y):
         return self.precomputed
-
-
-# TODO: better names for min/max?
-class Minimize:
-    maximize = False
-
-
-class Maximize:
-    maximize = True
 
 
 class Confidence(Maximize):
@@ -212,24 +208,3 @@ class Outliers:
 
     def __call__(self, estimator, X, y):
         return estimator.score_samples(X)
-
-
-PROBES = dict(
-    confidence=Confidence(Scores()),
-    margin=Margin(Scores()),
-    cross_entropy=CrossEntropy(Probabilities()),
-    accuracy=Accuracy(Predictions()),
-    l1=L1(Predictions()),
-    l2=L2(Predictions()),
-)
-
-
-def check_probe(probe):
-    if isinstance(probe, str):
-        return PROBES[probe]
-
-    if callable(probe):
-        return probe
-
-    else:
-        raise TypeError(f"${probe} not supported")

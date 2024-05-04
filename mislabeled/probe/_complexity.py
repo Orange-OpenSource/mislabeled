@@ -25,8 +25,9 @@ from sklearn.linear_model import (
     SGDClassifier,
     SGDRegressor,
 )
-from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+
+from mislabeled.probe._linear import coef, Linear
 
 
 @singledispatch
@@ -85,7 +86,7 @@ def parameter_count_hgb(estimator):
     )
 
 
-class ParameterCount:
+class ParameterCount(Linear):
     """Complexity probing based on parameter counting [1]_.
 
     References
@@ -96,15 +97,11 @@ class ParameterCount:
     """
 
     def __call__(self, estimator, X, y):
-        if isinstance(estimator, Pipeline):
-            estimator = estimator[-1]
 
         return parameter_count(estimator)
 
 
-class LinearParamNorm2:
+class LinearParamNorm2(Linear):
     def __call__(self, estimator, X, y):
-        if isinstance(estimator, Pipeline):
-            estimator = estimator[-1]
 
-        return np.linalg.norm(estimator.coef_)
+        return np.linalg.norm(coef(estimator))
