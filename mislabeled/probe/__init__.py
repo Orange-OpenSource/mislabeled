@@ -132,8 +132,9 @@ class UnsupervisedMargin(Maximize):
         return scores[:, -1] - scores[:, -2]
 
 
-def one_hot(y):
-    n, c = len(y), len(np.unique(y))
+def one_hot(y, c=None):
+    c = c if c else len(np.unique(y))
+    n = len(y)
     Y = np.zeros((n, c), dtype=y.dtype)
     Y[np.arange(n), y] = 1
     return Y
@@ -144,7 +145,8 @@ class CrossEntropy(Minimize):
         self.inner = probe
 
     def __call__(self, estimator, X, y):
-        return -xlogy(one_hot(y), self.inner(estimator, X, y)).sum(axis=1)
+        scores = self.inner(estimator, X, y)
+        return -xlogy(one_hot(y, c=scores.shape[1]), scores).sum(axis=1)
 
 
 class Entropy(Minimize):

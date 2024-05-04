@@ -13,6 +13,10 @@ class Peer:
         Learning from noisy labels without knowing noise rates." ICML 2020.
     """
 
+    @property
+    def maximize(self):
+        return self.inner.maximize
+
     def __init__(self, probe, alpha=1.0, seed=None):
         self.inner = probe
         self.alpha = alpha
@@ -41,6 +45,10 @@ class CORE:
     .. [1] Hao Cheng and al. "Learning with Instance-Dependent Label Noise:\
         A Sample Sieve Approach." ICLR 2021.
     """
+
+    @property
+    def maximize(self):
+        return self.inner.maximize
 
     def __init__(self, probe, alpha=1.0):
         self.inner = probe

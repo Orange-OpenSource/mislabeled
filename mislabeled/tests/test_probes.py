@@ -11,6 +11,7 @@ from mislabeled.probe import (
     Accuracy,
     Adjust,
     Confidence,
+    CORE,
     CrossEntropy,
     L1,
     L2,
@@ -104,6 +105,32 @@ def test_adjusted_supervised_probe_classif(n_classes, probe):
         ),
         ensemble=NoEnsemble(),
         probe=probe(Adjust(Probabilities())),
+        aggregate=sum,
+    )
+    simple_detect_test(n_classes, detector)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+@pytest.mark.parametrize(
+    "probe",
+    [
+        Confidence(Probabilities()),
+        Margin(Probabilities()),
+        Confidence(Logits()),
+        Margin(Logits()),
+        CrossEntropy(Probabilities()),
+        Accuracy(Predictions()),
+    ],
+)
+@pytest.mark.parametrize("peer", [CORE])
+def test_peered_supervised_probe_classif(n_classes, probe, peer):
+    detector = ModelBasedDetector(
+        base_model=make_pipeline(
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LogisticRegression(),
+        ),
+        ensemble=NoEnsemble(),
+        probe=peer(probe),
         aggregate=sum,
     )
     simple_detect_test(n_classes, detector)
