@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 
+from mislabeled.aggregate import mean, oob
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import IndependentEnsemble
 from mislabeled.handle import FilterClassifier
@@ -22,7 +23,7 @@ def test_caching():
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10),
         ),
         probe="accuracy",
-        aggregate="mean_oob",
+        aggregate=oob(mean),
     )
     splitter = QuantileSplitter()
 

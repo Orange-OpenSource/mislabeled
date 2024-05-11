@@ -11,7 +11,7 @@ from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
-from mislabeled.aggregate.aggregators import neg_forget, oob, sum
+from mislabeled.aggregate import neg_forget, oob, sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
@@ -35,7 +35,7 @@ detectors = [
         base_model=LogisticRegression(),
         ensemble=NoEnsemble(),
         probe="accuracy",
-        aggregate=sum,
+        aggregate="sum",
     ),
     ModelBasedDetector(
         base_model=KNeighborsClassifier(n_neighbors=3),

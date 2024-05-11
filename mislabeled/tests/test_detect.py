@@ -11,7 +11,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
-from mislabeled.aggregate.aggregators import oob, sum
+from mislabeled.aggregate import oob, sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.detect.detectors import (
     AreaUnderMargin,
@@ -78,7 +78,7 @@ detectors = [
         ),
         ensemble=ProgressiveEnsemble(),
         probe=LinearGradSimilarity(),
-        aggregate=sum,
+        aggregate="sum",
     ),
     TracIn(
         make_pipeline(
@@ -183,7 +183,7 @@ def test_detector_with_sparse_X(n_classes, detector):
             ),
             ensemble=NoEnsemble(),
             probe="accuracy",
-            aggregate=sum,
+            aggregate="sum",
         ),
     ],
 )

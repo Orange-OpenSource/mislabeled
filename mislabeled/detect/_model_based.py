@@ -1,6 +1,6 @@
 from sklearn.base import BaseEstimator
 
-from mislabeled.aggregate.aggregators import check_aggregate
+from mislabeled.aggregate.utils import check_aggregate
 
 
 class ModelBasedDetector(BaseEstimator):
