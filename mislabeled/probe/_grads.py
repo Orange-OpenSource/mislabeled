@@ -5,7 +5,7 @@ from sklearn.utils.validation import _num_samples
 from mislabeled.probe._linear import Linear
 
 
-class LinearGradSimilarity(Linear):
+class GradSimilarity:
     """Cosine Similarity between the individual gradients in a linear model, and the
     averaged batch gradient, as proposed in:
 
@@ -27,7 +27,7 @@ class LinearGradSimilarity(Linear):
         average_grad = grad_log_loss.T @ X / n_samples
 
         # Note: if n_classes > n_features it is probably more efficient to switch
-        # X and v in the next statement
+        # X and grad_log_loss in the next statement
         cos_sim = (
             (X @ average_grad.T * grad_log_loss).sum(axis=1)
             / np.linalg.norm(average_grad)
@@ -40,3 +40,7 @@ class LinearGradSimilarity(Linear):
             cos_sim /= np.linalg.norm(X, axis=1)
 
         return cos_sim
+
+
+class LinearGradSimilarity(Linear, GradSimilarity):
+    pass

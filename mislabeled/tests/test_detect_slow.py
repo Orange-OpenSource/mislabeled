@@ -11,7 +11,7 @@ from sklearn.tree import DecisionTreeClassifier
 from mislabeled.aggregate.aggregators import sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import LeaveOneOutEnsemble
-from mislabeled.probe import LinearParamNorm2, ParameterCount
+from mislabeled.probe import LinearParameterCount, LinearParamNorm2
 
 from .utils import blobs_1_mislabeled
 
@@ -44,7 +44,7 @@ detectors = [
             ),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
-        probe=ParameterCount(),
+        probe=LinearParameterCount(),
         aggregate=sum,
     ),
     ModelBasedDetector(

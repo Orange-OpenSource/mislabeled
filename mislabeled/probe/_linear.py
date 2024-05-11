@@ -30,9 +30,10 @@ def coef(estimator):
 
 class Linear:
 
-    def __call__(self, estimator, X, y):
+    def __call__(self, estimator, X=None, y=None):
         if isinstance(estimator, Pipeline):
-            X = make_pipeline(estimator[:-1]).transform(X)
+            if X is not None:
+                X = make_pipeline(estimator[:-1]).transform(X)
             estimator = estimator[-1]
 
-        return super(Linear, self).__call__(estimator, X, y)
+        return super().__call__(estimator, X, y)

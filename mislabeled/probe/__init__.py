@@ -1,7 +1,21 @@
 from ._adjust import Adjust
-from ._complexity import LinearParamNorm2, ParameterCount
-from ._grads import LinearGradSimilarity
-from ._influence import Influence, L2Influence, LinearGradNorm2, Representer
+from ._complexity import (
+    LinearParameterCount,
+    LinearParamNorm2,
+    ParameterCount,
+    ParamNorm2,
+)
+from ._grads import GradSimilarity, LinearGradSimilarity
+from ._influence import (
+    GradNorm2,
+    Influence,
+    L2Influence,
+    LinearGradNorm2,
+    LinearInfluence,
+    LinearL2Influence,
+    LinearRepresenter,
+    Representer,
+)
 from ._linear import coef, Linear
 from ._minmax import Maximize, Minimize
 from ._peer import CORE, Peer
@@ -12,14 +26,21 @@ __all__ = [
     "FiniteDiffSensitivity",
     "LinearSensitivity",
     "ParameterCount",
+    "LinearParameterCount",
+    "ParamNorm2",
     "LinearParamNorm2",
     "Influence",
     "L2Influence",
+    "LinearInfluence",
+    "LinearL2Influence",
+    "Representer",
+    "LinearRepresenter",
+    "GradNorm2",
     "LinearGradNorm2",
+    "GradSimilarity",
     "LinearGradSimilarity",
     "Peer",
     "CORE",
-    "Representer",
     "Linear",
     "coef",
 ]

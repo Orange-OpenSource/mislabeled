@@ -12,7 +12,7 @@ def norm2(x, axis=1):
     return (x * x).sum(axis=axis)
 
 
-class L2Influence(Linear, Maximize):
+class L2Influence(Maximize):
 
     def __init__(self, dampening=0):
         self.dampening = dampening
@@ -31,7 +31,11 @@ class L2Influence(Linear, Maximize):
         return self_influence
 
 
-class Influence(Linear, Maximize):
+class LinearL2Influence(Linear, L2Influence):
+    pass
+
+
+class Influence(Maximize):
 
     def __init__(self, dampening=0):
         self.dampening = dampening
@@ -94,7 +98,11 @@ class Influence(Linear, Maximize):
         return self_influence
 
 
-class LinearGradNorm2(Linear, Minimize):
+class LinearInfluence(Linear, Influence):
+    pass
+
+
+class GradNorm2(Minimize):
     """The squared norm of individual gradients w.r.t. parameters in a linear
     model. This is e.g. used (in the case of deep learning) in the TracIn paper:
 
@@ -130,7 +138,11 @@ class LinearGradNorm2(Linear, Minimize):
         return norm2(grad_log_loss) * norm2(X)
 
 
-class Representer(Linear, Maximize):
+class LinearGradNorm2(Linear, GradNorm2):
+    pass
+
+
+class Representer(Maximize):
     """Representer values"""
 
     def __call__(self, estimator, X, y):
@@ -141,3 +153,7 @@ class Representer(Linear, Maximize):
         grad_log_loss_observed = grad_log_loss[np.arange(len(y)), y] - 1
 
         return grad_log_loss_observed * diag_k
+
+
+class LinearRepresenter(Linear, Representer):
+    pass

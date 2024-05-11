@@ -146,7 +146,7 @@ class FiniteDiffSensitivity:
         return probe_scores
 
 
-class LinearSensitivity(Linear, Minimize):
+class Sensitivity(Minimize):
     """Detects likely mislabeled examples based on the
     softmax derivative with respect to the inputs for linear models."""
 
@@ -178,3 +178,7 @@ class LinearSensitivity(Linear, Minimize):
         grad_softmax = grad_softmax.astype(coef(estimator)[y].dtype)
 
         return grad_softmax
+
+
+class LinearSensitivity(Linear, Sensitivity):
+    pass

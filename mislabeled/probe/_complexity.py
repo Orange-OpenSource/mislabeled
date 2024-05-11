@@ -86,7 +86,7 @@ def parameter_count_hgb(estimator):
     )
 
 
-class ParameterCount(Linear):
+class ParameterCount:
     """Complexity probing based on parameter counting [1]_.
 
     References
@@ -96,12 +96,21 @@ class ParameterCount(Linear):
         statistical learning." NeurIPS (2024).
     """
 
-    def __call__(self, estimator, X, y):
+    def __call__(self, estimator, X=None, y=None):
 
         return parameter_count(estimator)
 
 
-class LinearParamNorm2(Linear):
-    def __call__(self, estimator, X, y):
+class LinearParameterCount(Linear, ParameterCount):
+    pass
+
+
+class ParamNorm2:
+
+    def __call__(self, estimator, X=None, y=None):
 
         return np.linalg.norm(coef(estimator))
+
+
+class LinearParamNorm2(Linear, ParamNorm2):
+    pass
