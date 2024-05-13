@@ -9,6 +9,7 @@ before_script:
   - python -V 
   - pip install -r requirements.txt
   - pip install -r test-requirements.txt
+  - pip install -e .
 
 stages:
   - quality
@@ -59,30 +60,29 @@ coverage:
         path: coverage.xml
       junit: junit.xml
 
-# test-doc:
-#   stage: test
-#   needs: [quality]
-#   image: 'python:3.9'
-#   script:
-#     - pip install -r docs/doc_requirements.txt
-#     - pip install -e .
-#     - make docs
+test-docs:
+  stage: test
+  when: manual
+  needs: [quality]
+  image: 'python:3.9'
+  script:
+    - pip install -r docs/docs-requirements.txt
+    - make docs
 
-# pages:
-#   stage: doc
-#   needs: [test-doc]
-#   image: 'python:3.9'
-#   script:
-#     - pip install -r docs/doc_requirements.txt
-#     - pip install -e .
-#     - make docs
-#     - mv docs/build/html public
-#   artifacts:
-#     paths:
-#     - public
-#   only:
-#     - main
-#     - tags
+pages:
+  stage: doc
+  needs: [test-docs]
+  image: 'python:3.9'
+  script:
+    - pip install -r docs/docs-requirements.txt
+    - make docs
+    - mv docs/build/html public
+  artifacts:
+    paths:
+    - public
+  only:
+    - main
+    - tags
     
 # .publish:
 #   stage: deploy

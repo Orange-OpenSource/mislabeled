@@ -172,6 +172,7 @@ dmypy.json
 # DOCS
 docs/api/
 docs/auto_examples/
+docs/generated/
 
 # Benchmark
 output*/
