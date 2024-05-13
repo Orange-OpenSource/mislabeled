@@ -1,3 +1,4 @@
+matplotlib
 pydata-sphinx-theme
 sphinx_design
 sphinx_copybutton
