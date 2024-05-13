@@ -1,4 +1,8 @@
-# %%
+"""
+==========================
+Extended Two Moons Dataset
+==========================
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np

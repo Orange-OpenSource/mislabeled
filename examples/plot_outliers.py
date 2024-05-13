@@ -1,4 +1,8 @@
-# %%
+"""
+=================
+Outlier Detection
+=================
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,5 +35,3 @@ for i in range(n_classes):
         X[ind, 0], X[ind, 1], "bo", markersize=15, fillstyle="none", color="red"
     )
 plt.show()
-
-# %%

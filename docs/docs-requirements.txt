@@ -1,0 +1,7 @@
+pydata-sphinx-theme
+sphinx_design
+sphinx_copybutton
+sphinx_togglebutton
+sphinx_favicon
+sphinxext.opengraph
+sphinx_sitemap
