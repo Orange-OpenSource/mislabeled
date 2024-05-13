@@ -1,5 +1,5 @@
 """Detect mislabeled examples in machine learning datasets"""
 
-import importlib
+import importlib.metadata as metadata
 
-__version__ = importlib.metadata.version("mislabeled")
+__version__ = metadata.version("mislabeled")
