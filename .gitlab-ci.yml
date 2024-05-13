@@ -9,6 +9,7 @@ before_script:
   - python -V 
   - pip install -r requirements.txt
   - pip install -r test-requirements.txt
+  - pip install -e .
 
 stages:
   - quality
@@ -65,7 +66,6 @@ test-docs:
   image: 'python:3.9'
   script:
     - pip install -r docs/docs-requirements.txt
-    - pip install -e .
     - make docs
 
 pages:
@@ -74,7 +74,6 @@ pages:
   image: 'python:3.9'
   script:
     - pip install -r docs/docs-requirements.txt
-    - pip install -e .
     - make docs
     - mv docs/build/html public
   artifacts:
