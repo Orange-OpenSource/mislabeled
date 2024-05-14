@@ -6,26 +6,14 @@ from itertools import repeat
 import numpy as np
 
 
-def adapt(aggregate):
-    def f(iterable, **kwargs):
-        if not kwargs.get("maximize", True):
-            iterable = map(operator.neg, iterable)
-        return aggregate(iterable, **kwargs)
-
-    return f
-
-
-@adapt
 def sum(iterable, weights=repeat(1), **kwargs):
     return reduce(operator.add, map(operator.mul, iterable, weights))
 
 
-@adapt
 def count(iterable, weights=repeat(1), **kwargs):
     return reduce(operator.add, map(lambda _, weight: weight, iterable, weights))
 
 
-@adapt
 def mean(iterable, weights=repeat(1), **kwargs):
     sum = 0
     weight_sum = 0
@@ -75,11 +63,21 @@ class fromnumpy(object):
 
 
 def minimize(aggregate):
-    def f(iterable, **kwargs):
-        scores = aggregate(iterable, **kwargs)
-        return -scores
+    aggregate.maximize = False
+    return aggregate
 
-    return f
+
+class signed(object):
+    def __init__(self, aggregate):
+        self.aggregate = aggregate
+
+    def __call__(self, iterable, **kwargs):
+        if not kwargs.get("maximize", True):
+            iterable = map(operator.neg, iterable)
+        scores = self.aggregate(iterable, **kwargs)
+        if hasattr(self.aggregate, "maximize") and not self.aggregate.maximize:
+            scores = -scores
+        return scores
 
 
 @minimize
@@ -126,10 +124,13 @@ class vote(object):
         else:
             if n_aggregates != n_iterables:
                 raise ValueError(
-                    f"Number of aggregates : {n_aggregates}, and number of probes : {n_iterables}, does not match."
+                    f"Number of aggregates : {n_aggregates},\
+                        and number of probes : {n_iterables}, does not match."
                 )
 
         zipped = zip(aggregates, iterables)
-        scores = [aggregate(iterable, **kwargs) for aggregate, iterable in zipped]
+        scores = [
+            signed(aggregate)(iterable, **kwargs) for aggregate, iterable in zipped
+        ]
 
         return self.voting(scores)

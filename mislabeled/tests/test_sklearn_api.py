@@ -11,7 +11,7 @@ from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
-from mislabeled.aggregate import neg_forget, oob, sum
+from mislabeled.aggregate import forget, oob, sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
@@ -49,7 +49,7 @@ detectors = [
         base_model=GradientBoostingClassifier(max_depth=1, random_state=seed),
         ensemble=ProgressiveEnsemble(),
         probe="accuracy",
-        aggregate=neg_forget,
+        aggregate=forget,
     ),
     ModelBasedDetector(
         base_model=DecisionTreeClassifier(random_state=seed),

@@ -20,5 +20,5 @@ class ModelBasedDetector(BaseEstimator):
         # p: #probes
         # e: #ensemble members
 
-        aggregate = check_aggregate(self.aggregate, **kwargs)
-        return aggregate(probe_scores)
+        aggregate = check_aggregate(self.aggregate)
+        return aggregate(probe_scores, **kwargs)

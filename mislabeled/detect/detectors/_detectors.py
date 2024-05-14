@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-from mislabeled.aggregate import forget, fromnumpy, mean, vote, var, oob, sum
+from mislabeled.aggregate import forget, fromnumpy, mean, oob, sum, var, vote
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
