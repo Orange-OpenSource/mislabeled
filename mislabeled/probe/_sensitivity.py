@@ -10,8 +10,6 @@ from sklearn.dummy import check_random_state
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.utils import gen_batches
 
-from mislabeled.probe import check_probe, confidence
-
 
 class FiniteDiffSensitivity:
     """Detects likely mislabeled examples based on local smoothness of an overfitted
@@ -53,7 +51,6 @@ class FiniteDiffSensitivity:
     def __init__(
         self,
         probe,
-        adjust,
         *,
         epsilon=1e-1,
         n_directions=10,
@@ -63,7 +60,6 @@ class FiniteDiffSensitivity:
         fix_directions=True,
     ):
         self.probe = probe
-        self.adjust = adjust
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.directions_per_batch = directions_per_batch
@@ -114,11 +110,9 @@ class FiniteDiffSensitivity:
             ).astype(X.dtype)
             self._directions /= np.linalg.norm(self._directions, axis=1, keepdims=True)
 
-        probe = check_probe(self.probe, self.adjust)
-
         n_samples = X.shape[0]
         X_reference = X.toarray() if sp.issparse(X) else X
-        reference_probe_scores = probe(estimator, X_reference, y)
+        reference_probe_scores = self.probe(estimator, X_reference, y)
 
         directions_per_batch = self.directions_per_batch
 
@@ -133,7 +127,7 @@ class FiniteDiffSensitivity:
 
         batched_probe_scores = Parallel(n_jobs=self.n_jobs)(
             delayed(batched_probe)(
-                probe, estimator, X_reference, y, self._directions[batch]
+                self.probe, estimator, X_reference, y, self._directions[batch]
             )
             for batch in batches
         )
@@ -198,7 +192,7 @@ class LinearSensitivity:
         if coef.shape[0] == 1:
             coef = np.vstack((-coef, coef))
 
-        proba = confidence(y, softmax)[..., None]
+        proba = softmax[np.arange(len(y)), y].reshape(-1, 1)
 
         softmax_gradient = coef[y] * proba * (1 - proba)
         softmax_gradient = softmax_gradient.astype(coef.dtype)

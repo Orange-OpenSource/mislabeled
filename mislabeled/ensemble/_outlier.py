@@ -4,8 +4,6 @@ from sklearn.base import clone
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples
 
-from mislabeled.probe import check_probe
-
 from ._base import AbstractEnsemble
 
 
@@ -37,8 +35,6 @@ class OutlierEnsemble(AbstractEnsemble):
 
         classes, counts = np.unique(y, return_counts=True)
         class_priors = counts / n_samples
-
-        probe = check_probe(probe)
 
         def one_vs_rest_fit_probe(base_model, X, y, c):
             base_model = clone(base_model)

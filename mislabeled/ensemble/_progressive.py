@@ -15,8 +15,6 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.tree import DecisionTreeClassifier
 
-from mislabeled.probe import check_probe
-
 from ._base import AbstractEnsemble
 
 
@@ -143,7 +141,6 @@ class ProgressiveEnsemble(AbstractEnsemble):
             base_model = base_model
 
         base_model = clone(base_model)
-        probe = check_probe(probe)
 
         stages = staged_fit(base_model, X, y)
         stages = islice(stages, None, None, self.steps)

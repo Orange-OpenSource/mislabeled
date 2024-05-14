@@ -21,12 +21,17 @@ from mislabeled.ensemble import (
 )
 from mislabeled.probe import (
     Complexity,
+    Confidence,
     FiniteDiffSensitivity,
     Influence,
     LinearGradNorm2,
     LinearSensitivity,
-    OutlierProbe,
+    Logits,
+    Margin,
+    Outliers,
+    Probabilities,
     Representer,
+    Scores,
 )
 
 # A detector zoo of techniques found in the litterature
@@ -37,7 +42,7 @@ class OutlierDetector(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=OutlierEnsemble(),
-            probe=OutlierProbe(),
+            probe=Outliers(),
             aggregate=sum,
         )
         self.n_jobs = n_jobs
@@ -107,8 +112,7 @@ class FiniteDiffComplexity(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe=FiniteDiffSensitivity(
-                "soft_margin",
-                False,
+                Margin(Scores()),
                 epsilon=epsilon,
                 n_directions=n_directions,
                 directions_per_batch=directions_per_batch,
@@ -204,7 +208,7 @@ class AreaUnderMargin(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
-            probe="soft_margin",
+            probe="margin",
             aggregate=sum,
         )
         self.steps = steps
@@ -276,8 +280,7 @@ class VoLG(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=FiniteDiffSensitivity(
-                probe="logits",
-                adjust=False,
+                Confidence(Logits()),
                 epsilon=epsilon,
                 n_directions=n_directions,
                 directions_per_batch=directions_per_batch,
@@ -312,8 +315,7 @@ class VoSG(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=FiniteDiffSensitivity(
-                probe="softmax",
-                adjust=False,
+                Confidence(Probabilities()),
                 epsilon=epsilon,
                 n_directions=n_directions,
                 directions_per_batch=directions_per_batch,
@@ -357,6 +359,6 @@ class SmallLoss(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe="entropy",
+            probe="cross_entropy",
             aggregate=sum,
         )

@@ -12,11 +12,10 @@ from sklearn.calibration import LabelEncoder
 from sklearn.datasets import make_moons
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from mislabeled.detect import ConsensusDetector
+from mislabeled.detect.detectors import ConsensusConsistency
 from mislabeled.split import QuantileSplitter
 
 seed = 2
@@ -26,9 +25,9 @@ noise_ratio = 0.4
 clf = make_pipeline(
     RBFSampler(gamma="scale", n_components=300, random_state=1), LogisticRegression()
 )
-detector = ConsensusDetector(
+detector = ConsensusConsistency(
     clf,
-    cv=RepeatedStratifiedKFold(random_state=seed),
+    random_state=seed,
     n_jobs=-1,
 )
 splitter = QuantileSplitter(1 - noise_ratio)
