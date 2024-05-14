@@ -22,15 +22,15 @@ from mislabeled.ensemble import (
 from mislabeled.probe import (
     Confidence,
     FiniteDiffSensitivity,
-    Influence,
     LinearGradNorm2,
+    LinearInfluence,
+    LinearParameterCount,
+    LinearRepresenter,
     LinearSensitivity,
     Logits,
     Margin,
     Outliers,
-    ParameterCount,
     Probabilities,
-    Representer,
     Scores,
 )
 
@@ -63,7 +63,7 @@ class InfluenceDetector(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=Influence(),
+            probe=LinearInfluence(),
             aggregate=sum,
         )
 
@@ -82,7 +82,7 @@ class RepresenterDetector(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=Representer(),
+            probe=LinearRepresenter(),
             aggregate=sum,
         )
 
@@ -92,7 +92,7 @@ class DecisionTreeComplexity(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=LeaveOneOutEnsemble(n_jobs=n_jobs),
-            probe=ParameterCount(),
+            probe=LinearParameterCount(),
             aggregate=oob(sum),
         )
         self.n_jobs = n_jobs
@@ -220,7 +220,7 @@ class TracIn(ModelBasedDetector):
     References
     ----------
     .. [1] Pruthi, G., Liu, F., Kale, S., & Sundararajan, M.
-        "Estimating training data influence by tracing gradient descent."
+        "Estimating training data LinearInfluence by tracing gradient descent."
         NeurIPS 2020
     """
 

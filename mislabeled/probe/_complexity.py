@@ -25,8 +25,9 @@ from sklearn.linear_model import (
     SGDClassifier,
     SGDRegressor,
 )
-from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+
+from mislabeled.probe._linear import coef, Linear
 
 
 @singledispatch
@@ -95,16 +96,21 @@ class ParameterCount:
         statistical learning." NeurIPS (2024).
     """
 
-    def __call__(self, estimator, X, y):
-        if isinstance(estimator, Pipeline):
-            estimator = estimator[-1]
+    def __call__(self, estimator, X=None, y=None):
 
         return parameter_count(estimator)
 
 
-class LinearParamNorm2:
-    def __call__(self, estimator, X, y):
-        if isinstance(estimator, Pipeline):
-            estimator = estimator[-1]
+class LinearParameterCount(Linear, ParameterCount):
+    pass
 
-        return np.linalg.norm(estimator.coef_)
+
+class ParamNorm2:
+
+    def __call__(self, estimator, X=None, y=None):
+
+        return np.linalg.norm(coef(estimator))
+
+
+class LinearParamNorm2(Linear, ParamNorm2):
+    pass
