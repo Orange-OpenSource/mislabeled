@@ -6,15 +6,27 @@ from itertools import repeat
 import numpy as np
 
 
-def sum(iterable, weights=repeat(1)):
+def adapt(aggregate):
+    def f(iterable, **kwargs):
+        if not kwargs.get("maximize", True):
+            iterable = map(operator.neg, iterable)
+        return aggregate(iterable, **kwargs)
+
+    return f
+
+
+@adapt
+def sum(iterable, weights=repeat(1), **kwargs):
     return reduce(operator.add, map(operator.mul, iterable, weights))
 
 
-def count(iterable, weights=repeat(1)):
-    return reduce(operator.add, map(lambda x: x[1], zip(iterable, weights)))
+@adapt
+def count(iterable, weights=repeat(1), **kwargs):
+    return reduce(operator.add, map(lambda _, weight: weight, iterable, weights))
 
 
-def mean(iterable, weights=repeat(1)):
+@adapt
+def mean(iterable, weights=repeat(1), **kwargs):
     sum = 0
     weight_sum = 0
 
@@ -30,13 +42,12 @@ class oob(object):
         self.aggregate = aggregate
 
     def __call__(self, iterable, **kwargs):
+        oobs = kwargs.pop("oobs", repeat(False))
+        weights = kwargs.pop("weights", repeat(1))
         return self.aggregate(
             iterable,
-            weights=map(
-                lambda oob, weight: oob * weight,
-                kwargs.get("oobs", repeat(False)),
-                kwargs.get("weights", repeat(1)),
-            ),
+            weights=map(lambda oob, weight: oob * weight, oobs, weights),
+            **kwargs,
         )
 
 
@@ -45,26 +56,34 @@ class itb(object):
         self.aggregate = aggregate
 
     def __call__(self, iterable, **kwargs):
+        oobs = kwargs.pop("oobs", repeat(np.array(False)))
+        weights = kwargs.pop("weights", repeat(1))
         return self.aggregate(
             iterable,
-            weights=map(
-                lambda oob, weight: (~oob) * weight,
-                kwargs.get("oobs", repeat(np.array(False))),
-                kwargs.get("weights", repeat(1)),
-            ),
+            weights=map(lambda oob, weight: (~oob) * weight, oobs, weights),
+            **kwargs,
         )
 
 
-class finalize(object):
-    def __init__(self, f, aggregate=partial(np.stack, axis=-1)):
+class fromnumpy(object):
+    def __init__(self, f, aggregate=partial(np.concatenate, axis=-1)):
         self.f = f
         self.aggregate = aggregate
 
     def __call__(self, iterable, **kwargs):
-        return self.f(self.aggregate(iterable, **kwargs))
+        return self.f(self.aggregate(iterable, **kwargs), axis=-1)
 
 
-def forget(iterable, weights=repeat(1)):
+def minimize(aggregate):
+    def f(iterable, **kwargs):
+        scores = aggregate(iterable, **kwargs)
+        return -scores
+
+    return f
+
+
+@minimize
+def forget(iterable, weights=repeat(1), **kwargs):
 
     def f(a, b):
         n_forget_events, previous_probes = a
@@ -74,10 +93,8 @@ def forget(iterable, weights=repeat(1)):
     return reduce(f, zip(iterable, weights), (0, -math.inf))[0]
 
 
-neg_forget = finalize(operator.neg, forget)
-
-
-def var(iterable, weights=repeat(1)):
+@minimize
+def var(iterable, weights=repeat(1), **kwargs):
     weight_sum = 0
     mean = 0
     S = 0
@@ -91,5 +108,28 @@ def var(iterable, weights=repeat(1)):
     return S / weight_sum
 
 
-neg_var = finalize(operator.neg, var)
-mean_of_neg_var = finalize(partial(np.mean, axis=-1), neg_var)
+class vote(object):
+    def __init__(self, *aggregates, voting=fromnumpy(np.mean)):
+        self.aggregates = aggregates
+        self.voting = voting
+
+    def __call__(self, *iterables, **kwargs):
+
+        n_aggregates = len(self.aggregates)
+        n_iterables = len(iterables)
+
+        if n_aggregates == 1:
+            aggregates = [self.aggregates[0]] * n_iterables
+        elif n_iterables == 1:
+            iterables = [list(iterables[0])] * n_aggregates
+            aggregates = self.aggregates
+        else:
+            if n_aggregates != n_iterables:
+                raise ValueError(
+                    f"Number of aggregates : {n_aggregates}, and number of probes : {n_iterables}, does not match."
+                )
+
+        zipped = zip(aggregates, iterables)
+        scores = [aggregate(iterable, **kwargs) for aggregate, iterable in zipped]
+
+        return self.voting(scores)

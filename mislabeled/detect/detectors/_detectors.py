@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-from mislabeled.aggregate import finalize, mean, mean_of_neg_var, neg_forget, oob, sum
+from mislabeled.aggregate import forget, fromnumpy, mean, vote, var, oob, sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
@@ -108,7 +108,7 @@ class FiniteDiffComplexity(ModelBasedDetector):
                 n_jobs=n_jobs,
                 random_state=random_state,
             ),
-            aggregate=finalize(partial(np.mean, axis=(-1, -2))),
+            aggregate=fromnumpy(partial(np.mean, axis=(-1, -2))),
         ),
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -239,7 +239,7 @@ class ForgetScores(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe="accuracy",
-            aggregate=neg_forget,
+            aggregate=forget,
         )
         self.steps = steps
 
@@ -277,7 +277,7 @@ class VoLG(ModelBasedDetector):
                 n_jobs=n_jobs,
                 random_state=random_state,
             ),
-            aggregate=mean_of_neg_var,
+            aggregate=vote(var),
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -313,7 +313,7 @@ class VoSG(ModelBasedDetector):
                 n_jobs=n_jobs,
                 random_state=random_state,
             ),
-            aggregate=mean_of_neg_var,
+            aggregate=vote(var),
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -337,7 +337,7 @@ class LinearVoSG(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearSensitivity(),
-            aggregate=mean_of_neg_var,
+            aggregate=vote(var),
         )
         self.steps = steps
 
