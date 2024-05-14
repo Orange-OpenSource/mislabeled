@@ -102,7 +102,7 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
     for split in WALN_SPLITS[split]:
         split_file_name = pooch.retrieve(
             url=WALN_DATASETS[name] + "/" + split,
-            path=cache_folder,
+            path=os.path.join(cache_folder, name),
             known_hash=None,
         )
         # Load it with numpy/pandas/etc
