@@ -5,7 +5,6 @@ import codecs
 
 from setuptools import find_packages, setup
 
-
 DISTNAME = "mislabeled"
 DESCRIPTION = "Detect mislabeled examples in machine learning datasets"
 with codecs.open("README.md", encoding="utf-8-sig") as f:
@@ -21,7 +20,6 @@ INSTALL_REQUIRES = [
     "numpy",
     "scipy",
     "scikit-learn",
-    "biquality-learn",
 ]
 CLASSIFIERS = [
     "Intended Audience :: Science/Research",
@@ -34,10 +32,9 @@ CLASSIFIERS = [
     "Operating System :: POSIX",
     "Operating System :: Unix",
     "Operating System :: MacOS",
-    "Programming Language :: Python :: 2.7",
-    "Programming Language :: Python :: 3.5",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
 ]
 EXTRAS_REQUIRE = {"datasets": ["pooch", "pandas"]}
 

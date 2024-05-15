@@ -4,6 +4,7 @@ Extended Two Moons Dataset
 ==========================
 """
 
+# %%
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -65,5 +66,3 @@ for bias, class_imbalance in [
     f.colorbar(im, ax=axis)
 
     f.show()
-
-    # %%

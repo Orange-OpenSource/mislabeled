@@ -4,7 +4,11 @@ Clean vs Noisy validation
 =========================
 """
 
+import os
 import warnings
+
+# %%
+from functools import partial
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,10 +23,16 @@ from mislabeled.preprocessing import WeakLabelEncoder
 
 seed = 42
 
-all = fetch_wrench("sms")
-train = fetch_wrench("sms", split="train")
-validation = fetch_wrench("sms", split="validation")
-test = fetch_wrench("sms", split="test")
+dataset = "youtube"
+fetch_wrench = partial(
+    fetch_wrench,
+    name=dataset,
+    cache_folder=os.path.join(os.path.expanduser("~"), "datasets"),
+)
+all = fetch_wrench()
+train = fetch_wrench(split="train")
+validation = fetch_wrench(split="validation")
+test = fetch_wrench(split="test")
 
 tfidf = TfidfVectorizer(
     strip_accents="unicode", stop_words="english", min_df=5, max_df=0.5
@@ -40,6 +50,9 @@ wle = WeakLabelEncoder(random_state=seed).fit(train["weak_targets"])
 y_noisy_train = wle.transform(train["weak_targets"])
 y_noisy_validation = wle.transform(validation["weak_targets"])
 y_noisy_test = wle.transform(test["weak_targets"])
+
+unlabeled = y_noisy_train == -1
+unlabeled_val = y_noisy_validation == -1
 
 classifier = SGDClassifier(
     loss="log_loss", learning_rate="constant", eta0=0.1, random_state=seed
@@ -63,7 +76,7 @@ for i in range(n_runs):
     vosg = LinearVoSG(classifier)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=ConvergenceWarning)
-        trust_scores = vosg.trust_score(X_train, y_noisy_train)
+        trust_scores = vosg.trust_score(X_train[~unlabeled], y_noisy_train[~unlabeled])
 
     gold_scores[i] = balanced_accuracy_score(
         y_test, classifier.fit(X_train, y_train).predict(X_test)
@@ -75,7 +88,8 @@ for i in range(n_runs):
     )
 
     none_scores[i] = balanced_accuracy_score(
-        y_test, classifier.fit(X_train, y_noisy_train).predict(X_test)
+        y_test,
+        classifier.fit(X_train[~unlabeled], y_noisy_train[~unlabeled]).predict(X_test),
     )
 
     for j, split in enumerate(splits):
@@ -83,12 +97,15 @@ for i in range(n_runs):
         filtered = trust_scores >= np.quantile(trust_scores, split)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=ConvergenceWarning)
-            classifier.fit(X_train[filtered], y_noisy_train[filtered])
+            classifier.fit(
+                X_train[~unlabeled][filtered], y_noisy_train[~unlabeled][filtered]
+            )
         val_scores[i, j] = balanced_accuracy_score(
             y_validation, classifier.predict(X_validation)
         )
         noisy_val_scores[i, j] = balanced_accuracy_score(
-            y_noisy_validation, classifier.predict(X_validation)
+            y_noisy_validation[~unlabeled_val],
+            classifier.predict(X_validation[~unlabeled_val]),
         )
         test_scores[i, j] = balanced_accuracy_score(y_test, classifier.predict(X_test))
 
@@ -123,6 +140,9 @@ plt.axvline(
 )
 plt.xlabel("threshold")
 plt.ylabel("balanced accuracy")
+plt.ylim((0.5, 1.0))
 plt.title("Threshold selection on SMS dataset")
 plt.legend(loc="lower right")
 plt.show()
+
+# %%

@@ -1,50 +1,49 @@
 """
-============
-GMM Splitter
-============
+==============================================
+Trust scores clustering with Gaussian Mixtures
+==============================================
 """
 
 # %%
+from copy import copy
+
 import matplotlib.pyplot as plt
 import numpy as np
-from bqlearn.corruptions import make_label_noise
 from sklearn.datasets import load_digits
 from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import RocCurveDisplay
+from sklearn.linear_model import SGDClassifier
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
+from mislabeled.aggregate import mean, oob
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import IndependentEnsemble
+from mislabeled.probe import CrossEntropy, Probabilities, Unsupervised
 
 X, y = load_digits(return_X_y=True)
 
 # %%
 clf = make_pipeline(
-    RBFSampler(gamma="scale", n_components=300, random_state=1), LogisticRegression()
+    StandardScaler(),
+    RBFSampler(gamma="scale", n_components=1000, random_state=1),
+    SGDClassifier(loss="log_loss"),
 )
 clf.fit(X, y).score(X, y)
 # %%
 detector = ModelBasedDetector(
     clf,
-    probe="entropy",
+    probe=CrossEntropy(Probabilities()),
     ensemble=IndependentEnsemble(
         RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=1), n_jobs=-1
     ),
-    aggregate="mean_oob",
+    aggregate=oob(mean),
 )
 # %%
-y_noisy = make_label_noise(y, "permutation", noise_ratio=0.4, random_state=1)
-clf.fit(X, y_noisy).score(X, y)
-# %%
-supervised_scores = detector.trust_score(X, y_noisy)
+supervised_scores = detector.trust_score(X, y)
 # %%
 plt.hist(supervised_scores, bins=50)
-plt.show()
-# %%
-RocCurveDisplay.from_predictions(y == y_noisy, supervised_scores)
 plt.show()
 # %%
 # Clean and Noisy clusters
@@ -81,28 +80,15 @@ plt.xlabel("Negative Cross-Entropy")
 plt.legend()
 plt.show()
 # %%
-detector_unsupervised = ModelBasedDetector(
-    clf,
-    probe="unsupervised_entropy",
-    ensemble=IndependentEnsemble(
-        RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=1), n_jobs=-1
-    ),
-    aggregate="mean_oob",
-)
-unsupervised_scores = detector_unsupervised.trust_score(X, y_noisy)
+detector_unsupervised = copy(detector)
+detector_unsupervised.probe = Unsupervised(detector.probe)
+unsupervised_scores = detector_unsupervised.trust_score(X, y)
 # %%
-scores = np.stack((supervised_scores, unsupervised_scores), axis=1)
-gmm = GaussianMixture(n_components=2, random_state=1).fit(scores)
+scores = np.stack((-supervised_scores, -unsupervised_scores), axis=1)
+gmm = GaussianMixture(n_components=3, random_state=1).fit(scores)
 labels = gmm.predict(scores)
 plt.scatter(scores[:, 0], scores[:, 1], c=labels)
 plt.title("GMM 2D Clusters")
-plt.xlabel("Negative Cross-Entropy")
-plt.ylabel("Negative Entropy")
-plt.show()
-
-# %%
-plt.scatter(scores[:, 0], scores[:, 1], c=y != y_noisy)
-plt.title("Clean vs Noisy samples")
-plt.xlabel("Negative Cross-Entropy")
-plt.ylabel("Negative Entropy")
+plt.xlabel("Cross-Entropy")
+plt.ylabel("Entropy")
 plt.show()

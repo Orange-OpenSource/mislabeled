@@ -1,7 +1,7 @@
 from functools import partial
 from itertools import product, starmap
 
-from bqlearn.baseline import make_baseline
+from sklearn.base import BaseEstimator, MetaEstimatorMixin
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.mixture import GaussianMixture
@@ -73,6 +73,24 @@ splitters = [
     PerClassSplitter(QuantileSplitter(quantile=0.5)),
 ]
 
+
+class ByPassBiquality(BaseEstimator, MetaEstimatorMixin):
+    def __init__(self, estimator):
+        self.estimator = estimator
+
+    def fit(self, X, y, sample_quality=None):
+        return self.estimator.fit(X, y)
+
+    def predict(self, X):
+        return self.estimator.predict(X)
+
+    def predict_proba(self, X):
+        return self.estimator.predict_proba(X)
+
+    def decision_function(self, X):
+        return self.estimator.decision_function(X)
+
+
 handlers = [
     partial(FilterClassifier, estimator=LogisticRegression()),
     partial(
@@ -81,7 +99,7 @@ handlers = [
     ),
     partial(
         BiqualityClassifier,
-        estimator=make_baseline(LogisticRegression(), "no_correction"),
+        estimator=ByPassBiquality(LogisticRegression()),
     ),
 ]
 
