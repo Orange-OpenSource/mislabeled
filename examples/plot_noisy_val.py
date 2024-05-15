@@ -4,10 +4,10 @@ Clean vs Noisy validation
 =========================
 """
 
+# %%
+
 import os
 import warnings
-
-# %%
 from functools import partial
 
 import matplotlib.pyplot as plt
@@ -15,10 +15,10 @@ import numpy as np
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import log_loss
 
 from mislabeled.datasets.wrench import fetch_wrench
-from mislabeled.detect.detectors import LinearVoSG
+from mislabeled.detect.detectors import AreaUnderMargin
 from mislabeled.preprocessing import WeakLabelEncoder
 
 seed = 42
@@ -73,23 +73,26 @@ none_scores = np.empty(n_runs)
 for i in range(n_runs):
     classifier.set_params(random_state=seed + i)
 
-    vosg = LinearVoSG(classifier)
+    vosg = AreaUnderMargin(classifier)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=ConvergenceWarning)
         trust_scores = vosg.trust_score(X_train[~unlabeled], y_noisy_train[~unlabeled])
 
-    gold_scores[i] = balanced_accuracy_score(
-        y_test, classifier.fit(X_train, y_train).predict(X_test)
+    gold_scores[i] = log_loss(
+        y_test, classifier.fit(X_train, y_train).predict_proba(X_test)
     )
 
     clean = y_train == y_noisy_train
-    silver_scores[i] = balanced_accuracy_score(
-        y_test, classifier.fit(X_train[clean, :], y_noisy_train[clean]).predict(X_test)
+    silver_scores[i] = log_loss(
+        y_test,
+        classifier.fit(X_train[clean, :], y_noisy_train[clean]).predict_proba(X_test),
     )
 
-    none_scores[i] = balanced_accuracy_score(
+    none_scores[i] = log_loss(
         y_test,
-        classifier.fit(X_train[~unlabeled], y_noisy_train[~unlabeled]).predict(X_test),
+        classifier.fit(X_train[~unlabeled], y_noisy_train[~unlabeled]).predict_proba(
+            X_test
+        ),
     )
 
     for j, split in enumerate(splits):
@@ -100,14 +103,14 @@ for i in range(n_runs):
             classifier.fit(
                 X_train[~unlabeled][filtered], y_noisy_train[~unlabeled][filtered]
             )
-        val_scores[i, j] = balanced_accuracy_score(
-            y_validation, classifier.predict(X_validation)
+        val_scores[i, j] = log_loss(
+            y_validation, classifier.predict_proba(X_validation)
         )
-        noisy_val_scores[i, j] = balanced_accuracy_score(
+        noisy_val_scores[i, j] = log_loss(
             y_noisy_validation[~unlabeled_val],
-            classifier.predict(X_validation[~unlabeled_val]),
+            classifier.predict_proba(X_validation[~unlabeled_val]),
         )
-        test_scores[i, j] = balanced_accuracy_score(y_test, classifier.predict(X_test))
+        test_scores[i, j] = log_loss(y_test, classifier.predict_proba(X_test))
 
 
 plt.axhline(np.mean(gold_scores), color="gold", label="gold")
@@ -127,22 +130,19 @@ for scores, label, color in zip(
         color=f"tab:{color}",
     )
 plt.axvline(
-    splits[np.argmax(np.mean(val_scores, axis=0))],
+    splits[np.argmin(np.mean(val_scores, axis=0))],
     linestyle="--",
     color="black",
     label="clean threshold",
 )
 plt.axvline(
-    splits[np.argmax(np.mean(noisy_val_scores, axis=0))],
+    splits[np.argmin(np.mean(noisy_val_scores, axis=0))],
     linestyle=":",
     color="black",
     label="noisy threshold",
 )
 plt.xlabel("threshold")
-plt.ylabel("balanced accuracy")
-plt.ylim((0.5, 1.0))
-plt.title("Threshold selection on SMS dataset")
+plt.ylabel("loss")
+plt.title(f"Threshold selection on {dataset} dataset")
 plt.legend(loc="lower right")
 plt.show()
-
-# %%
