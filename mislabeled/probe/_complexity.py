@@ -16,12 +16,12 @@ from sklearn.ensemble import (
     RandomForestRegressor,
 )
 from sklearn.linear_model import (
-    LinearRegression,
+    ElasticNet,
+    ElasticNetCV,
+    Lasso,
+    LassoCV,
     LogisticRegression,
     LogisticRegressionCV,
-    Ridge,
-    RidgeClassifier,
-    RidgeClassifierCV,
     SGDClassifier,
     SGDRegressor,
 )
@@ -38,17 +38,17 @@ def parameter_count(clf):
     )
 
 
-@parameter_count.register(LinearRegression)
 @parameter_count.register(LogisticRegression)
 @parameter_count.register(LogisticRegressionCV)
-@parameter_count.register(Ridge)
-@parameter_count.register(RidgeClassifier)
-@parameter_count.register(RidgeClassifierCV)
 @parameter_count.register(SGDClassifier)
 @parameter_count.register(SGDRegressor)
+@parameter_count.register(ElasticNet)
+@parameter_count.register(ElasticNetCV)
+@parameter_count.register(Lasso)
+@parameter_count.register(LassoCV)
 def parameter_count_linear(estimator):
-    return estimator.coef_.size + (
-        estimator.intercept_.size if estimator.fit_intercept else 0
+    return np.count_nonzero(estimator.coef_) + (
+        np.count_nonzero(estimator.intercept_) if estimator.fit_intercept else 0
     )
 
 

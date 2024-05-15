@@ -14,8 +14,8 @@ def norm2(x, axis=1):
 
 class L2Influence(Maximize):
 
-    def __init__(self, dampening=0):
-        self.dampening = dampening
+    def __init__(self, tol=0):
+        self.tol = tol
 
     def __call__(self, estimator, X, y):
 
@@ -23,8 +23,7 @@ class L2Influence(Maximize):
         grad = diff[:, None] * X
 
         H = X.T @ X
-        H += self.dampening * np.eye(H.shape[0])
-        H_inv = pinvh(H)
+        H_inv = pinvh(H, atol=self.tol)
 
         self_influence = -np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
 
@@ -37,8 +36,8 @@ class LinearL2Influence(Linear, L2Influence):
 
 class Influence(Maximize):
 
-    def __init__(self, dampening=0):
-        self.dampening = dampening
+    def __init__(self, tol=0):
+        self.tol = tol
 
     def __call__(self, estimator, X, y):
 
@@ -90,8 +89,7 @@ class Influence(Maximize):
         # influence = -grad @ H_inv @ grad.T
         # self_influence = np.diag(influence)
 
-        H += self.dampening * np.eye(n_features * n_classes)
-        H_inv = pinvh(H)
+        H_inv = pinvh(H, atol=self.tol)
 
         self_influence = -np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
 
