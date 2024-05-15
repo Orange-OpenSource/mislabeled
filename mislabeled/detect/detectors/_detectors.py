@@ -1,16 +1,7 @@
-from functools import partial
-
 import numpy as np
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-from mislabeled.aggregate.aggregators import (
-    finalize,
-    mean,
-    mean_of_neg_var,
-    neg_forget,
-    oob,
-    sum,
-)
+from mislabeled.aggregate import forget, fromnumpy, mean, oob, sum, var
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
@@ -43,7 +34,7 @@ class OutlierDetector(ModelBasedDetector):
             base_model=base_model,
             ensemble=OutlierEnsemble(),
             probe=Outliers(),
-            aggregate=sum,
+            aggregate="sum",
         )
         self.n_jobs = n_jobs
 
@@ -64,7 +55,7 @@ class InfluenceDetector(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe=LinearInfluence(),
-            aggregate=sum,
+            aggregate="sum",
         )
 
 
@@ -83,7 +74,7 @@ class RepresenterDetector(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe=LinearRepresenter(),
-            aggregate=sum,
+            aggregate="sum",
         )
 
 
@@ -115,7 +106,9 @@ class FiniteDiffComplexity(ModelBasedDetector):
                 n_directions=n_directions,
                 seed=random_state,
             ),
-            aggregate=finalize(partial(np.mean, axis=(-1, -2))),
+            aggregate=fromnumpy(
+                lambda x, axis=-1: np.mean(np.abs(x), axis=axis), aggregate=mean
+            ),
         ),
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -128,7 +121,7 @@ class Classifier(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe="accuracy",
-            aggregate=sum,
+            aggregate="sum",
         )
 
 
@@ -138,7 +131,7 @@ class Regressor(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe="l1",
-            aggregate=sum,
+            aggregate="sum",
         )
 
 
@@ -203,7 +196,7 @@ class AreaUnderMargin(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe="margin",
-            aggregate=sum,
+            aggregate="sum",
         )
         self.steps = steps
 
@@ -223,7 +216,7 @@ class TracIn(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearGradNorm2(),
-            aggregate=sum,
+            aggregate="sum",
         )
         self.steps = steps
 
@@ -244,7 +237,7 @@ class ForgetScores(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe="accuracy",
-            aggregate=neg_forget,
+            aggregate=forget,
         )
         self.steps = steps
 
@@ -277,7 +270,7 @@ class VoLG(ModelBasedDetector):
                 n_directions=n_directions,
                 seed=random_state,
             ),
-            aggregate=mean_of_neg_var,
+            aggregate=fromnumpy(np.mean, aggregate=var),
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -306,7 +299,7 @@ class VoSG(ModelBasedDetector):
                 n_directions=n_directions,
                 seed=random_state,
             ),
-            aggregate=mean_of_neg_var,
+            aggregate=fromnumpy(np.mean, aggregate=var),
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -328,7 +321,7 @@ class LinearVoSG(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearSensitivity(),
-            aggregate=mean_of_neg_var,
+            aggregate=fromnumpy(np.mean, aggregate=var),
         )
         self.steps = steps
 
@@ -342,5 +335,5 @@ class SmallLoss(ModelBasedDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe="cross_entropy",
-            aggregate=sum,
+            aggregate="sum",
         )

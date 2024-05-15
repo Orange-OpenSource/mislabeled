@@ -4,7 +4,6 @@ from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.pipeline import make_pipeline
 
-from mislabeled.aggregate.aggregators import sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import NoEnsemble
 from mislabeled.probe import (
@@ -83,7 +82,7 @@ def test_supervised_probe_classif(n_classes, probe):
         ),
         ensemble=NoEnsemble(),
         probe=probe,
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_detect_test(n_classes, detector)
 
@@ -98,7 +97,7 @@ def test_adjusted_supervised_probe_classif(n_classes, probe):
         ),
         ensemble=NoEnsemble(),
         probe=probe(Adjust(Probabilities())),
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_detect_test(n_classes, detector)
 
@@ -124,7 +123,7 @@ def test_peered_supervised_probe_classif(n_classes, probe, peer):
         ),
         ensemble=NoEnsemble(),
         probe=peer(probe),
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_detect_test(n_classes, detector)
 
@@ -147,7 +146,7 @@ def test_unsupervised_probe(n_classes, n_outliers, probe):
         ),
         ensemble=NoEnsemble(),
         probe=Unsupervised(probe),
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_ood_test(n_classes, n_outliers, detector)
 
@@ -161,6 +160,6 @@ def test_supervised_probe_regression(probe):
         ),
         ensemble=NoEnsemble(),
         probe=probe,
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_regression_detect_test(detector)

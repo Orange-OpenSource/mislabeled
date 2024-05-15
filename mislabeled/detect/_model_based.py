@@ -1,8 +1,6 @@
-import operator
-
 from sklearn.base import BaseEstimator
 
-from mislabeled.aggregate import check_aggregate
+from mislabeled.aggregate.utils import check_aggregate
 from mislabeled.probe.utils import check_probe
 
 
@@ -18,19 +16,15 @@ class ModelBasedDetector(BaseEstimator):
         ensemble_probe_scores, kwargs = self.ensemble.probe_model(
             self.base_model, X, y, probe
         )
-        ensemble_probe_scores = (
-            (
-                operator.neg(probe_scores)
-                if hasattr(probe, "maximize") and not probe.maximize
-                else probe_scores
-            )
-            for probe_scores in ensemble_probe_scores
-        )
         # probe_scores is an iterator of size e
         # of numpy arrays of shape n x p
         # n: #examples
         # p: #probes
         # e: #ensemble members
 
-        aggregate = check_aggregate(self.aggregate, **kwargs)
-        return aggregate(ensemble_probe_scores)
+        aggregate = check_aggregate(self.aggregate)
+        return aggregate(
+            ensemble_probe_scores,
+            maximize=getattr(probe, "maximize", True),
+            **kwargs,
+        )

@@ -8,7 +8,6 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier
 
-from mislabeled.aggregate.aggregators import sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import LeaveOneOutEnsemble
 from mislabeled.probe import LinearParameterCount, LinearParamNorm2
@@ -45,7 +44,7 @@ detectors = [
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
         probe=LinearParameterCount(),
-        aggregate=sum,
+        aggregate="sum",
     ),
     ModelBasedDetector(
         base_model=make_pipeline(
@@ -55,7 +54,7 @@ detectors = [
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
         probe=LinearParamNorm2(),
-        aggregate=sum,
+        aggregate="sum",
     ),
 ]
 
