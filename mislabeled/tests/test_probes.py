@@ -89,14 +89,7 @@ def test_supervised_probe_classif(n_classes, probe):
 
 
 @pytest.mark.parametrize("n_classes", [2, 5])
-@pytest.mark.parametrize(
-    "probe",
-    [
-        Confidence,
-        CrossEntropy,
-        Margin,
-    ],
-)
+@pytest.mark.parametrize("probe", [Confidence, CrossEntropy, Margin])
 def test_adjusted_supervised_probe_classif(n_classes, probe):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
@@ -159,13 +152,7 @@ def test_unsupervised_probe(n_classes, n_outliers, probe):
     simple_ood_test(n_classes, n_outliers, detector)
 
 
-@pytest.mark.parametrize(
-    "probe",
-    [
-        L1(Predictions()),
-        L2(Predictions()),
-    ],
-)
+@pytest.mark.parametrize("probe", [L1(Predictions()), L2(Predictions())])
 def test_supervised_probe_regression(probe):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
