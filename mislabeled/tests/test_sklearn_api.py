@@ -24,7 +24,7 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
-from mislabeled.probe import Complexity
+from mislabeled.probe import ParameterCount
 from mislabeled.split import GMMSplitter, PerClassSplitter, QuantileSplitter
 
 seed = 42
@@ -54,7 +54,7 @@ detectors = [
     ModelBasedDetector(
         base_model=DecisionTreeClassifier(random_state=seed),
         ensemble=LeaveOneOutEnsemble(),
-        probe=Complexity(complexity_proxy="n_leaves"),
+        probe=ParameterCount(),
         aggregate=oob(sum),
     ),
 ]

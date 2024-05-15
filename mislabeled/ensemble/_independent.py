@@ -2,8 +2,6 @@ import numpy as np
 from sklearn.model_selection import cross_validate, LeaveOneOut
 from sklearn.utils.validation import _num_samples
 
-from mislabeled.probe import check_probe
-
 from ._base import AbstractEnsemble
 
 
@@ -60,7 +58,6 @@ class IndependentEnsemble(AbstractEnsemble):
             return_estimator=True,
         )
 
-        probe = check_probe(probe)
         probe_scores = (probe(member, X, y) for member in results["estimator"])
 
         oobs = []
@@ -107,8 +104,6 @@ class LeaveOneOutEnsemble(AbstractEnsemble):
         self : object
             Returns self.
         """
-        probe = check_probe(probe)
-
         scores = cross_validate(
             base_model,
             X,

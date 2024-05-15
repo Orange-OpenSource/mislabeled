@@ -1,16 +1,12 @@
 import math
 import numbers
-import warnings
-from functools import reduce
 
 import numpy as np
 import scipy.sparse as sp
-from joblib import delayed, Parallel
-from sklearn.dummy import check_random_state
-from sklearn.pipeline import make_pipeline, Pipeline
-from sklearn.utils import gen_batches
+from sklearn.pipeline import Pipeline
 
-from mislabeled.probe import check_probe, confidence
+from mislabeled.probe._linear import coef, Linear
+from mislabeled.probe._minmax import Minimize
 
 
 class FiniteDiffSensitivity:
@@ -29,129 +25,60 @@ class FiniteDiffSensitivity:
             - If int, then draws `n_directions` directions
             - If float, then draws `n_directions * n_features_in_` directions
 
-    directions_per_batch : int, default=1
-        Number of directions computed in the same batch. A greater number can reduce
-        probing time if estimator predictions have a lot of overhead.
-        Nonetheless it increases memory requirement of the probe.
-
-    n_jobs : int, default=None
-        Number of directions computed in parallel. A greater number can reduce
-        probing time if the model can't use multiple cores but requires more memory.
-
-    random_state : int, RandomState instance or None, default=None
-        Pseudo random number generator state used for random uniform sampling
-        from lists of possible values instead of scipy.stats distributions.
-        Pass an int for reproducible output across multiple
-        function calls.
-
-    fix_directions: bool, default=True
-        if True, then the directions are sampled once and then re-used every
-        consecutive call of the probe. Otherwise the directions are sampled
-        at every call.
+    seed : int, or None, default=None
+        Pass an int for reproducible output across multiple function calls.
     """
 
     def __init__(
         self,
         probe,
-        adjust,
         *,
         epsilon=1e-1,
         n_directions=10,
-        directions_per_batch=1,
-        n_jobs=None,
-        random_state=None,
-        fix_directions=True,
+        seed=None,
     ):
-        self.probe = probe
-        self.adjust = adjust
+        self.inner = probe
         self.epsilon = epsilon
         self.n_directions = n_directions
-        self.directions_per_batch = directions_per_batch
-        self.n_jobs = n_jobs
-        self.random_state = random_state
-        self._directions = None
-        self.fix_directions = fix_directions
+        self.seed = seed
 
-    def __call__(self, estimator, X, y):
-        """Evaluate the probe
-
-        Parameters
-        ----------
-        estimator : object
-            Trained classifier to probe
-
-        X : {array-like, sparse matrix}
-            Test data
-
-        y : array-like
-            Dataset target values for X
-
-        Returns
-        -------
-        probe_scores : np.array
-            n x n_directions array of the finite difference computed along each
-            direction
-        """
-        if isinstance(estimator, Pipeline):
-            X = make_pipeline(estimator[:-1]).transform(X)
-            estimator = estimator[-1]
+    def directions(self, X):
+        rng = np.random.default_rng(self.seed)
+        n_features = X.shape[1]
 
         if isinstance(self.n_directions, numbers.Integral):
             n_directions = self.n_directions
         else:
             # treat as float
-            n_directions = math.ceil(self.n_directions * X.shape[1])
+            n_directions = math.ceil(self.n_directions * n_features)
 
-        n_features = X.shape[1]
-
-        # initialize directions
-        if self._directions is None or self.fix_directions is False:
-            random_state = check_random_state(self.random_state)
-            self._directions = random_state.normal(
-                0,
-                1,
-                size=(n_directions, n_features),
-            ).astype(X.dtype)
-            self._directions /= np.linalg.norm(self._directions, axis=1, keepdims=True)
-
-        probe = check_probe(self.probe, self.adjust)
-
-        n_samples = X.shape[0]
-        X_reference = X.toarray() if sp.issparse(X) else X
-        reference_probe_scores = probe(estimator, X_reference, y)
-
-        directions_per_batch = self.directions_per_batch
-
-        def batched_probe(probe, estimator, X, y, directions):
-            n_directions_batch = directions.shape[0]
-            X_batch = np.tile(X, (n_directions_batch, 1))
-            X_delta = np.repeat(directions, n_samples, axis=0) * self.epsilon
-            y_batch = np.tile(y, (n_directions_batch,))
-            return probe(estimator, X_batch + X_delta, y_batch)
-
-        batches = gen_batches(n_directions, directions_per_batch)
-
-        batched_probe_scores = Parallel(n_jobs=self.n_jobs)(
-            delayed(batched_probe)(
-                probe, estimator, X_reference, y, self._directions[batch]
-            )
-            for batch in batches
+        directions = rng.normal(0, 1, size=(n_directions, n_features))
+        directions = directions.astype(
+            X.dtype, order="F" if X.flags["F_CONTIGUOUS"] else "C"
         )
+        directions /= np.linalg.norm(directions, axis=1, keepdims=True)
 
-        probe_scores = np.concatenate(batched_probe_scores, axis=0)
+        return directions
 
-        probe_scores = (
-            probe_scores.reshape(n_directions, n_samples)
-            .swapaxes(0, 1)
-            .reshape(n_samples, n_directions)
-        )
-        probe_scores -= reference_probe_scores.reshape(n_samples, 1)
-        probe_scores /= self.epsilon
+    def __call__(self, estimator, X, y):
 
-        return probe_scores
+        X = X.toarray() if sp.issparse(X) else X
+
+        directions = self.directions(X)
+        n, d = X.shape[0], len(directions)
+
+        scores = np.empty((n, d))
+
+        for i in range(d):
+            scores[:, i] = self.inner(estimator, X + directions[i] * self.epsilon, y)
+
+        scores -= self.inner(estimator, X, y).reshape(-1, 1)
+        scores /= self.epsilon
+
+        return scores
 
 
-class LinearSensitivity:
+class Sensitivity(Minimize):
     """Detects likely mislabeled examples based on the
     softmax derivative with respect to the inputs for linear models."""
 
@@ -177,33 +104,13 @@ class LinearSensitivity:
         """
 
         softmax = estimator.predict_proba(X)
+        proba = softmax[np.arange(len(y)), y].reshape(-1, 1)
 
-        if isinstance(estimator, Pipeline):
-            estimator = estimator[-1]
+        grad_softmax = coef(estimator)[y] * proba * (1 - proba)
+        grad_softmax = grad_softmax.astype(coef(estimator)[y].dtype)
 
-        if hasattr(estimator, "coef_"):
-            coef = estimator.coef_
-        elif hasattr(estimator, "coefs_"):
-            warnings.warn(
-                "LinearSensitivity treats the neural network as a linear combination"
-                " of all layer weights",
-                UserWarning,
-            )
-            coef = reduce(np.dot, estimator.coefs_)
-        else:
-            raise ValueError(
-                f"estimator {estimator.__class__.__name__} is not a linear model."
-            )
+        return grad_softmax
 
-        if coef.shape[0] == 1:
-            coef = np.vstack((-coef, coef))
 
-        proba = confidence(y, softmax)[..., None]
-
-        softmax_gradient = coef[y] * proba * (1 - proba)
-        softmax_gradient = softmax_gradient.astype(coef.dtype)
-
-        # Higher gradient samples are low trust
-        softmax_gradient *= -1
-
-        return softmax_gradient
+class LinearSensitivity(Linear, Sensitivity):
+    pass

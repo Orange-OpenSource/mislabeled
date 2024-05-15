@@ -1,8 +1,9 @@
 import numpy as np
 import scipy.sparse as sp
 from scipy.linalg import pinvh
-from sklearn.pipeline import make_pipeline, Pipeline
-from sklearn.utils.extmath import safe_sparse_dot
+
+from mislabeled.probe._linear import Linear
+from mislabeled.probe._minmax import Maximize, Minimize
 
 
 def norm2(x, axis=1):
@@ -11,38 +12,34 @@ def norm2(x, axis=1):
     return (x * x).sum(axis=axis)
 
 
-class L2Influence:
+class L2Influence(Maximize):
 
-    def __call__(self, estimator, X, y):
-        if isinstance(estimator, Pipeline):
-            X = make_pipeline(estimator[:-1]).transform(X)
-            coef = estimator[-1].coef_
-        else:
-            coef = estimator.coef_
-
-        # binary case
-        if coef.shape[0] == 1:
-            H = safe_sparse_dot(X, coef.T, dense_output=True)
-            H = np.ravel(H)
-            return H * (y - 0.5)
-        # multiclass case
-        else:
-            H = safe_sparse_dot(X, coef.T, dense_output=True)
-            mask = np.zeros_like(H, dtype=bool)
-            mask[np.arange(H.shape[0]), y] = True
-            return H[mask]
-
-
-class Influence:
-
-    def __init__(self, dampening=0):
-        self.dampening = dampening
+    def __init__(self, tol=0):
+        self.tol = tol
 
     def __call__(self, estimator, X, y):
 
-        if isinstance(estimator, Pipeline):
-            X = make_pipeline(estimator[:-1]).transform(X)
-            estimator = estimator[-1]
+        diff = 2 * (y - estimator.predict(X))
+        grad = diff[:, None] * X
+
+        H = X.T @ X
+        H_inv = pinvh(H, atol=self.tol)
+
+        self_influence = -np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
+
+        return self_influence
+
+
+class LinearL2Influence(Linear, L2Influence):
+    pass
+
+
+class Influence(Maximize):
+
+    def __init__(self, tol=0):
+        self.tol = tol
+
+    def __call__(self, estimator, X, y):
 
         p = estimator.predict_proba(X)
 
@@ -92,15 +89,18 @@ class Influence:
         # influence = -grad @ H_inv @ grad.T
         # self_influence = np.diag(influence)
 
-        H += self.dampening * np.eye(n_features * n_classes)
-        H_inv = pinvh(H)
+        H_inv = pinvh(H, atol=self.tol)
 
         self_influence = -np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
 
         return self_influence
 
 
-class LinearGradNorm2:
+class LinearInfluence(Linear, Influence):
+    pass
+
+
+class GradNorm2(Minimize):
     """The squared norm of individual gradients w.r.t. parameters in a linear
     model. This is e.g. used (in the case of deep learning) in the TracIn paper:
 
@@ -130,48 +130,28 @@ class LinearGradNorm2:
             n x 1 array of the per-examples gradients
         """
 
-        if isinstance(estimator, Pipeline):
-            X = make_pipeline(estimator[:-1]).transform(X)
-            estimator = estimator[-1]
+        grad_log_loss = estimator.predict_proba(X)
+        grad_log_loss[np.arange(len(y)), y] -= 1
 
-        # grads of the cross entropy w.r.t. pre-activations before the softmax
-        grad_pre_act = estimator.predict_proba(X)
-        grad_pre_act[np.arange(grad_pre_act.shape[0]), y] -= 1
-
-        return -norm2(grad_pre_act) * norm2(X)
+        return norm2(grad_log_loss) * norm2(X)
 
 
-class Representer:
+class LinearGradNorm2(Linear, GradNorm2):
+    pass
+
+
+class Representer(Maximize):
     """Representer values"""
 
     def __call__(self, estimator, X, y):
-        """Evaluate the probe
-
-        Parameters
-        ----------
-        estimator : object
-            Trained classifier to probe
-
-        X : {array-like, sparse matrix}
-            Test data
-
-        y : array-like
-            Dataset target values for X
-
-        Returns
-        -------
-        probe_scores : np.array
-            n x 1 array of the per-examples gradients
-        """
-
-        if isinstance(estimator, Pipeline):
-            X = make_pipeline(estimator[:-1]).transform(X)
-            estimator = estimator[-1]
 
         diag_k = norm2(X)
 
-        # grads of the cross entropy w.r.t. pre-activations before the softmax
-        grad_pre_act = estimator.predict_proba(X)
-        grad_pre_act_observed = grad_pre_act[np.arange(grad_pre_act.shape[0]), y] - 1
+        grad_log_loss = estimator.predict_proba(X)
+        grad_log_loss_observed = grad_log_loss[np.arange(len(y)), y] - 1
 
-        return grad_pre_act_observed * diag_k
+        return grad_log_loss_observed * diag_k
+
+
+class LinearRepresenter(Linear, Representer):
+    pass

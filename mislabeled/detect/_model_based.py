@@ -1,6 +1,7 @@
 from sklearn.base import BaseEstimator
 
 from mislabeled.aggregate.utils import check_aggregate
+from mislabeled.probe.utils import check_probe
 
 
 class ModelBasedDetector(BaseEstimator):
@@ -11,8 +12,9 @@ class ModelBasedDetector(BaseEstimator):
         self.aggregate = aggregate
 
     def trust_score(self, X, y):
-        probe_scores, kwargs = self.ensemble.probe_model(
-            self.base_model, X, y, self.probe
+        probe = check_probe(self.probe)
+        ensemble_probe_scores, kwargs = self.ensemble.probe_model(
+            self.base_model, X, y, probe
         )
         # probe_scores is an iterator of size e
         # of numpy arrays of shape n x p
@@ -21,4 +23,8 @@ class ModelBasedDetector(BaseEstimator):
         # e: #ensemble members
 
         aggregate = check_aggregate(self.aggregate)
-        return aggregate(probe_scores, **kwargs)
+        return aggregate(
+            ensemble_probe_scores,
+            maximize=hasattr(self.probe, "maximize") and self.probe.maximize,
+            **kwargs,
+        )

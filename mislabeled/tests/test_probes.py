@@ -6,10 +6,19 @@ from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import NoEnsemble
-from mislabeled.probe._scorer import (
-    _PROBE_SCORERS,
-    _PROBE_SCORERS_CLASSIFICATION,
-    _PROBE_SCORERS_REGRESSION,
+from mislabeled.probe import (
+    Accuracy,
+    Adjust,
+    Confidence,
+    CORE,
+    CrossEntropy,
+    L1,
+    L2,
+    Logits,
+    Margin,
+    Predictions,
+    Probabilities,
+    Unsupervised,
 )
 
 from .utils import blobs_1_mislabeled, blobs_1_ood, blobs_1_outlier_y
@@ -55,81 +64,102 @@ def simple_ood_test(n_classes, n_outliers, detector):
 
 @pytest.mark.parametrize("n_classes", [2, 5])
 @pytest.mark.parametrize(
-    "probe_scorer",
-    filter(
-        lambda name: "unsupervised" not in name,
-        _PROBE_SCORERS_CLASSIFICATION.keys(),
-    ),
+    "probe",
+    [
+        Confidence(Probabilities()),
+        Margin(Probabilities()),
+        Confidence(Logits()),
+        Margin(Logits()),
+        CrossEntropy(Probabilities()),
+        Accuracy(Predictions()),
+    ],
 )
-def test_supervised_pro_classif(n_classes, probe_scorer):
+def test_supervised_probe_classif(n_classes, probe):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
             LogisticRegression(),
         ),
         ensemble=NoEnsemble(),
-        probe="accuracy",
+        probe=probe,
         aggregate="sum",
     )
-    detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
+    simple_detect_test(n_classes, detector)
+
+
+@pytest.mark.parametrize("n_classes", [2, 5])
+@pytest.mark.parametrize("probe", [Confidence, CrossEntropy, Margin])
+def test_adjusted_supervised_probe_classif(n_classes, probe):
+    detector = ModelBasedDetector(
+        base_model=make_pipeline(
+            RBFSampler(gamma="scale", n_components=100, random_state=seed),
+            LogisticRegression(),
+        ),
+        ensemble=NoEnsemble(),
+        probe=probe(Adjust(Probabilities())),
+        aggregate="sum",
+    )
     simple_detect_test(n_classes, detector)
 
 
 @pytest.mark.parametrize("n_classes", [2, 5])
 @pytest.mark.parametrize(
-    "probe_scorer",
-    filter(
-        lambda name: "adjusted" in name,
-        _PROBE_SCORERS.keys(),
-    ),
+    "probe",
+    [
+        Confidence(Probabilities()),
+        Margin(Probabilities()),
+        Confidence(Logits()),
+        Margin(Logits()),
+        CrossEntropy(Probabilities()),
+        Accuracy(Predictions()),
+    ],
 )
-def test_supervised_adjusted_pro_classif(n_classes, probe_scorer):
+@pytest.mark.parametrize("peer", [CORE])
+def test_peered_supervised_probe_classif(n_classes, probe, peer):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
             LogisticRegression(),
         ),
         ensemble=NoEnsemble(),
-        probe="accuracy",
+        probe=peer(probe),
         aggregate="sum",
     )
-    detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
     simple_detect_test(n_classes, detector)
 
 
 @pytest.mark.parametrize("n_classes", [2])
 @pytest.mark.parametrize("n_outliers", [5, 10, 30])
 @pytest.mark.parametrize(
-    "probe_scorer",
-    filter(lambda name: "unsupervised" in name, _PROBE_SCORERS.keys()),
+    "probe",
+    [
+        Confidence(Probabilities()),
+        CrossEntropy(Probabilities()),
+        Margin(Probabilities()),
+    ],
 )
-def test_unsupervised_pro(n_classes, n_outliers, probe_scorer):
+def test_unsupervised_probe(n_classes, n_outliers, probe):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
             LogisticRegression(),
         ),
         ensemble=NoEnsemble(),
-        probe="accuracy",
+        probe=Unsupervised(probe),
         aggregate="sum",
     )
-    detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
     simple_ood_test(n_classes, n_outliers, detector)
 
 
-@pytest.mark.parametrize(
-    "probe_scorer",
-    _PROBE_SCORERS_REGRESSION.keys(),
-)
-def test_supervised_pro_regr(probe_scorer):
+@pytest.mark.parametrize("probe", [L1(Predictions()), L2(Predictions())])
+def test_supervised_probe_regression(probe):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
             LinearRegression(),
         ),
         ensemble=NoEnsemble(),
-        probe="accuracy",
+        probe=probe,
         aggregate="sum",
     )
-    detector.set_params(probe=_PROBE_SCORERS[probe_scorer])
     simple_regression_detect_test(detector)

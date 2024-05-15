@@ -51,7 +51,7 @@ def simple_split_test(n_classes, detectors, splitter):
                     LogisticRegression(),
                 ),
                 ensemble=NoEnsemble(),
-                probe="soft_margin",
+                probe="margin",
                 aggregate="sum",
             ),
         ]

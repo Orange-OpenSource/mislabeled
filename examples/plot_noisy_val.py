@@ -1,4 +1,9 @@
-# %%
+"""
+=========================
+Clean vs Noisy validation
+=========================
+"""
+
 import warnings
 
 import matplotlib.pyplot as plt
@@ -121,5 +126,3 @@ plt.ylabel("balanced accuracy")
 plt.title("Threshold selection on SMS dataset")
 plt.legend(loc="lower right")
 plt.show()
-
-# %%

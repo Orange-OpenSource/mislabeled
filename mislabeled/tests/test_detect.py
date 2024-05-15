@@ -26,7 +26,7 @@ from mislabeled.detect.detectors import (
     RepresenterDetector,
     SmallLoss,
     TracIn,
-    VoLG,
+    VoSG,
 )
 from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble, ProgressiveEnsemble
 from mislabeled.probe import LinearGradSimilarity
@@ -130,17 +130,18 @@ detectors = [
     AreaUnderMargin(
         DecisionTreeClassifier(),
     ),
-    VoLG(
+    VoSG(
         GradientBoostingClassifier(
             max_depth=None,
             n_estimators=100,
             subsample=0.3,
-            learning_rate=0.2,
+            learning_rate=0.1,
             random_state=seed,
             init="zero",
         ),
         steps=10,
-        n_directions=1.0,
+        n_directions=10,
+        epsilon=0.1,
         random_state=seed,
     ),
 ]

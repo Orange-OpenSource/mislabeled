@@ -13,13 +13,18 @@ from mislabeled.ensemble import (
     ProgressiveEnsemble,
 )
 from mislabeled.probe import (
-    Complexity,
+    Confidence,
     FiniteDiffSensitivity,
-    Influence,
     LinearGradNorm2,
+    LinearInfluence,
+    LinearParameterCount,
+    LinearRepresenter,
     LinearSensitivity,
-    OutlierProbe,
-    Representer,
+    Logits,
+    Margin,
+    Outliers,
+    Probabilities,
+    Scores,
 )
 
 # A detector zoo of techniques found in the litterature
@@ -30,7 +35,7 @@ class OutlierDetector(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=OutlierEnsemble(),
-            probe=OutlierProbe(),
+            probe=Outliers(),
             aggregate="sum",
         )
         self.n_jobs = n_jobs
@@ -51,7 +56,7 @@ class InfluenceDetector(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=Influence(),
+            probe=LinearInfluence(),
             aggregate="sum",
         )
 
@@ -70,7 +75,7 @@ class RepresenterDetector(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=Representer(),
+            probe=LinearRepresenter(),
             aggregate="sum",
         )
 
@@ -80,7 +85,7 @@ class DecisionTreeComplexity(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=LeaveOneOutEnsemble(n_jobs=n_jobs),
-            probe=Complexity(complexity_proxy="n_leaves"),
+            probe=LinearParameterCount(),
             aggregate=oob(sum),
         )
         self.n_jobs = n_jobs
@@ -92,29 +97,22 @@ class FiniteDiffComplexity(ModelBasedDetector):
         base_model,
         epsilon=0.1,
         n_directions=20,
-        directions_per_batch=1,
-        n_jobs=None,
         random_state=None,
     ):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe=FiniteDiffSensitivity(
-                "soft_margin",
-                False,
+                Margin(Scores()),
                 epsilon=epsilon,
                 n_directions=n_directions,
-                directions_per_batch=directions_per_batch,
-                n_jobs=n_jobs,
-                random_state=random_state,
+                seed=random_state,
             ),
             aggregate=fromnumpy(partial(np.mean, axis=(-1, -2))),
         ),
         self.epsilon = epsilon
         self.n_directions = n_directions
-        self.directions_per_batch = directions_per_batch
         self.random_state = random_state
-        self.n_jobs = n_jobs
 
 
 class Classifier(ModelBasedDetector):
@@ -197,7 +195,7 @@ class AreaUnderMargin(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
-            probe="soft_margin",
+            probe="margin",
             aggregate="sum",
         )
         self.steps = steps
@@ -209,7 +207,7 @@ class TracIn(ModelBasedDetector):
     References
     ----------
     .. [1] Pruthi, G., Liu, F., Kale, S., & Sundararajan, M.
-        "Estimating training data influence by tracing gradient descent."
+        "Estimating training data LinearInfluence by tracing gradient descent."
         NeurIPS 2020
     """
 
@@ -260,30 +258,23 @@ class VoLG(ModelBasedDetector):
         *,
         epsilon=0.1,
         n_directions=20,
-        directions_per_batch=1,
         steps=1,
-        n_jobs=None,
         random_state=None,
     ):
         super().__init__(
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=FiniteDiffSensitivity(
-                probe="logits",
-                adjust=False,
+                Confidence(Logits()),
                 epsilon=epsilon,
                 n_directions=n_directions,
-                directions_per_batch=directions_per_batch,
-                n_jobs=n_jobs,
-                random_state=random_state,
+                seed=random_state,
             ),
             aggregate=vote(var),
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
-        self.directions_per_batch = directions_per_batch
         self.steps = steps
-        self.n_jobs = n_jobs
         self.random_state = random_state
 
 
@@ -296,30 +287,23 @@ class VoSG(ModelBasedDetector):
         *,
         epsilon=0.1,
         n_directions=20,
-        directions_per_batch=1,
         steps=1,
-        n_jobs=None,
         random_state=None,
     ):
         super().__init__(
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=FiniteDiffSensitivity(
-                probe="softmax",
-                adjust=False,
+                Confidence(Probabilities()),
                 epsilon=epsilon,
                 n_directions=n_directions,
-                directions_per_batch=directions_per_batch,
-                n_jobs=n_jobs,
-                random_state=random_state,
+                seed=random_state,
             ),
             aggregate=vote(var),
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
-        self.directions_per_batch = directions_per_batch
         self.steps = steps
-        self.n_jobs = n_jobs
         self.random_state = random_state
 
 
@@ -350,6 +334,6 @@ class SmallLoss(ModelBasedDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe="entropy",
+            probe="cross_entropy",
             aggregate="sum",
         )

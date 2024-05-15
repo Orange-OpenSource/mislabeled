@@ -1,11 +1,18 @@
-# %%
+"""
+==========================================================
+Mislabeled Exemples in Regression with the Housing dataset
+==========================================================
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import fetch_california_housing
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RepeatedKFold
 
-from mislabeled.detect import ConsensusDetector
+from mislabeled.aggregate.aggregators import mean, oob
+from mislabeled.detect import ModelBasedDetector
+from mislabeled.ensemble import IndependentEnsemble
 
 # %%
 
@@ -15,11 +22,17 @@ feature_names = dataset.feature_names
 
 # %%
 
-detect = ConsensusDetector(
-    estimator=RandomForestRegressor(),
-    cv=RepeatedKFold(n_splits=5, n_repeats=5),
-    n_jobs=-1,
+detect = ModelBasedDetector(
+    base_model=RandomForestRegressor(),
+    ensemble=IndependentEnsemble(
+        RepeatedKFold(
+            n_splits=5,
+            n_repeats=10,
+        ),
+        n_jobs=-1,
+    ),
     probe="l2",
+    aggregate=oob(mean),
 )
 trust = detect.trust_score(X, y)
 # %%
