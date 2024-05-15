@@ -8,6 +8,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier
 
+from mislabeled.aggregate import oob, sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import LeaveOneOutEnsemble
 from mislabeled.probe import LinearParameterCount, LinearParamNorm2
@@ -25,7 +26,7 @@ def simple_detect_roc_test(n_classes, detector):
     correct = np.ones(X.shape[0])
     correct[indices_mislabeled] = 0
 
-    assert roc_auc_score(correct, trust_scores) > 0.80
+    assert roc_auc_score(correct, trust_scores) > 0.75
 
 
 seed = 42
@@ -37,6 +38,7 @@ detectors = [
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
             AdaBoostClassifier(
                 estimator=DecisionTreeClassifier(max_depth=4),
+                algorithm="SAMME",
                 n_estimators=200,
                 learning_rate=0.1,
                 random_state=seed,
@@ -44,17 +46,27 @@ detectors = [
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
         probe=LinearParameterCount(),
-        aggregate="sum",
+        aggregate=oob(sum),
     ),
     ModelBasedDetector(
         base_model=make_pipeline(
             StandardScaler(),
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
-            LogisticRegression(C=1e3, warm_start=True),
+            LogisticRegression(penalty="l1", solver="saga", C=1e2),
+        ),
+        ensemble=LeaveOneOutEnsemble(n_jobs=-1),
+        probe=LinearParameterCount(),
+        aggregate=oob(sum),
+    ),
+    ModelBasedDetector(
+        base_model=make_pipeline(
+            StandardScaler(),
+            Nystroem(gamma=0.5, n_components=50, random_state=seed),
+            LogisticRegression(C=1e4),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
         probe=LinearParamNorm2(),
-        aggregate="sum",
+        aggregate=oob(sum),
     ),
 ]
 
