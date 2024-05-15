@@ -41,6 +41,8 @@ def simple_detect_test(n_classes, detector):
 
     trust_scores = detector.trust_score(X, y)
 
+    assert trust_scores.shape == (X.shape[0],)
+
     selected_untrusted = np.argsort(trust_scores)[:n_classes]
 
     assert set(selected_untrusted) == set(indices_mislabeled)

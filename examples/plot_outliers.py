@@ -1,9 +1,10 @@
 """
-=================
-Outlier Detection
-=================
+====================================================
+Detecting mislabeled examples with outlier detectors
+====================================================
 """
 
+# %%
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.discriminant_analysis import StandardScaler
@@ -13,6 +14,7 @@ from sklearn.svm import OneClassSVM
 from mislabeled.detect.detectors import OutlierDetector
 from mislabeled.tests.utils import blobs_1_mislabeled
 
+# %%
 detector = OutlierDetector(
     make_pipeline(StandardScaler(), OneClassSVM(gamma=0.02, nu=0.5))
 )

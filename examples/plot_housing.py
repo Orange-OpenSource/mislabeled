@@ -4,13 +4,14 @@ Mislabeled Exemples in Regression with the Housing dataset
 ==========================================================
 """
 
+# %%
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import fetch_california_housing
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RepeatedKFold
 
-from mislabeled.aggregate.aggregators import mean, oob
+from mislabeled.aggregate import mean, oob
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import IndependentEnsemble
 
