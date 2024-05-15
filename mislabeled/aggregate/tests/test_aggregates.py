@@ -4,7 +4,7 @@ from itertools import repeat
 import numpy as np
 import pytest
 
-from mislabeled.aggregate import count, fromnumpy, itb, mean, oob, sum, var, vote
+from mislabeled.aggregate import count, itb, mean, oob, sum, var
 
 
 def test_uniform_sum():
@@ -58,16 +58,4 @@ def test_itb_aggregate(aggregate):
 
     assert math.isclose(
         0, itb(aggregate)(data, weights=weights, oobs=repeat(np.array(True)))
-    )
-
-
-def test_voting_aggregate():
-    data = list(repeat(np.random.rand(1000, 1), 2))
-
-    np.testing.assert_array_almost_equal(
-        vote(mean, sum, voting=fromnumpy(np.max))(data),
-        np.max(
-            np.concatenate((np.mean(data, axis=0), np.sum(data, axis=0)), axis=1),
-            axis=-1,
-        ),
     )

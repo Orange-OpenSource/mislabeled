@@ -1,5 +1,6 @@
 import math
 import operator
+from copy import copy
 from functools import partial, reduce
 from itertools import repeat
 
@@ -29,6 +30,10 @@ class oob(object):
     def __init__(self, aggregate):
         self.aggregate = aggregate
 
+    @property
+    def maximize(self):
+        self.aggregate.maximize
+
     def __call__(self, iterable, **kwargs):
         oobs = kwargs.pop("oobs", repeat(False))
         weights = kwargs.pop("weights", repeat(1))
@@ -43,7 +48,12 @@ class itb(object):
     def __init__(self, aggregate):
         self.aggregate = aggregate
 
+    @property
+    def maximize(self):
+        self.aggregate.maximize
+
     def __call__(self, iterable, **kwargs):
+        kwargs = copy(kwargs)
         oobs = kwargs.pop("oobs", repeat(np.array(False)))
         weights = kwargs.pop("weights", repeat(1))
         return self.aggregate(
@@ -54,9 +64,13 @@ class itb(object):
 
 
 class fromnumpy(object):
-    def __init__(self, f, aggregate=partial(np.concatenate, axis=-1)):
+    def __init__(self, f, aggregate=partial(np.concatenate, axis=1)):
         self.f = f
         self.aggregate = aggregate
+
+    @property
+    def maximize(self):
+        self.aggregate.maximize
 
     def __call__(self, iterable, **kwargs):
         return self.f(self.aggregate(iterable, **kwargs), axis=-1)
@@ -72,11 +86,15 @@ class signed(object):
         self.aggregate = aggregate
 
     def __call__(self, iterable, **kwargs):
-        if not kwargs.get("maximize", True):
-            iterable = map(operator.neg, iterable)
+        kwargs = copy(kwargs)
+        maximize_kwarg = kwargs.pop("maximize", True)
         scores = self.aggregate(iterable, **kwargs)
-        if hasattr(self.aggregate, "maximize") and not self.aggregate.maximize:
-            scores = -scores
+        if hasattr(self.aggregate, "maximize"):
+            if not self.aggregate.maximize:
+                scores = -scores
+        else:
+            if not maximize_kwarg:
+                scores = -scores
         return scores
 
 
@@ -104,33 +122,3 @@ def var(iterable, weights=repeat(1), **kwargs):
         S += weight * (data - previous_mean) * (data - mean)
 
     return S / weight_sum
-
-
-class vote(object):
-    def __init__(self, *aggregates, voting=fromnumpy(np.mean)):
-        self.aggregates = aggregates
-        self.voting = voting
-
-    def __call__(self, *iterables, **kwargs):
-
-        n_aggregates = len(self.aggregates)
-        n_iterables = len(iterables)
-
-        if n_aggregates == 1:
-            aggregates = [self.aggregates[0]] * n_iterables
-        elif n_iterables == 1:
-            iterables = [list(iterables[0])] * n_aggregates
-            aggregates = self.aggregates
-        else:
-            if n_aggregates != n_iterables:
-                raise ValueError(
-                    f"Number of aggregates : {n_aggregates},\
-                        and number of probes : {n_iterables}, does not match."
-                )
-
-        zipped = zip(aggregates, iterables)
-        scores = [
-            signed(aggregate)(iterable, **kwargs) for aggregate, iterable in zipped
-        ]
-
-        return self.voting(scores)

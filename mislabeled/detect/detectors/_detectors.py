@@ -1,9 +1,7 @@
-from functools import partial
-
 import numpy as np
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-from mislabeled.aggregate import forget, fromnumpy, mean, oob, sum, var, vote
+from mislabeled.aggregate import forget, fromnumpy, mean, oob, sum, var
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
@@ -108,7 +106,9 @@ class FiniteDiffComplexity(ModelBasedDetector):
                 n_directions=n_directions,
                 seed=random_state,
             ),
-            aggregate=fromnumpy(partial(np.mean, axis=(-1, -2))),
+            aggregate=fromnumpy(
+                lambda x, axis=-1: np.mean(np.abs(x), axis=axis), aggregate=mean
+            ),
         ),
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -270,7 +270,7 @@ class VoLG(ModelBasedDetector):
                 n_directions=n_directions,
                 seed=random_state,
             ),
-            aggregate=vote(var),
+            aggregate=fromnumpy(np.mean, aggregate=var),
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -299,7 +299,7 @@ class VoSG(ModelBasedDetector):
                 n_directions=n_directions,
                 seed=random_state,
             ),
-            aggregate=vote(var),
+            aggregate=fromnumpy(np.mean, aggregate=var),
         )
         self.epsilon = epsilon
         self.n_directions = n_directions
@@ -321,7 +321,7 @@ class LinearVoSG(ModelBasedDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
             probe=LinearSensitivity(),
-            aggregate=vote(var),
+            aggregate=fromnumpy(np.mean, aggregate=var),
         )
         self.steps = steps
 

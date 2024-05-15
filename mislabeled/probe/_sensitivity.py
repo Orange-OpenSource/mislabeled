@@ -3,13 +3,12 @@ import numbers
 
 import numpy as np
 import scipy.sparse as sp
-from sklearn.pipeline import Pipeline
 
 from mislabeled.probe._linear import coef, Linear
 from mislabeled.probe._minmax import Minimize
 
 
-class FiniteDiffSensitivity:
+class FiniteDiffSensitivity(Minimize):
     """Detects likely mislabeled examples based on local smoothness of an overfitted
     classifier. Smoothness is measured using an estimate of the gradients around
     candidate examples using finite differences.

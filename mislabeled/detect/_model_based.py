@@ -25,6 +25,6 @@ class ModelBasedDetector(BaseEstimator):
         aggregate = check_aggregate(self.aggregate)
         return aggregate(
             ensemble_probe_scores,
-            maximize=hasattr(self.probe, "maximize") and self.probe.maximize,
+            maximize=getattr(probe, "maximize", True),
             **kwargs,
         )
