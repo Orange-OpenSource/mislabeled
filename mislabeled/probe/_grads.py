@@ -1,11 +1,11 @@
 import numpy as np
 import scipy.sparse as sp
-from sklearn.pipeline import make_pipeline, Pipeline
-from sklearn.utils.extmath import safe_sparse_dot
 from sklearn.utils.validation import _num_samples
 
+from mislabeled.probe._linear import Linear
 
-class LinearGradSimilarity:
+
+class GradSimilarity:
     """Cosine Similarity between the individual gradients in a linear model, and the
     averaged batch gradient, as proposed in:
 
@@ -17,43 +17,21 @@ class LinearGradSimilarity:
     """
 
     def __call__(self, estimator, X, y):
-        """Evaluate the probe
-
-        Parameters
-        ----------
-        estimator : object
-            Trained classifier to probe
-
-        X : {array-like, sparse matrix}
-            Test data
-
-        y : array-like
-            Dataset target values for X
-
-        Returns
-        -------
-        probe_scores : np.array
-            n x 1 array of the per-examples gradients
-        """
-
-        if isinstance(estimator, Pipeline):
-            X = make_pipeline(estimator[:-1]).transform(X)
-            estimator = estimator[-1]
 
         n_samples = _num_samples(X)
 
         # grads of the cross entropy w.r.t. pre-activations before the softmax
-        grad_pre_act = estimator.predict_proba(X)
-        grad_pre_act[np.arange(grad_pre_act.shape[0]), y] -= 1
+        grad_log_loss = estimator.predict_proba(X)
+        grad_log_loss[np.arange(len(y)), y] -= 1
 
-        average_grad = safe_sparse_dot(grad_pre_act.T, X) / n_samples
+        average_grad = grad_log_loss.T @ X / n_samples
 
         # Note: if n_classes > n_features it is probably more efficient to switch
-        # X and grad_pre_act in the next statement
+        # X and grad_log_loss in the next statement
         cos_sim = (
-            (safe_sparse_dot(X, average_grad.T) * grad_pre_act).sum(axis=1)
+            (X @ average_grad.T * grad_log_loss).sum(axis=1)
             / np.linalg.norm(average_grad)
-            / np.linalg.norm(grad_pre_act, axis=1)
+            / np.linalg.norm(grad_log_loss, axis=1)
         )
 
         if sp.issparse(X):
@@ -62,3 +40,7 @@ class LinearGradSimilarity:
             cos_sim /= np.linalg.norm(X, axis=1)
 
         return cos_sim
+
+
+class LinearGradSimilarity(Linear, GradSimilarity):
+    pass

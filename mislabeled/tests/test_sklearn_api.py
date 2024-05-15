@@ -11,7 +11,7 @@ from sklearn.semi_supervised import SelfTrainingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
-from mislabeled.aggregate.aggregators import neg_forget, oob, sum
+from mislabeled.aggregate import forget, oob, sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
@@ -24,7 +24,7 @@ from mislabeled.handle import (
     FilterClassifier,
     SemiSupervisedClassifier,
 )
-from mislabeled.probe import Complexity
+from mislabeled.probe import ParameterCount
 from mislabeled.split import GMMSplitter, PerClassSplitter, QuantileSplitter
 
 seed = 42
@@ -35,7 +35,7 @@ detectors = [
         base_model=LogisticRegression(),
         ensemble=NoEnsemble(),
         probe="accuracy",
-        aggregate=sum,
+        aggregate="sum",
     ),
     ModelBasedDetector(
         base_model=KNeighborsClassifier(n_neighbors=3),
@@ -49,12 +49,12 @@ detectors = [
         base_model=GradientBoostingClassifier(max_depth=1, random_state=seed),
         ensemble=ProgressiveEnsemble(),
         probe="accuracy",
-        aggregate=neg_forget,
+        aggregate=forget,
     ),
     ModelBasedDetector(
         base_model=DecisionTreeClassifier(random_state=seed),
         ensemble=LeaveOneOutEnsemble(),
-        probe=Complexity(complexity_proxy="n_leaves"),
+        probe=ParameterCount(),
         aggregate=oob(sum),
     ),
 ]

@@ -8,10 +8,9 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier
 
-from mislabeled.aggregate.aggregators import sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import LeaveOneOutEnsemble
-from mislabeled.probe import Complexity
+from mislabeled.probe import LinearParameterCount, LinearParamNorm2
 
 from .utils import blobs_1_mislabeled
 
@@ -26,7 +25,7 @@ def simple_detect_roc_test(n_classes, detector):
     correct = np.ones(X.shape[0])
     correct[indices_mislabeled] = 0
 
-    assert roc_auc_score(correct, trust_scores) > 0.75
+    assert roc_auc_score(correct, trust_scores) > 0.80
 
 
 seed = 42
@@ -44,8 +43,8 @@ detectors = [
             ),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
-        probe=Complexity(complexity_proxy="n_weak_learners"),
-        aggregate=sum,
+        probe=LinearParameterCount(),
+        aggregate="sum",
     ),
     ModelBasedDetector(
         base_model=make_pipeline(
@@ -54,8 +53,8 @@ detectors = [
             LogisticRegression(C=1e3, warm_start=True),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
-        probe=Complexity(complexity_proxy="weight_norm"),
-        aggregate=sum,
+        probe=LinearParamNorm2(),
+        aggregate="sum",
     ),
 ]
 

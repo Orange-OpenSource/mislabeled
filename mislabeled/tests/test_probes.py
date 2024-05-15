@@ -4,7 +4,6 @@ from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.pipeline import make_pipeline
 
-from mislabeled.aggregate.aggregators import sum
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import NoEnsemble
 from mislabeled.probe import (
@@ -83,20 +82,13 @@ def test_supervised_probe_classif(n_classes, probe):
         ),
         ensemble=NoEnsemble(),
         probe=probe,
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_detect_test(n_classes, detector)
 
 
 @pytest.mark.parametrize("n_classes", [2, 5])
-@pytest.mark.parametrize(
-    "probe",
-    [
-        Confidence,
-        CrossEntropy,
-        Margin,
-    ],
-)
+@pytest.mark.parametrize("probe", [Confidence, CrossEntropy, Margin])
 def test_adjusted_supervised_probe_classif(n_classes, probe):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
@@ -105,7 +97,7 @@ def test_adjusted_supervised_probe_classif(n_classes, probe):
         ),
         ensemble=NoEnsemble(),
         probe=probe(Adjust(Probabilities())),
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_detect_test(n_classes, detector)
 
@@ -131,7 +123,7 @@ def test_peered_supervised_probe_classif(n_classes, probe, peer):
         ),
         ensemble=NoEnsemble(),
         probe=peer(probe),
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_detect_test(n_classes, detector)
 
@@ -154,18 +146,12 @@ def test_unsupervised_probe(n_classes, n_outliers, probe):
         ),
         ensemble=NoEnsemble(),
         probe=Unsupervised(probe),
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_ood_test(n_classes, n_outliers, detector)
 
 
-@pytest.mark.parametrize(
-    "probe",
-    [
-        L1(Predictions()),
-        L2(Predictions()),
-    ],
-)
+@pytest.mark.parametrize("probe", [L1(Predictions()), L2(Predictions())])
 def test_supervised_probe_regression(probe):
     detector = ModelBasedDetector(
         base_model=make_pipeline(
@@ -174,6 +160,6 @@ def test_supervised_probe_regression(probe):
         ),
         ensemble=NoEnsemble(),
         probe=probe,
-        aggregate=sum,
+        aggregate="sum",
     )
     simple_regression_detect_test(detector)

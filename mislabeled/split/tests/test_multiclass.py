@@ -3,7 +3,7 @@ import pytest
 from sklearn.model_selection import StratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 
-from mislabeled.aggregate.aggregators import mean, oob
+from mislabeled.aggregate import mean, oob
 from mislabeled.detect import ModelBasedDetector
 from mislabeled.ensemble import IndependentEnsemble
 from mislabeled.split import PerClassSplitter, QuantileSplitter
