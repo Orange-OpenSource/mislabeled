@@ -14,17 +14,22 @@ from ._make_moons import make_moons
 def generate_moons_ground_truth(
     spread=0.2,
     bias="none",
+    bias_strenght=2,
     class_imbalance=1,
     dataset_cache_path=os.path.dirname(__file__),
     n_samples=1000000,
 ):
-    spread_str = f"s{spread}_b{bias}_ci{class_imbalance}"
+    spread_str = f"s{spread}_b{bias}_bs{bias_strenght}_ci{class_imbalance}"
 
     ###################
     # prepare p(y|x)
     ###################
     X, y = make_moons(
-        n_examples=n_samples, spread=spread, class_imbalance=class_imbalance, bias=bias
+        n_examples=n_samples,
+        spread=spread,
+        bias_strenght=bias_strenght,
+        class_imbalance=class_imbalance,
+        bias=bias,
     )
     clf = make_pipeline(
         StandardScaler(),

@@ -11,6 +11,7 @@ def make_moons(
     shuffle=True,
     spread=None,
     bias="none",
+    bias_strenght=2,
     class_imbalance=1,
     random_state=None,
 ):
@@ -70,14 +71,14 @@ def make_moons(
     t_inner = np.linspace(0, 1, n_examples_in)
 
     if bias == "asymmetric":
-        t_outer = t_outer**2
-        t_inner = 1 - t_inner**2
+        t_outer = t_outer**bias_strenght
+        t_inner = 1 - t_inner**bias_strenght
     elif bias == "symmetric_out":
-        t_outer = t_outer**2
-        t_inner = t_inner**2
+        t_outer = t_outer**bias_strenght
+        t_inner = t_inner**bias_strenght
     elif bias == "symmetric_in":
-        t_outer = 1 - t_outer**2
-        t_inner = 1 - t_inner**2
+        t_outer = 1 - t_outer**bias_strenght
+        t_inner = 1 - t_inner**bias_strenght
     elif bias != "none":
         raise ValueError(
             "bias must be one of none, symmetric_out, symmetric_in or asymmetric"
