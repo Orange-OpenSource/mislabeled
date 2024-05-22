@@ -27,18 +27,23 @@ y_coords = (y_edges[1:] + y_edges[:-1]) / 2
 
 xy = np.stack(np.meshgrid(x_coords, y_coords, indexing="ij"), axis=-1)
 
-for bias, class_imbalance in [
-    ("none", 1),
-    ("none", 0.25),
-    ("symmetric_in", 1),
-    ("symmetric_out", 1),
-    ("asymmetric", 1),
+for bias, class_imbalance, bias_strenght in [
+    ("none", 1, 1),
+    ("none", 0.25, 1),
+    ("symmetric_in", 1, 2),
+    ("symmetric_out", 1, 2),
+    ("asymmetric", 1, 1.5),
+    ("asymmetric", 1, 3),
 ]:
     f, axes = plt.subplots(1, 3, width_ratios=[3, 5, 5], figsize=(14, 3))
-    f.suptitle(f"bias={bias}, class_imbalance={class_imbalance}")
+    f.suptitle(f"bias={bias}({bias_strenght}), class_imbalance={class_imbalance}")
 
     X, y = make_moons(
-        n_examples=100, spread=spread, bias=bias, class_imbalance=class_imbalance
+        n_examples=100,
+        spread=spread,
+        bias=bias,
+        bias_strenght=bias_strenght,
+        class_imbalance=class_imbalance,
     )
 
     axis = axes[0]
@@ -48,7 +53,11 @@ for bias, class_imbalance in [
     axis.set_ylim(y_min, y_max)
 
     p_y_x = moons_ground_truth_pyx(
-        xy.reshape(-1, 2), spread=spread, bias=bias, class_imbalance=class_imbalance
+        xy.reshape(-1, 2),
+        spread=spread,
+        bias=bias,
+        bias_strenght=bias_strenght,
+        class_imbalance=class_imbalance,
     )
 
     axis = axes[1]
@@ -57,7 +66,11 @@ for bias, class_imbalance in [
     f.colorbar(im, ax=axis)
 
     p_x = moons_ground_truth_px(
-        xy.reshape(-1, 2), spread=spread, bias=bias, class_imbalance=class_imbalance
+        xy.reshape(-1, 2),
+        spread=spread,
+        bias=bias,
+        bias_strenght=bias_strenght,
+        class_imbalance=class_imbalance,
     )
 
     axis = axes[2]
@@ -66,3 +79,5 @@ for bias, class_imbalance in [
     f.colorbar(im, ax=axis)
 
     f.show()
+
+# %%
