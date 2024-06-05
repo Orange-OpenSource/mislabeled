@@ -5,7 +5,7 @@ from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 
 from mislabeled.aggregate import mean, oob
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import IndependentEnsemble
 from mislabeled.handle import FilterClassifier
 from mislabeled.split import QuantileSplitter
@@ -17,7 +17,7 @@ def test_caching():
     X, y, _ = blobs_1_mislabeled(n_classes=2)
 
     base_classifier = KNeighborsClassifier(n_neighbors=3)
-    classifier_detect = ModelBasedDetector(
+    classifier_detect = ModelProbingDetector(
         base_model=KNeighborsClassifier(n_neighbors=3),
         ensemble=IndependentEnsemble(
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10),

@@ -4,7 +4,7 @@ from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.pipeline import make_pipeline
 
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import NoEnsemble
 from mislabeled.probe import (
     Accuracy,
@@ -75,7 +75,7 @@ def simple_ood_test(n_classes, n_outliers, detector):
     ],
 )
 def test_supervised_probe_classif(n_classes, probe):
-    detector = ModelBasedDetector(
+    detector = ModelProbingDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
             LogisticRegression(),
@@ -90,7 +90,7 @@ def test_supervised_probe_classif(n_classes, probe):
 @pytest.mark.parametrize("n_classes", [2, 5])
 @pytest.mark.parametrize("probe", [Confidence, CrossEntropy, Margin])
 def test_adjusted_supervised_probe_classif(n_classes, probe):
-    detector = ModelBasedDetector(
+    detector = ModelProbingDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
             LogisticRegression(),
@@ -116,7 +116,7 @@ def test_adjusted_supervised_probe_classif(n_classes, probe):
 )
 @pytest.mark.parametrize("peer", [CORE])
 def test_peered_supervised_probe_classif(n_classes, probe, peer):
-    detector = ModelBasedDetector(
+    detector = ModelProbingDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
             LogisticRegression(),
@@ -139,7 +139,7 @@ def test_peered_supervised_probe_classif(n_classes, probe, peer):
     ],
 )
 def test_unsupervised_probe(n_classes, n_outliers, probe):
-    detector = ModelBasedDetector(
+    detector = ModelProbingDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
             LogisticRegression(),
@@ -153,7 +153,7 @@ def test_unsupervised_probe(n_classes, n_outliers, probe):
 
 @pytest.mark.parametrize("probe", [L1(Predictions()), L2(Predictions())])
 def test_supervised_probe_regression(probe):
-    detector = ModelBasedDetector(
+    detector = ModelProbingDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
             LinearRegression(),

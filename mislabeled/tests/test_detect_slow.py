@@ -9,7 +9,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.aggregate import oob, sum
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import LeaveOneOutEnsemble
 from mislabeled.probe import LinearParameterCount, LinearParamNorm2
 
@@ -32,7 +32,7 @@ def simple_detect_roc_test(n_classes, detector):
 seed = 42
 
 detectors = [
-    ModelBasedDetector(
+    ModelProbingDetector(
         base_model=make_pipeline(
             StandardScaler(),
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
@@ -48,7 +48,7 @@ detectors = [
         probe=LinearParameterCount(),
         aggregate=oob(sum),
     ),
-    ModelBasedDetector(
+    ModelProbingDetector(
         base_model=make_pipeline(
             StandardScaler(),
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
@@ -58,7 +58,7 @@ detectors = [
         probe=LinearParameterCount(),
         aggregate=oob(sum),
     ),
-    ModelBasedDetector(
+    ModelProbingDetector(
         base_model=make_pipeline(
             StandardScaler(),
             Nystroem(gamma=0.5, n_components=50, random_state=seed),

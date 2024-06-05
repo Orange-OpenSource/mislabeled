@@ -4,7 +4,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.neighbors import KNeighborsClassifier
 
 from mislabeled.aggregate import mean, oob
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import IndependentEnsemble
 from mislabeled.split import PerClassSplitter, QuantileSplitter
 from mislabeled.tests.utils import blobs_1_mislabeled
@@ -14,7 +14,7 @@ from mislabeled.tests.utils import blobs_1_mislabeled
 def test_per_class_with_quantile_conserves_class_priors(n_classes):
     X, y, _ = blobs_1_mislabeled(n_classes=n_classes)
 
-    classifier_detect = ModelBasedDetector(
+    classifier_detect = ModelProbingDetector(
         base_model=KNeighborsClassifier(n_neighbors=3),
         ensemble=IndependentEnsemble(
             StratifiedKFold(n_splits=5),

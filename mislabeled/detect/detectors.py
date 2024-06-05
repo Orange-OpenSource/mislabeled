@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 from mislabeled.aggregate import forget, fromnumpy, mean, oob, sum, var
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
     LeaveOneOutEnsemble,
@@ -28,7 +28,7 @@ from mislabeled.probe import (
 # A detector zoo of techniques found in the litterature
 
 
-class OutlierDetector(ModelBasedDetector):
+class OutlierDetector(ModelProbingDetector):
     def __init__(self, base_model, n_jobs=None):
         super().__init__(
             base_model=base_model,
@@ -39,7 +39,7 @@ class OutlierDetector(ModelBasedDetector):
         self.n_jobs = n_jobs
 
 
-class InfluenceDetector(ModelBasedDetector):
+class InfluenceDetector(ModelProbingDetector):
     """Detector based on influence function
 
     References
@@ -59,7 +59,7 @@ class InfluenceDetector(ModelBasedDetector):
         )
 
 
-class RepresenterDetector(ModelBasedDetector):
+class RepresenterDetector(ModelProbingDetector):
     """Detector based on representer values
 
     References
@@ -78,7 +78,7 @@ class RepresenterDetector(ModelBasedDetector):
         )
 
 
-class DecisionTreeComplexity(ModelBasedDetector):
+class DecisionTreeComplexity(ModelProbingDetector):
     def __init__(self, base_model, n_jobs=None):
         super().__init__(
             base_model=base_model,
@@ -89,7 +89,7 @@ class DecisionTreeComplexity(ModelBasedDetector):
         self.n_jobs = n_jobs
 
 
-class FiniteDiffComplexity(ModelBasedDetector):
+class FiniteDiffComplexity(ModelProbingDetector):
     def __init__(
         self,
         base_model,
@@ -115,7 +115,7 @@ class FiniteDiffComplexity(ModelBasedDetector):
         self.random_state = random_state
 
 
-class Classifier(ModelBasedDetector):
+class Classifier(ModelProbingDetector):
     def __init__(self, base_model):
         super().__init__(
             base_model=base_model,
@@ -125,7 +125,7 @@ class Classifier(ModelBasedDetector):
         )
 
 
-class Regressor(ModelBasedDetector):
+class Regressor(ModelProbingDetector):
     def __init__(self, base_model):
         super().__init__(
             base_model=base_model,
@@ -135,7 +135,7 @@ class Regressor(ModelBasedDetector):
         )
 
 
-class ConsensusConsistency(ModelBasedDetector):
+class ConsensusConsistency(ModelProbingDetector):
     def __init__(
         self, base_model, n_splits=5, n_repeats=10, n_jobs=None, random_state=None
     ):
@@ -158,7 +158,7 @@ class ConsensusConsistency(ModelBasedDetector):
         self.random_state = random_state
 
 
-class ConfidentLearning(ModelBasedDetector):
+class ConfidentLearning(ModelProbingDetector):
     def __init__(
         self, base_model, n_splits=5, n_repeats=10, n_jobs=None, random_state=None
     ):
@@ -181,7 +181,7 @@ class ConfidentLearning(ModelBasedDetector):
         self.random_state = random_state
 
 
-class AreaUnderMargin(ModelBasedDetector):
+class AreaUnderMargin(ModelProbingDetector):
     """Detector based on the area under the margin.
 
     References
@@ -201,7 +201,7 @@ class AreaUnderMargin(ModelBasedDetector):
         self.steps = steps
 
 
-class TracIn(ModelBasedDetector):
+class TracIn(ModelProbingDetector):
     """Detector based on the sum of individual gradients
 
     References
@@ -221,7 +221,7 @@ class TracIn(ModelBasedDetector):
         self.steps = steps
 
 
-class ForgetScores(ModelBasedDetector):
+class ForgetScores(ModelProbingDetector):
     """Detector based on forgetting events.
 
     References
@@ -242,7 +242,7 @@ class ForgetScores(ModelBasedDetector):
         self.steps = steps
 
 
-class VoLG(ModelBasedDetector):
+class VoLG(ModelProbingDetector):
     """Detector based on variance of logits' gradients. The original VoG.
 
     References
@@ -278,7 +278,7 @@ class VoLG(ModelBasedDetector):
         self.random_state = random_state
 
 
-class VoSG(ModelBasedDetector):
+class VoSG(ModelProbingDetector):
     """Detector based on variance of softmax's gradients. The corrected VoG."""
 
     def __init__(
@@ -307,7 +307,7 @@ class VoSG(ModelBasedDetector):
         self.random_state = random_state
 
 
-class LinearVoSG(ModelBasedDetector):
+class LinearVoSG(ModelProbingDetector):
     """Detector based on variance of softmax's gradients.
     The exact formulation for linear model."""
 
@@ -326,7 +326,7 @@ class LinearVoSG(ModelBasedDetector):
         self.steps = steps
 
 
-class SmallLoss(ModelBasedDetector):
+class SmallLoss(ModelProbingDetector):
     """Detector based on cross-entropy loss between predicted probabilities
     and one-hot observed target"""
 
