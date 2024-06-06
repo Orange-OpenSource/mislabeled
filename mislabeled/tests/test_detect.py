@@ -12,7 +12,7 @@ from sklearn.svm import OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
 from mislabeled.aggregate import oob, sum
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.detect.detectors import (
     AreaUnderMargin,
     Classifier,
@@ -68,7 +68,7 @@ detectors = [
             LogisticRegression(),
         )
     ),
-    ModelBasedDetector(
+    ModelProbingDetector(
         base_model=make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
             MLPClassifier(
@@ -101,7 +101,7 @@ detectors = [
         )
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
-    ModelBasedDetector(
+    ModelProbingDetector(
         KNeighborsClassifier(), LeaveOneOutEnsemble(n_jobs=-1), "accuracy", oob(sum)
     ),
     FiniteDiffComplexity(
@@ -179,7 +179,7 @@ def test_detector_with_sparse_X(n_classes, detector):
         # KMM
         OutlierDetector(base_model=OneClassSVM(kernel="rbf", gamma=0.1)),
         # PDR
-        ModelBasedDetector(
+        ModelProbingDetector(
             base_model=make_pipeline(
                 Nystroem(gamma=0.1, n_components=100, random_state=seed),
                 OneVsRestClassifier(LogisticRegression()),

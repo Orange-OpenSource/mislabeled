@@ -12,7 +12,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
 from mislabeled.aggregate import forget, oob, sum
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import (
     IndependentEnsemble,
     LeaveOneOutEnsemble,
@@ -31,13 +31,13 @@ seed = 42
 
 
 detectors = [
-    ModelBasedDetector(
+    ModelProbingDetector(
         base_model=LogisticRegression(),
         ensemble=NoEnsemble(),
         probe="accuracy",
         aggregate="sum",
     ),
-    ModelBasedDetector(
+    ModelProbingDetector(
         base_model=KNeighborsClassifier(n_neighbors=3),
         ensemble=IndependentEnsemble(
             RepeatedStratifiedKFold(n_splits=5, n_repeats=10, random_state=seed),
@@ -45,13 +45,13 @@ detectors = [
         probe="accuracy",
         aggregate=oob(sum),
     ),
-    ModelBasedDetector(
+    ModelProbingDetector(
         base_model=GradientBoostingClassifier(max_depth=1, random_state=seed),
         ensemble=ProgressiveEnsemble(),
         probe="accuracy",
         aggregate=forget,
     ),
-    ModelBasedDetector(
+    ModelProbingDetector(
         base_model=DecisionTreeClassifier(random_state=seed),
         ensemble=LeaveOneOutEnsemble(),
         probe=ParameterCount(),

@@ -18,7 +18,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from mislabeled.aggregate import mean, oob
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import IndependentEnsemble
 from mislabeled.probe import CrossEntropy, Probabilities, Unsupervised
 
@@ -32,7 +32,7 @@ clf = make_pipeline(
 )
 clf.fit(X, y).score(X, y)
 # %%
-detector = ModelBasedDetector(
+detector = ModelProbingDetector(
     clf,
     probe=CrossEntropy(Probabilities()),
     ensemble=IndependentEnsemble(

@@ -4,7 +4,7 @@ from mislabeled.aggregate.utils import check_aggregate
 from mislabeled.probe.utils import check_probe
 
 
-class ModelBasedDetector(BaseEstimator):
+class ModelProbingDetector(BaseEstimator):
     def __init__(self, base_model, ensemble, probe, aggregate):
         self.base_model = base_model
         self.ensemble = ensemble

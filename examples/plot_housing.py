@@ -12,7 +12,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RepeatedKFold
 
 from mislabeled.aggregate import mean, oob
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import IndependentEnsemble
 
 # %%
@@ -23,7 +23,7 @@ feature_names = dataset.feature_names
 
 # %%
 
-detect = ModelBasedDetector(
+detect = ModelProbingDetector(
     base_model=RandomForestRegressor(),
     ensemble=IndependentEnsemble(
         RepeatedKFold(

@@ -5,7 +5,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.mixture import GaussianMixture
 from sklearn.pipeline import make_pipeline
 
-from mislabeled.detect import ModelBasedDetector
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import NoEnsemble
 from mislabeled.split import GMMSplitter, QuantileSplitter
 
@@ -36,7 +36,7 @@ def simple_split_test(n_classes, detectors, splitter):
     "detectors",
     [
         [
-            ModelBasedDetector(
+            ModelProbingDetector(
                 base_model=make_pipeline(
                     RBFSampler(gamma="scale", n_components=100, random_state=seed),
                     LogisticRegression(),
@@ -45,7 +45,7 @@ def simple_split_test(n_classes, detectors, splitter):
                 probe="accuracy",
                 aggregate="sum",
             ),
-            ModelBasedDetector(
+            ModelProbingDetector(
                 base_model=make_pipeline(
                     RBFSampler(gamma="scale", n_components=100, random_state=seed),
                     LogisticRegression(),
