@@ -1,4 +1,5 @@
 import warnings
+from copy import deepcopy
 from functools import reduce
 
 import numpy as np
@@ -31,9 +32,15 @@ def coef(estimator):
 class Linear:
 
     def __call__(self, estimator, X=None, y=None):
-        if isinstance(estimator, Pipeline):
+        while isinstance(estimator, Pipeline):
             if X is not None:
                 X = make_pipeline(estimator[:-1]).transform(X)
             estimator = estimator[-1]
 
         return super().__call__(estimator, X, y)
+
+    @staticmethod
+    def linearized(probe):
+        probe = deepcopy(probe)
+        probe.__class__ = type("Linearized", (Linear, probe.__class__), {})
+        return probe

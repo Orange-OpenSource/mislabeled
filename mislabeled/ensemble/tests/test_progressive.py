@@ -2,6 +2,10 @@ import numpy as np
 import pytest
 from sklearn.datasets import make_classification
 from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
+from sklearn.kernel_approximation import RBFSampler
+from sklearn.linear_model import SGDClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from mislabeled.detect.detectors import AreaUnderMargin
 from mislabeled.probe import Margin, Precomputed
@@ -38,3 +42,17 @@ def test_progressive_staged(estimator):
     incr_ts = detector_incr.trust_score(X, y)
 
     np.testing.assert_array_almost_equal(baseline_ts, incr_ts, decimal=3)
+
+
+def test_pipeline_of_pipeline():
+
+    estimator = make_pipeline(
+        StandardScaler(), make_pipeline(RBFSampler(), SGDClassifier())
+    )
+    n_samples = int(1e4)
+    X, y = make_classification(n_samples=n_samples)
+    X = X.astype(np.float32)
+
+    AreaUnderMargin(estimator).trust_score(X, y)
+
+    assert True

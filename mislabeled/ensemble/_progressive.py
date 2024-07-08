@@ -134,11 +134,9 @@ class ProgressiveEnsemble(AbstractEnsemble):
                 f"steps size should be a strictly positive integer, was : {self.steps}"
             )
 
-        if isinstance(base_model, Pipeline):
+        while isinstance(base_model, Pipeline):
             X = make_pipeline(base_model[:-1]).fit_transform(X, y)
             base_model = base_model[-1]
-        else:
-            base_model = base_model
 
         base_model = clone(base_model)
 
