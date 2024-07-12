@@ -8,7 +8,7 @@ from mislabeled.probe._minmax import Maximize, Minimize
 
 def norm2(x, axis=1):
     if sp.issparse(x):
-        return np.asarray(x.multiply(x).sum(axis=axis))
+        return np.ravel(x.multiply(x).sum(axis=axis))
     return (x * x).sum(axis=axis)
 
 
