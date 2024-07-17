@@ -20,9 +20,14 @@ class L2Influence(Maximize):
     def __call__(self, estimator, X, y):
 
         diff = 2 * (y - estimator.predict(X))
-        grad = diff[:, None] * X
+
+        grad = diff[:, None] * (X.toarray() if sp.issparse(X) else X)
 
         H = X.T @ X
+
+        if sp.issparse(X):
+            H = H.toarray()
+
         H_inv = pinvh(H, atol=self.tol)
 
         self_influence = -np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
@@ -140,18 +145,31 @@ class LinearGradNorm2(Linear, GradNorm2):
     pass
 
 
-class Representer(Maximize):
+class Representer(Minimize):
     """Representer values"""
 
     def __call__(self, estimator, X, y):
 
-        diag_k = norm2(X)
+        diag_K = norm2(X)
 
         grad_log_loss = estimator.predict_proba(X)
         grad_log_loss_observed = grad_log_loss[np.arange(len(y)), y] - 1
 
-        return grad_log_loss_observed * diag_k
+        return np.abs(grad_log_loss_observed) * diag_K
 
 
 class LinearRepresenter(Linear, Representer):
+    pass
+
+
+class L2Representer(Minimize):
+    """L2 Representer values"""
+
+    def __call__(self, estimator, X, y):
+        diag_K = norm2(X)
+        grad_l2_loss = estimator.predict(X) - y
+        return np.abs(grad_l2_loss) * diag_K
+
+
+class LinearL2Representer(Linear, L2Representer):
     pass

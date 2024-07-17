@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect import ModelProbingDetector
@@ -151,12 +151,15 @@ def test_unsupervised_probe(n_classes, n_outliers, probe):
     simple_ood_test(n_classes, n_outliers, detector)
 
 
-@pytest.mark.parametrize("probe", [L1(Predictions()), L2(Predictions())])
+@pytest.mark.parametrize(
+    "probe",
+    [L1(Predictions()), L2(Predictions())],
+)
 def test_supervised_probe_regression(probe):
     detector = ModelProbingDetector(
         base_model=make_pipeline(
             RBFSampler(gamma="scale", n_components=100, random_state=seed),
-            LinearRegression(),
+            Ridge(),
         ),
         ensemble=NoEnsemble(),
         probe=probe,
