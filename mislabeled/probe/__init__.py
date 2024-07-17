@@ -10,9 +10,11 @@ from ._influence import (
     GradNorm2,
     Influence,
     L2Influence,
+    L2Representer,
     LinearGradNorm2,
     LinearInfluence,
     LinearL2Influence,
+    LinearL2Representer,
     LinearRepresenter,
     Representer,
 )
@@ -43,6 +45,8 @@ __all__ = [
     "CORE",
     "Linear",
     "coef",
+    "LinearL2Representer",
+    "L2Representer",
 ]
 
 from functools import singledispatch

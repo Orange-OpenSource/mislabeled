@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.base import is_classifier
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 from mislabeled.aggregate import forget, fromnumpy, mean, oob, sum, var
@@ -15,6 +16,8 @@ from mislabeled.probe import (
     FiniteDiffSensitivity,
     LinearGradNorm2,
     LinearInfluence,
+    LinearL2Influence,
+    LinearL2Representer,
     LinearParameterCount,
     LinearRepresenter,
     LinearSensitivity,
@@ -54,7 +57,9 @@ class InfluenceDetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=LinearInfluence(),
+            probe=(
+                LinearInfluence() if is_classifier(base_model) else LinearL2Influence()
+            ),
             aggregate="sum",
         )
 
@@ -73,7 +78,11 @@ class RepresenterDetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=LinearRepresenter(),
+            probe=(
+                LinearRepresenter()
+                if is_classifier(base_model)
+                else LinearL2Representer()
+            ),
             aggregate="sum",
         )
 
