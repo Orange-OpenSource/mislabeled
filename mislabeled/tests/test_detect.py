@@ -29,7 +29,7 @@ from mislabeled.detect.detectors import (
     VoSG,
 )
 from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble, ProgressiveEnsemble
-from mislabeled.probe import LinearGradSimilarity
+from mislabeled.probe import GradSimilarity
 
 from .utils import blobs_1_mislabeled
 
@@ -79,7 +79,7 @@ detectors = [
             ),
         ),
         ensemble=ProgressiveEnsemble(),
-        probe=LinearGradSimilarity(),
+        probe=GradSimilarity(),
         aggregate="sum",
     ),
     TracIn(
@@ -146,6 +146,8 @@ detectors = [
         epsilon=0.1,
         random_state=seed,
     ),
+    TracIn(GradientBoostingClassifier(), steps=10),
+    InfluenceDetector(MLPClassifier()),
 ]
 
 

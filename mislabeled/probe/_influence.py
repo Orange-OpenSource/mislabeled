@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.linalg import pinvh
 
-from mislabeled.probe._linear import Linear
+from mislabeled.probe._linear import linear
 from mislabeled.probe._minmax import Maximize, Minimize
 
 
@@ -17,6 +17,7 @@ class L2Influence(Maximize):
     def __init__(self, tol=0):
         self.tol = tol
 
+    @linear
     def __call__(self, estimator, X, y):
 
         diff = 2 * (y - estimator.predict(X))
@@ -35,15 +36,12 @@ class L2Influence(Maximize):
         return self_influence
 
 
-class LinearL2Influence(Linear, L2Influence):
-    pass
-
-
 class Influence(Maximize):
 
     def __init__(self, tol=0):
         self.tol = tol
 
+    @linear
     def __call__(self, estimator, X, y):
 
         p = estimator.predict_proba(X)
@@ -101,10 +99,6 @@ class Influence(Maximize):
         return self_influence
 
 
-class LinearInfluence(Linear, Influence):
-    pass
-
-
 class GradNorm2(Minimize):
     """The squared norm of individual gradients w.r.t. parameters in a linear
     model. This is e.g. used (in the case of deep learning) in the TracIn paper:
@@ -115,6 +109,7 @@ class GradNorm2(Minimize):
     NB: it assumes that the loss used is the log loss a.k.a. the cross entropy
     """
 
+    @linear
     def __call__(self, estimator, X, y):
         """Evaluate the probe
 
@@ -141,35 +136,22 @@ class GradNorm2(Minimize):
         return norm2(grad_log_loss) * norm2(X)
 
 
-class LinearGradNorm2(Linear, GradNorm2):
-    pass
-
-
 class Representer(Minimize):
     """Representer values"""
 
+    @linear
     def __call__(self, estimator, X, y):
-
-        diag_K = norm2(X)
 
         grad_log_loss = estimator.predict_proba(X)
         grad_log_loss_observed = grad_log_loss[np.arange(len(y)), y] - 1
 
-        return np.abs(grad_log_loss_observed) * diag_K
-
-
-class LinearRepresenter(Linear, Representer):
-    pass
+        return np.abs(grad_log_loss_observed) * norm2(X)
 
 
 class L2Representer(Minimize):
     """L2 Representer values"""
 
+    @linear
     def __call__(self, estimator, X, y):
-        diag_K = norm2(X)
         grad_l2_loss = estimator.predict(X) - y
-        return np.abs(grad_l2_loss) * diag_K
-
-
-class LinearL2Representer(Linear, L2Representer):
-    pass
+        return np.abs(grad_l2_loss) * norm2(X)

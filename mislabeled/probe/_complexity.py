@@ -1,6 +1,7 @@
 from functools import singledispatch
 
 import numpy as np
+from sklearn.calibration import LinearSVC
 from sklearn.ensemble import (
     AdaBoostClassifier,
     AdaBoostRegressor,
@@ -25,9 +26,10 @@ from sklearn.linear_model import (
     SGDClassifier,
     SGDRegressor,
 )
+from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from mislabeled.probe._linear import coef, Linear
+from mislabeled.probe._linear import linear
 
 
 @singledispatch
@@ -38,6 +40,12 @@ def parameter_count(clf):
     )
 
 
+@parameter_count.register(Pipeline)
+def parameter_count_pipeline(estimator):
+    return parameter_count(estimator[-1])
+
+
+@parameter_count.register(LinearSVC)
 @parameter_count.register(LogisticRegression)
 @parameter_count.register(LogisticRegressionCV)
 @parameter_count.register(SGDClassifier)
@@ -101,16 +109,8 @@ class ParameterCount:
         return parameter_count(estimator)
 
 
-class LinearParameterCount(Linear, ParameterCount):
-    pass
-
-
 class ParamNorm2:
 
+    @linear
     def __call__(self, estimator, X=None, y=None):
-
-        return np.linalg.norm(coef(estimator))
-
-
-class LinearParamNorm2(Linear, ParamNorm2):
-    pass
+        return np.linalg.norm(estimator.coef)
