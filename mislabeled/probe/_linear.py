@@ -1,4 +1,3 @@
-import warnings
 from functools import singledispatch, wraps
 from typing import NamedTuple
 
@@ -60,12 +59,10 @@ class LinearClassifier(LinearModel):
 
 @singledispatch
 def linearize(estimator, X, y):
-    warnings.warn(
+    raise NotImplementedError(
         f"{estimator.__class__.__name__} doesn't support linearization."
         " Register the estimator class to linearize.",
-        UserWarning,
     )
-    return estimator, X
 
 
 @linearize.register(Pipeline)
@@ -98,7 +95,7 @@ def linearize_linear_model(estimator, X, y):
         linear = LinearClassifier(coef, intercept)
     else:
         linear = LinearRegressor(coef, intercept)
-    return linear, X
+    return linear, X, y
 
 
 @linearize.register(GradientBoostingClassifier)
@@ -143,8 +140,6 @@ def linearize_mlp(estimator, X, y):
     coef = estimator.coefs_[-1]
     intercept = estimator.intercepts_[-1]
 
-    print(coef.shape, estimator.n_layers_, intercept.shape, activation.shape)
-
     if is_classifier(estimator):
         if coef.shape[1] == 1:
             coef = np.hstack((-coef, coef))
@@ -152,13 +147,13 @@ def linearize_mlp(estimator, X, y):
     else:
         linear = LinearRegressor(coef, intercept)
 
-    return linear, activation
+    return linear, activation, y
 
 
 def linear(probe):
     @wraps(probe)
     def linearized_probe(self, estimator, X, y):
-        linearized, Z = linearize(estimator, X, y)
-        return probe(self, linearized, Z, y)
+        linearized, K, y = linearize(estimator, X, y)
+        return probe(self, linearized, K, y)
 
     return linearized_probe
