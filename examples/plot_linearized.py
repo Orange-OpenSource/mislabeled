@@ -7,16 +7,22 @@ Tree Linearization on the XOR dataset
 # %%
 
 import numpy as np
+from joblib import delayed, Parallel
 from matplotlib import pyplot as plt
+from scipy.stats import pearsonr
 from sklearn.datasets import make_blobs
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import log_loss
+from sklearn.model_selection import LeaveOneOut
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline
 
 from mislabeled.probe import Influence
+
+# %%
 
 X1, _ = make_blobs(centers=2, random_state=1)
 X1 = StandardScaler().fit_transform(X1)
@@ -26,10 +32,14 @@ y = np.hstack((np.ones(X1.shape[0]), np.zeros(X1.shape[0]))).astype(int)
 models = dict(
     linear=LogisticRegression(random_state=1),
     rbf=make_pipeline(RBFSampler(random_state=1), LogisticRegression(random_state=1)),
-    gbm=GradientBoostingClassifier(max_depth=2, n_estimators=100, random_state=1),
+    gbm=GradientBoostingClassifier(
+        max_depth=1, subsample=0.8, learning_rate=0.5, n_estimators=1000, random_state=1
+    ),
     mlp=MLPClassifier(solver="sgd", max_iter=2000, random_state=1),
 )
 probe = Influence()
+
+probes = dict()
 
 fig, ax = plt.subplots(1, len(models) + 1, figsize=(13, 3))
 
@@ -39,16 +49,44 @@ ax[0].set_yticks(())
 ax[0].set_title("xor dataset")
 
 for i, (name, model) in enumerate(models.items()):
-    clf = make_pipeline(StandardScaler(), model)
-    clf.fit(X, y)
-    score = clf.score(X, y)
-    probes = probe(clf, X, y)
-    ax[i + 1].scatter(X[:, 0], X[:, 1], c=y, s=20 * probes / np.mean(probes))
+    model.fit(X, y)
+    score = model.score(X, y)
+    probes[name] = probe(model, X, y)
+
+    ax[i + 1].scatter(
+        X[:, 0], X[:, 1], c=y, s=20 * probes[name] / np.mean(probes[name])
+    )
     ax[i + 1].set_xticks(())
     ax[i + 1].set_yticks(())
     ax[i + 1].set_title(f"{name} (acc: {score})")
 
-fig.suptitle("Self-Influence on the XOR dataset")
+fig.suptitle("Self influence on the XOR dataset")
+plt.tight_layout()
+plt.show()
+
+# %%
+fig, ax = plt.subplots(1, len(models) + 1, figsize=(13, 3))
+
+ax[0].axis("off")
+ax[1].set_ylabel("LOO log-loss")
+
+for i, (name, model) in enumerate(models.items()):
+
+    def eval(model, X, y, train):
+        return log_loss(y[train], model.fit(X[train], y[train]).predict_proba(X[train]))
+
+    loo = Parallel(n_jobs=-1)(
+        delayed(eval)(model, X, y, train) for train, _ in LeaveOneOut().split(X)
+    )
+
+    corr = pearsonr(probes[name], loo).statistic
+    ax[i + 1].scatter(probes[name], loo)
+    ax[i + 1].set_xticks(())
+    ax[i + 1].set_yticks(())
+    ax[i + 1].set_xlabel("self-influence")
+    ax[i + 1].set_title(f"{name} (corr: {round(corr,2)})")
+
+fig.suptitle("Pearson correlation between self influence and LOO log loss")
 plt.tight_layout()
 plt.show()
 # %%

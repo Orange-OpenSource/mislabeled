@@ -4,9 +4,8 @@ Self Representer-Values on MNIST dataset
 ========================================
 """
 
-import matplotlib.pyplot as plt
-
 # %%
+import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import fetch_openml
 from sklearn.neural_network import MLPClassifier
@@ -43,8 +42,10 @@ top_self_representer = np.argsort(-self_representer_values)[0:top_k]
 fig, ax = plt.subplots(
     top_k // img_per_row,
     img_per_row,
-    figsize=(20, 18),
+    figsize=(10, 9),
 )
+
+fig.suptitle("Top self representer values of an MLP on MNIST")
 
 for i, top_i in enumerate(top_self_representer):
     xx, yy = i // img_per_row, i % img_per_row
