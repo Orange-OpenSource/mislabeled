@@ -2,19 +2,28 @@
 =====================
 Variance of Gradients
 =====================
+
+In this notebook, we study the difference of computing the variance of the gradients
+before and after the softmax layer, and how well the finite difference approximation
+of the linear model works in practice.
 """
 
 # %%
+
+from warnings import simplefilter
 
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.base import clone
 from sklearn.datasets import make_blobs
 from sklearn.discriminant_analysis import StandardScaler
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.inspection import DecisionBoundaryDisplay
 from sklearn.linear_model import SGDClassifier
 
 from mislabeled.detect.detectors import LinearVoSG, VoLG, VoSG
+
+simplefilter("ignore", category=ConvergenceWarning)
 
 X, y = make_blobs(
     n_samples=500, centers=2, n_features=2, cluster_std=2, shuffle=True, random_state=1
@@ -29,6 +38,8 @@ clf = SGDClassifier(
 volg = VoLG(clone(clf))
 vosg = VoSG(clone(clf), n_directions=100, epsilon=0.01, random_state=1)
 vosg_linear = LinearVoSG(clone(clf))
+vosg_linear
+# %%
 
 fig, ax = plt.subplots(1, 4, figsize=(18, 4))
 

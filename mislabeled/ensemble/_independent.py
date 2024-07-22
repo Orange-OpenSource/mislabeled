@@ -6,10 +6,7 @@ from ._base import AbstractEnsemble
 
 
 class IndependentEnsemble(AbstractEnsemble):
-    """A template estimator to be used as a reference implementation.
-
-    For more information regarding how to build your own estimator, read more
-    in the :ref:`User Guide <user_guide>`.
+    """Ensemble of bagged models.
 
     Parameters
     ----------
@@ -27,21 +24,7 @@ class IndependentEnsemble(AbstractEnsemble):
         self.n_jobs = n_jobs
 
     def probe_model(self, base_model, X, y, probe):
-        """A reference implementation of a fitting function.
 
-        Parameters
-        ----------
-        X : {array-like, sparse matrix}, shape (n_samples, n_features)
-            The training input samples.
-        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
-            The target values (class labels in classification, real numbers in
-            regression).
-
-        Returns
-        -------
-        self : object
-            Returns self.
-        """
         n_samples = _num_samples(X)
 
         def no_scoring(estimator, X, y):
@@ -70,16 +53,7 @@ class IndependentEnsemble(AbstractEnsemble):
 
 
 class LeaveOneOutEnsemble(AbstractEnsemble):
-    """A template estimator to be used as a reference implementation.
-
-    For more information regarding how to build your own estimator, read more
-    in the :ref:`User Guide <user_guide>`.
-
-    Parameters
-    ----------
-    demo_param : str, default='demo_param'
-        A parameter used for demonstation of how to pass and store paramters.
-    """
+    """Ensemble Leave One Out."""
 
     def __init__(
         self,

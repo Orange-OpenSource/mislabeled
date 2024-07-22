@@ -1,10 +1,5 @@
-.. project-template documentation master file, created by
-   sphinx-quickstart on Mon Jan 18 14:44:12 2016.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to mislabeled's documentation!
-============================================
+======================================
 
 This project is a reference implementation to anyone who wishes to develop
 scikit-learn compatible classes.
@@ -21,7 +16,6 @@ scikit-learn compatible classes.
    :hidden:
    :caption: Documentation
 
-   user_guide
    api
 
 .. toctree::

@@ -1,3 +1,5 @@
+"""A detector zoo of techniques found in the litterature."""
+
 import numpy as np
 from sklearn.base import is_classifier
 from sklearn.model_selection import RepeatedStratifiedKFold
@@ -27,8 +29,6 @@ from mislabeled.probe import (
     Scores,
     Sensitivity,
 )
-
-# A detector zoo of techniques found in the litterature
 
 
 class OutlierDetector(ModelProbingDetector):
@@ -69,7 +69,6 @@ class RepresenterDetector(ModelProbingDetector):
     ----------
     .. [1] Jaeckel, Louis A. "Estimating regression coefficients by minimizing\
         the dispersion of the residuals." The Annals of Mathematical Statistics (1972).
-
     """
 
     def __init__(self, base_model):
@@ -82,6 +81,9 @@ class RepresenterDetector(ModelProbingDetector):
 
 
 class DecisionTreeComplexity(ModelProbingDetector):
+    """Detector based on the number of leaves necessary
+    to perfectly predict the training set."""
+
     def __init__(self, base_model, n_jobs=None):
         super().__init__(
             base_model=base_model,
@@ -93,6 +95,9 @@ class DecisionTreeComplexity(ModelProbingDetector):
 
 
 class FiniteDiffComplexity(ModelProbingDetector):
+    """Detector based on the local complexity of a model
+    around a training data point."""
+
     def __init__(
         self,
         base_model,
@@ -119,6 +124,8 @@ class FiniteDiffComplexity(ModelProbingDetector):
 
 
 class Classifier(ModelProbingDetector):
+    """Detector based on the agreement between a classifier and the observed label."""
+
     def __init__(self, base_model):
         super().__init__(
             base_model=base_model,
@@ -129,6 +136,8 @@ class Classifier(ModelProbingDetector):
 
 
 class Regressor(ModelProbingDetector):
+    """Detector based on the agreement between a regressor and the observed label."""
+
     def __init__(self, base_model):
         super().__init__(
             base_model=base_model,
@@ -139,6 +148,15 @@ class Regressor(ModelProbingDetector):
 
 
 class ConsensusConsistency(ModelProbingDetector):
+    """Detector based on the consensus between multiple bagged classifiers.
+
+    References
+    ----------
+    .. [1] Guan, Donghai, et al.\
+        "Identifying mislabeled training data with the aid of unlabeled data."\
+        Applied Intelligence (2011).
+    """
+
     def __init__(
         self, base_model, n_splits=5, n_repeats=10, n_jobs=None, random_state=None
     ):
@@ -162,6 +180,15 @@ class ConsensusConsistency(ModelProbingDetector):
 
 
 class ConfidentLearning(ModelProbingDetector):
+    """Detector based on cleanlab.
+
+    References
+    ----------
+    .. [1] Northcutt, Curtis, Lu Jiang, and Isaac Chuang.\
+        "Confident learning: Estimating uncertainty in dataset labels."\
+        Journal of Artificial Intelligence Research (2021).
+    """
+
     def __init__(
         self, base_model, n_splits=5, n_repeats=10, n_jobs=None, random_state=None
     ):
@@ -331,7 +358,7 @@ class LinearVoSG(ModelProbingDetector):
 
 class SmallLoss(ModelProbingDetector):
     """Detector based on cross-entropy loss between predicted probabilities
-    and one-hot observed target"""
+    and one-hot observed target."""
 
     def __init__(self, base_model):
         super().__init__(

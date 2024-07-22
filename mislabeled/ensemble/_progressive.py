@@ -87,27 +87,12 @@ def _staged_fit_dt(estimator: DecisionTreeClassifier, X, y):
 
 
 class ProgressiveEnsemble(AbstractEnsemble):
-    """Detector based on training dynamics.
+    """Ensemble to probe a model through its training dynamics.
 
     Parameters
     ----------
-    estimator : object
-        The estimator used to measure the complexity. It is required
-        that the `estimator` supports iterative learning with `warm_start`.
-
     steps : int
         The model is probed every n_steps.
-
-    Attributes
-    ----------
-    estimator_ : classifier
-        The fitted estimator.
-
-    y_preds_ : ndarray, shape (n_samples, n_iter_)
-        The predictions of all iterations of the classifier during :meth:`fit`.
-
-    n_iter_ : int
-        Number of iterations of the boosting process.
     """
 
     def __init__(self, *, steps=1):

@@ -34,41 +34,40 @@ sys.path.insert(0, os.path.abspath(".."))
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.mathjax",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
-    "numpydoc",
+    "sphinx.ext.githubpages",
+    # "numpydoc",
     "sphinx_gallery.gen_gallery",
 ]
 
 extensions = extensions + [
     "sphinx_design",
     "sphinx_copybutton",
-    # "matplotlib.sphinxext.plot_directive",
+    "matplotlib.sphinxext.plot_directive",
     "sphinx_togglebutton",
     "sphinx_favicon",
     "sphinx.ext.imgconverter",
-    # "sphinx-prompt",
-    "sphinx.ext.mathjax",
     "sphinxext.opengraph",
     "sphinx_sitemap",
-    "sphinx.ext.githubpages",
 ]
 
 # this is needed for some reason...
 # see https://github.com/numpy/numpydoc/issues/69
-numpydoc_show_class_members = False
+# numpydoc_show_class_members = True
 
 # # Produce `plot::` directives for examples that contain `import matplotlib` or
 # # `from matplotlib import`.
 # numpydoc_use_plots = True
 
-# # Options for the `::plot` directive:
-# # https://matplotlib.org/stable/api/sphinxext_plot_directive_api.html
-# plot_formats = ["png"]
-# plot_include_source = True
-# plot_html_show_formats = False
-# plot_html_show_source_link = False
+# Options for the `::plot` directive:
+# https://matplotlib.org/stable/api/sphinxext_plot_directive_api.html
+plot_formats = ["png"]
+plot_include_source = True
+plot_html_show_formats = False
+plot_html_show_source_link = False
 
 from distutils.version import LooseVersion
 
@@ -87,7 +86,11 @@ templates_path = ["_templates"]
 
 # generate autosummary even if no references
 autosummary_generate = True
-
+# autosummary respects __all__
+autosummary_ignore_module_all = False
+autosummary_mock_imports = [
+    'mislabeled.datasets.tests',
+]
 # The suffix of source filenames.
 source_suffix = ".rst"
 
@@ -102,7 +105,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "mislabeled"
-copyright = "2016, Vighnesh Birodkar"
+copyright = "2024, anonymous"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -154,7 +157,7 @@ html_style = "css/project-template.css"
 # modindex_common_prefix = []
 
 # If true, keep warnings as "system message" paragraphs in the built documents.
-# keep_warnings = False
+keep_warnings = False
 
 
 # -- Options for HTML output ----------------------------------------------
@@ -259,9 +262,7 @@ latex_elements = {
 latex_documents = [
     (
         "index",
-        "project-template.tex",
-        "project-template Documentation",
-        "Vighnesh Birodkar",
+        "mislabeled",
         "manual",
     ),
 ]
@@ -294,10 +295,7 @@ latex_domain_indices = False
 man_pages = [
     (
         "index",
-        "project-template",
-        "project-template Documentation",
-        ["Vighnesh Birodkar"],
-        1,
+        "mislabeled",
     )
 ]
 
@@ -313,10 +311,7 @@ man_pages = [
 texinfo_documents = [
     (
         "index",
-        "project-template",
-        "project-template Documentation",
-        "Vighnesh Birodkar",
-        "project-template",
+        "mislabeled",
         "One line description of project.",
         "Miscellaneous",
     ),
@@ -339,10 +334,10 @@ texinfo_documents = [
 # intersphinx configuration
 intersphinx_mapping = {
     "python": ("https://docs.python.org/{.major}".format(sys.version_info), None),
-    "numpy": ("https://docs.scipy.org/doc/numpy/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
-    "matplotlib": ("https://matplotlib.org/", None),
-    "sklearn": ("http://scikit-learn.org/stable", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy", None),
+    "matplotlib": ("https://matplotlib.org/stable", None),
+    "sklearn": ("https://scikit-learn.org/stable", None),
 }
 
 # sphinx-gallery configuration

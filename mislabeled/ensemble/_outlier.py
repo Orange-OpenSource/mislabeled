@@ -8,6 +8,8 @@ from ._base import AbstractEnsemble
 
 
 class OutlierEnsemble(AbstractEnsemble):
+    """An ensemble strategy that trains one outlier detector per class."""
+
     def __init__(
         self,
         *,

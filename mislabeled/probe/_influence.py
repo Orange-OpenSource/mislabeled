@@ -100,13 +100,15 @@ class Influence(Maximize):
 
 
 class GradNorm2(Minimize):
-    """The squared norm of individual gradients w.r.t. parameters in a linear
-    model. This is e.g. used (in the case of deep learning) in the TracIn paper:
-
-    Pruthi, G., Liu, F., Kale, S., & Sundararajan, M. Estimating training data influence
-    by tracing gradient descent. NeurIPS 2020
+    """The squared norm of individual gradients wrt parameters in a linear
+    model. This is e.g. used (in the case of deep learning) in the TracIn paper [1]_.
 
     NB: it assumes that the loss used is the log loss a.k.a. the cross entropy
+
+    References
+    ----------
+    ..[1] Pruthi, G., Liu, F., Kale, S., & Sundararajan, M.\
+        "Estimating training data influence by tracing gradient descent." NeurIPS 2020
     """
 
     @linear

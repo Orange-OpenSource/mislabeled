@@ -8,7 +8,21 @@ from ._peer import CORE, Peer
 from ._sensitivity import FiniteDiffSensitivity, Sensitivity
 
 __all__ = [
+    "Probabilities",
     "Adjust",
+    "Logits",
+    "Scores",
+    "Predictions",
+    "Confidence",
+    "Margin",
+    "CrossEntropy",
+    "Unsupervised",
+    "TopK",
+    "UnsupervisedMargin",
+    "Entropy",
+    "L1",
+    "L2",
+    "Outliers",
     "FiniteDiffSensitivity",
     "Sensitivity",
     "ParameterCount",
@@ -16,12 +30,12 @@ __all__ = [
     "Influence",
     "L2Influence",
     "Representer",
+    "L2Representer",
     "GradNorm2",
     "GradSimilarity",
     "Peer",
     "CORE",
     "linear",
-    "L2Representer",
 ]
 
 from functools import singledispatch

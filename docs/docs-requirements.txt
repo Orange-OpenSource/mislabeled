@@ -6,5 +6,5 @@ sphinx_togglebutton
 sphinx_favicon
 sphinxext.opengraph
 sphinx_sitemap
-numpydoc
+# numpydoc
 sphinx-gallery
