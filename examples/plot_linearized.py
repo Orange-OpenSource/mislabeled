@@ -2,6 +2,15 @@
 =====================================
 Tree Linearization on the XOR dataset
 =====================================
+
+Some probes implemented in mislabeled rely on the assumption that the input estimator is a linear model, to get explicit formulation for their derivatives with respect to the input or coefficients.
+In order to use these probes for model which are not linear (such as trees or MLPs), we linearize them.
+
+- for trees and ensembles, we train a surrogate linear model on the supervised kernel defined from the leaf indices where the input exemple falls in.
+- for MLPs, the last hidden layer output features defines a supervised kernel, and the coefficients from the classification layer are used as a linear model.
+- for linear models, this is a no-op.
+
+In this notebook, we compute the self-influence of training data points for different model families on a non-linearly separable dataset (XOR).
 """
 
 # %%
