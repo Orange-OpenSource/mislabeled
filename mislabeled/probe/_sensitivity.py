@@ -4,7 +4,7 @@ import numbers
 import numpy as np
 import scipy.sparse as sp
 
-from mislabeled.probe._linear import coef, Linear
+from mislabeled.probe._linear import linear
 from mislabeled.probe._minmax import Minimize
 
 
@@ -81,6 +81,7 @@ class Sensitivity(Minimize):
     """Detects likely mislabeled examples based on the
     softmax derivative with respect to the inputs for linear models."""
 
+    @linear
     def __call__(self, estimator, X, y):
         """Evaluate the probe
 
@@ -105,11 +106,7 @@ class Sensitivity(Minimize):
         softmax = estimator.predict_proba(X)
         proba = softmax[np.arange(len(y)), y].reshape(-1, 1)
 
-        grad_softmax = coef(estimator)[y] * proba * (1 - proba)
-        grad_softmax = grad_softmax.astype(coef(estimator)[y].dtype)
+        grad_softmax = estimator.coef[y] * proba * (1 - proba)
+        grad_softmax = grad_softmax.astype(estimator.coef.dtype)
 
         return grad_softmax
-
-
-class LinearSensitivity(Linear, Sensitivity):
-    pass

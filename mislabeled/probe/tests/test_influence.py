@@ -17,7 +17,7 @@ from mislabeled.probe import (
 @pytest.mark.parametrize(
     "probe", [Influence(), Representer(), GradNorm2(), GradSimilarity()]
 )
-def test_sparse_influence_equals_dense_influence(probe):
+def test_sparse_influence_equals_dense_influence_classification(probe):
     logreg = LogisticRegression()
 
     X, y = make_moons(n_samples=1000, noise=0.2)
@@ -28,7 +28,7 @@ def test_sparse_influence_equals_dense_influence(probe):
 
 
 @pytest.mark.parametrize("probe", [L2Influence(), L2Representer()])
-def test_sparse_influence_equals_dense_influence(probe):
+def test_sparse_influence_equals_dense_influence_regression(probe):
     linreg = Ridge()
 
     X, y = make_regression(n_samples=1000)

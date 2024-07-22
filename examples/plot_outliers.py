@@ -7,8 +7,8 @@ Detecting mislabeled examples with outlier detectors
 # %%
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.discriminant_analysis import StandardScaler
 from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import OneClassSVM
 
 from mislabeled.detect.detectors import OutlierDetector

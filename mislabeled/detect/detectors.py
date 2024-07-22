@@ -14,18 +14,18 @@ from mislabeled.ensemble import (
 from mislabeled.probe import (
     Confidence,
     FiniteDiffSensitivity,
-    LinearGradNorm2,
-    LinearInfluence,
-    LinearL2Influence,
-    LinearL2Representer,
-    LinearParameterCount,
-    LinearRepresenter,
-    LinearSensitivity,
+    GradNorm2,
+    Influence,
+    L2Influence,
+    L2Representer,
     Logits,
     Margin,
     Outliers,
+    ParameterCount,
     Probabilities,
+    Representer,
     Scores,
+    Sensitivity,
 )
 
 # A detector zoo of techniques found in the litterature
@@ -57,9 +57,7 @@ class InfluenceDetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=(
-                LinearInfluence() if is_classifier(base_model) else LinearL2Influence()
-            ),
+            probe=(Influence() if is_classifier(base_model) else L2Influence()),
             aggregate="sum",
         )
 
@@ -78,11 +76,7 @@ class RepresenterDetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=(
-                LinearRepresenter()
-                if is_classifier(base_model)
-                else LinearL2Representer()
-            ),
+            probe=(Representer() if is_classifier(base_model) else L2Representer()),
             aggregate="sum",
         )
 
@@ -92,7 +86,7 @@ class DecisionTreeComplexity(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=LeaveOneOutEnsemble(n_jobs=n_jobs),
-            probe=LinearParameterCount(),
+            probe=ParameterCount(),
             aggregate=oob(sum),
         )
         self.n_jobs = n_jobs
@@ -216,7 +210,7 @@ class TracIn(ModelProbingDetector):
     References
     ----------
     .. [1] Pruthi, G., Liu, F., Kale, S., & Sundararajan, M.
-        "Estimating training data LinearInfluence by tracing gradient descent."
+        "Estimating training data Influence by tracing gradient descent."
         NeurIPS 2020
     """
 
@@ -224,7 +218,7 @@ class TracIn(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
-            probe=LinearGradNorm2(),
+            probe=GradNorm2(),
             aggregate="sum",
         )
         self.steps = steps
@@ -329,7 +323,7 @@ class LinearVoSG(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
-            probe=LinearSensitivity(),
+            probe=Sensitivity(),
             aggregate=fromnumpy(np.mean, aggregate=var),
         )
         self.steps = steps

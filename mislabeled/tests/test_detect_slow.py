@@ -11,7 +11,7 @@ from sklearn.tree import DecisionTreeClassifier
 from mislabeled.aggregate import oob, sum
 from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import LeaveOneOutEnsemble
-from mislabeled.probe import LinearParameterCount, LinearParamNorm2
+from mislabeled.probe import ParameterCount, ParamNorm2
 
 from .utils import blobs_1_mislabeled
 
@@ -34,8 +34,6 @@ seed = 42
 detectors = [
     ModelProbingDetector(
         base_model=make_pipeline(
-            StandardScaler(),
-            Nystroem(gamma=0.5, n_components=50, random_state=seed),
             AdaBoostClassifier(
                 estimator=DecisionTreeClassifier(max_depth=4),
                 algorithm="SAMME",
@@ -45,7 +43,7 @@ detectors = [
             ),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
-        probe=LinearParameterCount(),
+        probe=ParameterCount(),
         aggregate=oob(sum),
     ),
     ModelProbingDetector(
@@ -55,7 +53,7 @@ detectors = [
             LogisticRegression(penalty="l1", solver="saga", C=1e2),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
-        probe=LinearParameterCount(),
+        probe=ParameterCount(),
         aggregate=oob(sum),
     ),
     ModelProbingDetector(
@@ -65,7 +63,7 @@ detectors = [
             LogisticRegression(C=1e4),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
-        probe=LinearParamNorm2(),
+        probe=ParamNorm2(),
         aggregate=oob(sum),
     ),
 ]

@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sp
 from sklearn.utils.validation import _num_samples
 
-from mislabeled.probe._linear import Linear
+from mislabeled.probe._linear import linear
 
 
 class GradSimilarity:
@@ -16,6 +16,7 @@ class GradSimilarity:
     NB: it assumes that the loss used is the log loss a.k.a. the cross entropy
     """
 
+    @linear
     def __call__(self, estimator, X, y):
 
         n_samples = _num_samples(X)
@@ -40,7 +41,3 @@ class GradSimilarity:
             cos_sim /= np.linalg.norm(X, axis=1)
 
         return cos_sim
-
-
-class LinearGradSimilarity(Linear, GradSimilarity):
-    pass
