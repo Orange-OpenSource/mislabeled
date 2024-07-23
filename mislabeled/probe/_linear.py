@@ -32,6 +32,7 @@ from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.svm import LinearSVC, LinearSVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.utils import check_X_y
 
 
 class LinearModel(NamedTuple):
@@ -87,6 +88,7 @@ def linearize_pipeline(estimator, X, y):
 @linearize.register(LinearSVR)
 @linearize.register(SGDRegressor)
 def linearize_linear_model(estimator, X, y):
+    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
     coef = estimator.coef_.T
     intercept = estimator.intercept_
     if is_classifier(estimator):
@@ -127,6 +129,8 @@ def linearize_trees(
 @linearize.register(MLPClassifier)
 @linearize.register(MLPRegressor)
 def linearize_mlp(estimator, X, y):
+
+    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
 
     # Get output of last hidden layer
     activation = X

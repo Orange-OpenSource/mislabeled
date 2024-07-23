@@ -2,7 +2,7 @@ from ._adjust import Adjust
 from ._complexity import ParameterCount, ParamNorm2
 from ._grads import GradSimilarity
 from ._influence import GradNorm2, Influence, L2Influence, L2Representer, Representer
-from ._linear import linear
+from ._linear import linear, linearize
 from ._minmax import Maximize, Minimize
 from ._peer import CORE, Peer
 from ._sensitivity import FiniteDiffSensitivity, Sensitivity
@@ -36,6 +36,7 @@ __all__ = [
     "Peer",
     "CORE",
     "linear",
+    "linearize",
 ]
 
 from functools import singledispatch
