@@ -92,10 +92,13 @@ def linearize_linear_model(estimator, X, y):
     coef = estimator.coef_.T
     intercept = estimator.intercept_
     if is_classifier(estimator):
-        if coef.shape[1] == 1:
+        if coef.ndim > 1 and coef.shape[1] == 1:
             coef = np.hstack((-coef, coef))
         linear = LinearClassifier(coef, intercept)
     else:
+        if coef.ndim > 1 and coef.shape[1] == 1:
+            coef = coef.ravel()
+            intercept = intercept.item()
         linear = LinearRegressor(coef, intercept)
     return linear, X, y
 
@@ -145,10 +148,13 @@ def linearize_mlp(estimator, X, y):
     intercept = estimator.intercepts_[-1]
 
     if is_classifier(estimator):
-        if coef.shape[1] == 1:
+        if coef.ndim > 1 and coef.shape[1] == 1:
             coef = np.hstack((-coef, coef))
         linear = LinearClassifier(coef, intercept)
     else:
+        if coef.ndim > 1 and coef.shape[1] == 1:
+            coef = coef.ravel()
+            intercept = intercept.item()
         linear = LinearRegressor(coef, intercept)
 
     return linear, activation, y

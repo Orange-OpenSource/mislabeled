@@ -3,9 +3,10 @@ import scipy.sparse as sp
 from sklearn.utils.validation import _num_samples
 
 from mislabeled.probe._linear import linear
+from mislabeled.probe._minmax import Maximize
 
 
-class GradSimilarity:
+class GradSimilarity(Maximize):
     """Cosine Similarity between the individual gradients in a linear model, and the
     averaged batch gradient, as proposed in:
 
