@@ -60,7 +60,7 @@ detectors = [
         base_model=make_pipeline(
             StandardScaler(),
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
-            LogisticRegression(C=1e4),
+            LogisticRegression(C=1e5, max_iter=1000),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
         probe=ParamNorm2(),
