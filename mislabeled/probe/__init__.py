@@ -1,7 +1,14 @@
 from ._adjust import Adjust
 from ._complexity import ParameterCount, ParamNorm2
 from ._grads import GradSimilarity
-from ._influence import GradNorm2, Influence, L2Influence, L2Representer, Representer
+from ._influence import (
+    GradNorm2,
+    Influence,
+    L2GradNorm2,
+    L2Influence,
+    L2Representer,
+    Representer,
+)
 from ._linear import linear, linearize
 from ._minmax import Maximize, Minimize
 from ._peer import CORE, Peer
@@ -32,6 +39,7 @@ __all__ = [
     "Representer",
     "L2Representer",
     "GradNorm2",
+    "L2GradNorm2",
     "GradSimilarity",
     "Peer",
     "CORE",

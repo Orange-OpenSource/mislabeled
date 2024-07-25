@@ -18,6 +18,7 @@ from mislabeled.probe import (
     FiniteDiffSensitivity,
     GradNorm2,
     Influence,
+    L2GradNorm2,
     L2Influence,
     L2Representer,
     Logits,
@@ -245,7 +246,7 @@ class TracIn(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
-            probe=GradNorm2(),
+            probe=GradNorm2() if is_classifier(base_model) else L2GradNorm2(),
             aggregate="sum",
         )
         self.steps = steps

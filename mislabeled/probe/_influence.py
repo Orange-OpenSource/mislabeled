@@ -138,6 +138,26 @@ class GradNorm2(Minimize):
         return norm2(grad_log_loss) * norm2(X)
 
 
+class L2GradNorm2(Minimize):
+    """The squared norm of individual gradients wrt parameters in a linear
+    model. This is e.g. used (in the case of deep learning) in the TracIn paper [1]_.
+
+    NB: it assumes that the loss used is the l2 loss a.k.a. the mean squared error
+
+    References
+    ----------
+    ..[1] Pruthi, G., Liu, F., Kale, S., & Sundararajan, M.\
+        "Estimating training data influence by tracing gradient descent." NeurIPS 2020
+    """
+
+    @linear
+    def __call__(self, estimator, X, y):
+        grad_l2_loss = estimator.predict(X) - y
+        if grad_l2_loss.ndim == 1 or grad_l2_loss.shape[1] == 1:
+            grad_l2_loss = grad_l2_loss.reshape(-1, 1)
+        return norm2(grad_l2_loss) * norm2(X)
+
+
 class Representer(Minimize):
     """Representer values"""
 

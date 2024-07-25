@@ -13,6 +13,7 @@ from mislabeled.probe import (
     GradNorm2,
     GradSimilarity,
     Influence,
+    L2GradNorm2,
     L2Influence,
     L2Representer,
     Representer,
@@ -32,7 +33,7 @@ def test_sparse_influence_equals_dense_influence_classification(probe):
     np.testing.assert_allclose(probe(logreg, X, y), probe(logreg, sp.csr_matrix(X), y))
 
 
-@pytest.mark.parametrize("probe", [L2Influence(), L2Representer()])
+@pytest.mark.parametrize("probe", [L2Influence(), L2Representer(), L2GradNorm2()])
 def test_sparse_influence_equals_dense_influence_regression(probe):
     linreg = Ridge()
 
@@ -56,7 +57,7 @@ def test_influence_dataframe_equals_ndarray_influence_classification(probe):
     np.testing.assert_allclose(probe(linreg, X, y), probe(linreg, X.values, y.values))
 
 
-@pytest.mark.parametrize("probe", [L2Influence(), L2Representer()])
+@pytest.mark.parametrize("probe", [L2Influence(), L2Representer(), L2GradNorm2()])
 def test_influence_dataframe_equals_ndarray_influence_regression(probe):
     linreg = Ridge()
 
