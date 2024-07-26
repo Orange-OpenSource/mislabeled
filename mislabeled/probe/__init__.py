@@ -1,6 +1,6 @@
 from ._adjust import Adjust
 from ._complexity import ParameterCount, ParamNorm2
-from ._grads import GradSimilarity
+from ._grads import GradSimilarity, L2GradSimilarity
 from ._influence import (
     GradNorm2,
     Influence,
@@ -41,6 +41,7 @@ __all__ = [
     "GradNorm2",
     "L2GradNorm2",
     "GradSimilarity",
+    "L2GradSimilarity",
     "Peer",
     "CORE",
     "linear",
