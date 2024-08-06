@@ -6,3 +6,4 @@ pytest-xdist
 psutil
 coverage
 pytest-cov
+pandas
