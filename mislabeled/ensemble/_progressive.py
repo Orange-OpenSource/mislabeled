@@ -7,13 +7,16 @@ import numpy as np
 from sklearn.base import clone
 from sklearn.ensemble import (
     AdaBoostClassifier,
+    AdaBoostRegressor,
     GradientBoostingClassifier,
+    GradientBoostingRegressor,
     HistGradientBoostingClassifier,
+    HistGradientBoostingRegressor,
 )
-from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.pipeline import make_pipeline, Pipeline
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression, SGDClassifier, SGDRegressor
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from ._base import AbstractEnsemble
 
@@ -26,8 +29,23 @@ def staged_fit(estimator, X, y):
     )
 
 
+@staged_fit.register(Pipeline)
+def _staged_fit_pipeline(estimator, X, y):
+    X = estimator[:-1].fit_transform(X, y) if len(estimator) > 1 else X
+    stages = staged_fit(estimator[-1], X, y)
+    return map(
+        lambda stage: Pipeline(
+            estimator[:-1].steps + [(estimator.steps[-1][0], stage)],
+            memory=estimator.memory,
+            verbose=estimator.verbose,
+        ),
+        stages,
+    )
+
+
 @staged_fit.register(HistGradientBoostingClassifier)
-def _staged_fit_hgb(estimator: HistGradientBoostingClassifier, X, y):
+@staged_fit.register(HistGradientBoostingRegressor)
+def _staged_fit_hgb(estimator, X, y):
     estimator.fit(X, y)
     shrinked = copy.deepcopy(estimator)
     for i in range(estimator.n_iter_):
@@ -38,7 +56,8 @@ def _staged_fit_hgb(estimator: HistGradientBoostingClassifier, X, y):
 
 
 @staged_fit.register(GradientBoostingClassifier)
-def _staged_fit_gb(estimator: GradientBoostingClassifier, X, y):
+@staged_fit.register(GradientBoostingRegressor)
+def _staged_fit_gb(estimator, X, y):
     estimator.fit(X, y)
     shrinked = copy.deepcopy(estimator)
     for i in range(estimator.n_estimators_):
@@ -52,7 +71,8 @@ def _staged_fit_gb(estimator: GradientBoostingClassifier, X, y):
 
 
 @staged_fit.register(AdaBoostClassifier)
-def _staged_fit_ada(estimator: AdaBoostClassifier, X, y):
+@staged_fit.register(AdaBoostRegressor)
+def _staged_fit_ada(estimator, X, y):
     estimator.fit(X, y)
     shrinked = copy.deepcopy(estimator)
     for i in range(len(estimator.estimators_)):
@@ -65,6 +85,8 @@ def _staged_fit_ada(estimator: AdaBoostClassifier, X, y):
 @staged_fit.register(SGDClassifier)
 @staged_fit.register(LogisticRegression)
 @staged_fit.register(MLPClassifier)
+@staged_fit.register(SGDRegressor)
+@staged_fit.register(MLPRegressor)
 def _staged_fit_gradient(estimator, X, y):
     original = copy.deepcopy(estimator)
     original.fit(X, y)
@@ -78,7 +100,8 @@ def _staged_fit_gradient(estimator, X, y):
 
 
 @staged_fit.register(DecisionTreeClassifier)
-def _staged_fit_dt(estimator: DecisionTreeClassifier, X, y):
+@staged_fit.register(DecisionTreeRegressor)
+def _staged_fit_dt(estimator, X, y):
     path = estimator.cost_complexity_pruning_path(X, y)
     for ccp_alpha in reversed(path.ccp_alphas):
         estimator.set_params(ccp_alpha=ccp_alpha)
@@ -118,10 +141,6 @@ class ProgressiveEnsemble(AbstractEnsemble):
             raise ValueError(
                 f"steps size should be a strictly positive integer, was : {self.steps}"
             )
-
-        while isinstance(base_model, Pipeline):
-            X = make_pipeline(base_model[:-1]).fit_transform(X, y)
-            base_model = base_model[-1]
 
         base_model = clone(base_model)
 

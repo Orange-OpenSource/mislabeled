@@ -44,15 +44,34 @@ def test_progressive_staged(estimator):
     np.testing.assert_array_almost_equal(baseline_ts, incr_ts, decimal=3)
 
 
-def test_pipeline_of_pipeline():
+def test_progressive_pipeline_of_pipeline():
 
+    estimator_pop = make_pipeline(
+        StandardScaler(),
+        make_pipeline(RBFSampler(random_state=1), SGDClassifier(random_state=1)),
+    )
     estimator = make_pipeline(
-        StandardScaler(), make_pipeline(RBFSampler(), SGDClassifier())
+        StandardScaler(), RBFSampler(random_state=1), SGDClassifier(random_state=1)
     )
     n_samples = int(1e4)
     X, y = make_classification(n_samples=n_samples)
     X = X.astype(np.float32)
 
-    AreaUnderMargin(estimator).trust_score(X, y)
+    ts_pop = AreaUnderMargin(estimator_pop).trust_score(X, y)
+    ts = AreaUnderMargin(estimator).trust_score(X, y)
 
-    assert True
+    np.testing.assert_array_almost_equal(ts, ts_pop, decimal=3)
+
+
+def test_progressive_one_element_pipeline():
+
+    estimator = SGDClassifier(random_state=1)
+    estimator_oep = make_pipeline(estimator)
+    n_samples = int(1e4)
+    X, y = make_classification(n_samples=n_samples)
+    X = X.astype(np.float32)
+
+    ts_oep = AreaUnderMargin(estimator_oep).trust_score(X, y)
+    ts = AreaUnderMargin(estimator).trust_score(X, y)
+
+    np.testing.assert_array_almost_equal(ts, ts_oep, decimal=3)
