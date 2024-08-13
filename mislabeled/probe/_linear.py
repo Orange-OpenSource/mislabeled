@@ -2,7 +2,7 @@ from functools import singledispatch, wraps
 from typing import NamedTuple
 
 import numpy as np
-from scipy.special import softmax
+from scipy.special import log_softmax, softmax
 from sklearn.base import is_classifier
 from sklearn.ensemble import (
     ExtraTreesClassifier,
@@ -28,7 +28,7 @@ from sklearn.linear_model import (
 )
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.neural_network._base import ACTIVATIONS
-from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.svm import LinearSVC, LinearSVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -54,6 +54,9 @@ class LinearClassifier(LinearModel):
     def predict_proba(self, X):
         return softmax(self.decision_function(X), axis=1)
 
+    def predict_log_proba(self, X):
+        return log_softmax(self.decision_function(X), axis=1)
+
     def predict(self, X):
         return np.argmax(self.decision_function(X), axis=1)
 
@@ -68,8 +71,9 @@ def linearize(estimator, X, y):
 
 @linearize.register(Pipeline)
 def linearize_pipeline(estimator, X, y):
-    Xt = make_pipeline(estimator[:-1]).transform(X) if X is not None else X
-    return linearize(estimator[-1], Xt, y)
+    if X is not None and len(estimator) > 1:
+        X = estimator[:-1].transform(X)
+    return linearize(estimator[-1], X, y)
 
 
 @linearize.register(LogisticRegression)

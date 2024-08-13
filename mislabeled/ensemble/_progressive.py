@@ -31,7 +31,8 @@ def staged_fit(estimator, X, y):
 
 @staged_fit.register(Pipeline)
 def _staged_fit_pipeline(estimator, X, y):
-    X = estimator[:-1].fit_transform(X, y) if len(estimator) > 1 else X
+    if X is not None and len(estimator) > 1:
+        X = estimator[:-1].fit_transform(X, y)
     stages = staged_fit(estimator[-1], X, y)
     return map(
         lambda stage: Pipeline(
