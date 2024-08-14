@@ -28,20 +28,13 @@ def test_progressive_staged(estimator):
     X, y = make_classification(n_samples=n_samples)
     X = X.astype(np.float32)
 
-    estimator.fit(X, y)
-    baseline_ts = []
-    for y_pred in estimator.staged_decision_function(X):
+    detector_staged_fit = AreaUnderMargin(estimator, staging="fit")
+    ts_staged_fit = detector_staged_fit.trust_score(X, y)
 
-        if y_pred.ndim == 1 or y_pred.shape[1] == 1:
-            y_pred = np.stack((-y_pred, y_pred), axis=1)
+    detector_staged_predict = AreaUnderMargin(estimator, staging="predict")
+    ts_staged_predict = detector_staged_predict.trust_score(X, y)
 
-        baseline_ts.append(Margin(Precomputed(y_pred))(None, None, y))
-    baseline_ts = np.sum(baseline_ts, axis=0)
-
-    detector_incr = AreaUnderMargin(estimator)
-    incr_ts = detector_incr.trust_score(X, y)
-
-    np.testing.assert_array_almost_equal(baseline_ts, incr_ts, decimal=3)
+    np.testing.assert_array_almost_equal(ts_staged_predict, ts_staged_fit, decimal=3)
 
 
 def test_progressive_pipeline_of_pipeline():

@@ -18,6 +18,8 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
+from mislabeled.probe import Precomputed, staged
+
 from ._base import AbstractEnsemble
 
 
@@ -145,7 +147,34 @@ class ProgressiveEnsemble(AbstractEnsemble):
 
         base_model = clone(base_model)
 
-        stages = staged_fit(base_model, X, y)
-        stages = islice(stages, None, None, self.steps)
-        probe_scores = (probe(stage, X, y) for stage in stages)
+        if self.staging == "fit":
+            stages = staged_fit(base_model, X, y)
+            stages = islice(stages, None, None, self.steps)
+            probe_scores = (probe(stage, X, y) for stage in stages)
+
+        elif self.staging == "predict":
+            probe = copy.deepcopy(probe)
+
+            prev_inner, inner = None, probe
+            while hasattr(inner, "inner"):
+                prev_inner = inner
+                inner = inner.inner
+
+            base_model.fit(X, y)
+            stages = staged(inner)(base_model, X, y)
+            stages = islice(stages, None, None, self.steps)
+
+            def staged_probe(stage, prev_inner=None):
+                if prev_inner is None:
+                    return stage
+                prev_inner.inner = Precomputed(stage)
+                return probe(base_model, X, y)
+
+            probe_scores = (staged_probe(stage, prev_inner) for stage in stages)
+
+        else:
+            raise ValueError(
+                f"staging should be either 'fit' or 'predict', was : {self.staging}"
+            )
+
         return probe_scores, {}

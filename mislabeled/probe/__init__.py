@@ -57,7 +57,8 @@ from scipy.stats import entropy
 
 class Probabilities:
 
-    def __call__(self, estimator, X, y):
+    @staticmethod
+    def __call__(estimator, X, y):
         return probabilities(estimator, X, y)
 
 
@@ -70,7 +71,8 @@ def probabilities(estimator, X, y):
 
 class Logits:
 
-    def __call__(self, estimator, X, y):
+    @staticmethod
+    def __call__(estimator, X, y):
         return logits(estimator, X, y)
 
 
@@ -83,7 +85,9 @@ def logits(estimator, X, y):
 
 # TODO: Better Name ?
 class Scores:
-    def __call__(self, estimator, X, y):
+
+    @staticmethod
+    def __call__(estimator, X, y):
         if hasattr(estimator, "decision_function"):
             return logits(estimator, X, y)
         else:
@@ -91,7 +95,9 @@ class Scores:
 
 
 class Predictions:
-    def __call__(self, estimator, X, y):
+
+    @staticmethod
+    def __call__(estimator, X, y):
         return estimator.predict(X)
 
 
@@ -234,3 +240,70 @@ class Outliers(Maximize):
 
     def __call__(self, estimator, X, y):
         return estimator.score_samples(X)
+
+
+class StagedLogits:
+
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        staged_logits = estimator.staged_decision_function(X)
+        for logits in staged_logits:
+            if logits.ndim == 1 or logits.shape[1] == 1:
+                logits = np.stack((-logits, logits), axis=1)
+            yield logits
+
+
+class StagedProbabilities:
+
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        staged_probabilities = estimator.staged_predict_proba(X)
+        for probabilities in staged_probabilities:
+            if probabilities.ndim == 1 or probabilities.shape[1] == 1:
+                probabilities = np.stack((1 - probabilities, probabilities), axis=1)
+            yield probabilities
+
+
+class StagedPredictions:
+
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        return estimator.staged_predict(X)
+
+
+class StagedScores:
+
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        if hasattr(estimator, "staged_decision_function"):
+            return StagedLogits()(estimator, X, y)
+        else:
+            return StagedProbabilities()(estimator, X, y)
+
+
+@singledispatch
+def staged(probe):
+    raise NotImplementedError(
+        f"{probe.__class__.__name__} doesn't have a staged"
+        " equivalent. You can register the staged equivalent to staged."
+    )
+
+
+@staged.register(Logits)
+def staged_logits(probe):
+    return StagedLogits()
+
+
+@staged.register(Scores)
+def staged_scores(probe):
+    return StagedScores()
+
+
+@staged.register(Probabilities)
+def staged_probabilities(probe):
+    return StagedProbabilities()
+
+
+@staged.register(Predictions)
+def staged_predictions(probe):
+    return StagedPredictions()

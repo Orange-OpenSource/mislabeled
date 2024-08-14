@@ -222,14 +222,15 @@ class AreaUnderMargin(ModelProbingDetector):
         NeurIPS 2020.
     """
 
-    def __init__(self, base_model, steps=1):
+    def __init__(self, base_model, steps=1, staging="fit"):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(steps=steps),
+            ensemble=ProgressiveEnsemble(steps=steps, staging=staging),
             probe="margin",
             aggregate="sum",
         )
         self.steps = steps
+        self.staging = staging
 
 
 class TracIn(ModelProbingDetector):
@@ -263,14 +264,15 @@ class ForgetScores(ModelProbingDetector):
         ICLR 2019.
     """
 
-    def __init__(self, base_model, steps=1):
+    def __init__(self, base_model, steps=1, staging="fit"):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(steps=steps),
+            ensemble=ProgressiveEnsemble(steps=steps, staging=staging),
             probe="accuracy",
             aggregate=forget,
         )
         self.steps = steps
+        self.staging = staging
 
 
 class VoLG(ModelProbingDetector):
