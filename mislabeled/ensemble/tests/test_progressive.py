@@ -7,8 +7,11 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.detect.detectors import AreaUnderMargin
-from mislabeled.probe import Margin, Precomputed
+from mislabeled.probe import Logits, Margin
+
+from .._progressive import ProgressiveEnsemble, staged_probe
 
 
 @pytest.mark.parametrize(
@@ -35,6 +38,66 @@ def test_progressive_staged(estimator):
     ts_staged_predict = detector_staged_predict.trust_score(X, y)
 
     np.testing.assert_array_almost_equal(ts_staged_predict, ts_staged_fit, decimal=3)
+
+
+def test_progressive_predict_donothing():
+
+    estimator = HistGradientBoostingClassifier(
+        early_stopping=False, max_iter=100, random_state=1
+    )
+
+    n_samples = int(1e4)
+    X, y = make_classification(n_samples=n_samples)
+    X = X.astype(np.float32)
+
+    class DoNothing:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def __call__(self, estimator, X, y):
+            return self.inner(estimator, X, y)
+
+    detector_donothing_probe = ModelProbingDetector(
+        estimator,
+        ProgressiveEnsemble(staging="predict"),
+        DoNothing(Margin(Logits())),
+        "sum",
+    )
+    detector_probe_donothing = ModelProbingDetector(
+        estimator,
+        ProgressiveEnsemble(staging="predict"),
+        Margin(DoNothing(Logits())),
+        "sum",
+    )
+
+    np.testing.assert_array_almost_equal(
+        detector_donothing_probe.trust_score(X, y),
+        detector_probe_donothing.trust_score(X, y),
+        decimal=3,
+    )
+
+
+def test_progressive_predict_structure():
+
+    estimator = HistGradientBoostingClassifier(
+        early_stopping=False, max_iter=100, random_state=1
+    )
+
+    n_samples = int(1e4)
+    X, y = make_classification(n_samples=n_samples)
+    X = X.astype(np.float32)
+
+    estimator.fit(X, y)
+
+    class DoNothing:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def __call__(self, estimator, X, y):
+            return self.inner(estimator, X, y)
+
+    staged_margin_logits = staged_probe(DoNothing(DoNothing(Margin(Logits()))))
+    assert len(list(staged_margin_logits(estimator, X, y))) == 100
 
 
 def test_progressive_pipeline_of_pipeline():

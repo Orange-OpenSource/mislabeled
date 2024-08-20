@@ -18,7 +18,15 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from mislabeled.probe import Precomputed, staged
+from mislabeled.probe import (
+    Logits,
+    normalize_logits,
+    normalize_probabilities,
+    Precomputed,
+    Predictions,
+    Probabilities,
+    Scores,
+)
 
 from ._base import AbstractEnsemble
 
@@ -112,6 +120,77 @@ def _staged_fit_dt(estimator, X, y):
         yield estimator
 
 
+@singledispatch
+def staged_probe(probe):
+    if hasattr(probe, "inner"):
+        probe = copy.deepcopy(probe)
+        staged_inner = staged_probe(probe.inner)
+
+        def staged_outer(estimator, X, y):
+            stages = staged_inner(estimator, X, y)
+            for stage in stages:
+                probe.inner = Precomputed(stage)
+                yield probe(estimator, X, y)
+
+        return staged_outer
+    else:
+        raise NotImplementedError(
+            f"{probe.__class__.__name__} doesn't have a staged"
+            " equivalent. You can register the staged equivalent to staged."
+        )
+
+
+class StagedLogits:
+
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        return map(normalize_logits, estimator.staged_decision_function(X))
+
+
+class StagedProbabilities:
+
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        return map(normalize_probabilities, estimator.staged_predict_proba(X))
+
+
+class StagedPredictions:
+
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        return estimator.staged_predict(X)
+
+
+class StagedScores:
+
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        if hasattr(estimator, "staged_decision_function"):
+            return map(normalize_logits, estimator.staged_decision_function(X))
+        else:
+            return map(normalize_probabilities, estimator.staged_predict_proba(X))
+
+
+@staged_probe.register(Logits)
+def _staged_logits(probe):
+    return StagedLogits()
+
+
+@staged_probe.register(Scores)
+def _staged_scores(probe):
+    return StagedScores()
+
+
+@staged_probe.register(Probabilities)
+def _staged_probabilities(probe):
+    return StagedProbabilities()
+
+
+@staged_probe.register(Predictions)
+def _staged_predictions(probe):
+    return StagedPredictions()
+
+
 class ProgressiveEnsemble(AbstractEnsemble):
     """Ensemble to probe a model through its training dynamics.
 
@@ -119,27 +198,19 @@ class ProgressiveEnsemble(AbstractEnsemble):
     ----------
     steps : int
         The model is probed every n_steps.
+
+    staging : "fit" | "predict"
+        Whether the progressive probing is done at training or inference.
+        Training by default, inference might be preferable for ensembling models but
+        is not supported by all probes.
     """
 
-    def __init__(self, *, steps=1):
+    def __init__(self, *, steps=1, staging="fit"):
         self.steps = steps
+        self.staging = staging
 
     def probe_model(self, base_model, X, y, probe):
-        """A reference implementation of a fitting function.
 
-        Parameters
-        ----------
-        X : {array-like, sparse matrix}, shape (n_samples, n_features)
-            The training input samples.
-        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
-            The target values (class labels in classification, real numbers in
-            regression).
-
-        Returns
-        -------
-        self : object
-            Returns self.
-        """
         if self.steps is not numbers.Integral and self.steps <= 0:
             raise ValueError(
                 f"steps size should be a strictly positive integer, was : {self.steps}"
@@ -153,24 +224,11 @@ class ProgressiveEnsemble(AbstractEnsemble):
             probe_scores = (probe(stage, X, y) for stage in stages)
 
         elif self.staging == "predict":
-            probe = copy.deepcopy(probe)
-
-            prev_inner, inner = None, probe
-            while hasattr(inner, "inner"):
-                prev_inner = inner
-                inner = inner.inner
 
             base_model.fit(X, y)
-            stages = staged(inner)(base_model, X, y)
+            stages = staged_probe(probe)(base_model, X, y)
             stages = islice(stages, None, None, self.steps)
-
-            def staged_probe(stage, prev_inner=None):
-                if prev_inner is None:
-                    return stage
-                prev_inner.inner = Precomputed(stage)
-                return probe(base_model, X, y)
-
-            probe_scores = (staged_probe(stage, prev_inner) for stage in stages)
+            probe_scores = stages
 
         else:
             raise ValueError(
