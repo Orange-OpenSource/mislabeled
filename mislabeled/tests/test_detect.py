@@ -142,6 +142,7 @@ detectors = [
             init="zero",
         ),
         steps=10,
+        staging="predict",
         n_directions=10,
         epsilon=0.1,
         random_state=seed,

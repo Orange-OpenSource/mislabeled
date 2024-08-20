@@ -1,3 +1,5 @@
+from functools import partial
+
 import numpy as np
 import pytest
 from sklearn.datasets import make_classification
@@ -8,7 +10,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from mislabeled.detect import ModelProbingDetector
-from mislabeled.detect.detectors import AreaUnderMargin
+from mislabeled.detect.detectors import AreaUnderMargin, VoSG
 from mislabeled.probe import Logits, Margin
 
 from .._progressive import ProgressiveEnsemble, staged_probe
@@ -18,23 +20,30 @@ from .._progressive import ProgressiveEnsemble, staged_probe
     "estimator",
     [
         HistGradientBoostingClassifier(
-            early_stopping=False, max_iter=100, random_state=1
+            early_stopping=False, max_iter=10, random_state=1
         ),
         HistGradientBoostingClassifier(
-            early_stopping=True, max_iter=100, random_state=1
+            early_stopping=True, max_iter=10, random_state=1
         ),
-        GradientBoostingClassifier(n_estimators=20, random_state=1),
+        GradientBoostingClassifier(n_estimators=10, random_state=1),
     ],
 )
-def test_progressive_staged(estimator):
+@pytest.mark.parametrize(
+    "detector",
+    [
+        AreaUnderMargin,
+        partial(VoSG, random_state=1),
+    ],
+)
+def test_progressive_staged(estimator, detector):
     n_samples = int(1e4)
     X, y = make_classification(n_samples=n_samples)
     X = X.astype(np.float32)
 
-    detector_staged_fit = AreaUnderMargin(estimator, staging="fit")
+    detector_staged_fit = detector(estimator, staging="fit")
     ts_staged_fit = detector_staged_fit.trust_score(X, y)
 
-    detector_staged_predict = AreaUnderMargin(estimator, staging="predict")
+    detector_staged_predict = detector(estimator, staging="predict")
     ts_staged_predict = detector_staged_predict.trust_score(X, y)
 
     np.testing.assert_array_almost_equal(ts_staged_predict, ts_staged_fit, decimal=3)

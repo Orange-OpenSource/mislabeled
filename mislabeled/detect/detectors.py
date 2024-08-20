@@ -292,11 +292,12 @@ class VoLG(ModelProbingDetector):
         epsilon=0.1,
         n_directions=20,
         steps=1,
+        staging="fit",
         random_state=None,
     ):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(steps=steps),
+            ensemble=ProgressiveEnsemble(steps=steps, staging=staging),
             probe=FiniteDiffSensitivity(
                 Confidence(Logits()),
                 epsilon=epsilon,
@@ -308,6 +309,7 @@ class VoLG(ModelProbingDetector):
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.steps = steps
+        self.staging = staging
         self.random_state = random_state
 
 
@@ -321,11 +323,12 @@ class VoSG(ModelProbingDetector):
         epsilon=0.1,
         n_directions=20,
         steps=1,
+        staging="fit",
         random_state=None,
     ):
         super().__init__(
             base_model=base_model,
-            ensemble=ProgressiveEnsemble(steps=steps),
+            ensemble=ProgressiveEnsemble(steps=steps, staging=staging),
             probe=FiniteDiffSensitivity(
                 Confidence(Probabilities()),
                 epsilon=epsilon,
@@ -337,6 +340,7 @@ class VoSG(ModelProbingDetector):
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.steps = steps
+        self.staging = staging
         self.random_state = random_state
 
 

@@ -4,6 +4,7 @@ from functools import singledispatch
 from itertools import islice
 
 import numpy as np
+import scipy.sparse as sp
 from sklearn.base import clone
 from sklearn.ensemble import (
     AdaBoostClassifier,
@@ -19,6 +20,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from mislabeled.probe import (
+    FiniteDiffSensitivity,
     Logits,
     normalize_logits,
     normalize_probabilities,
@@ -169,6 +171,39 @@ class StagedScores:
             return map(normalize_logits, estimator.staged_decision_function(X))
         else:
             return map(normalize_probabilities, estimator.staged_predict_proba(X))
+
+
+class StagedFiniteDiffSensitivity(FiniteDiffSensitivity):
+
+    def __call__(self, estimator, X, y):
+
+        X = X.toarray() if sp.issparse(X) else X
+
+        directions = self.directions(X)
+
+        references = staged_probe(self.inner)(estimator, X, y)
+        stages = zip(
+            *[
+                staged_probe(self.inner)(estimator, X + direction * self.epsilon, y)
+                for direction in directions
+            ]
+        )
+
+        for reference, scores in zip(references, stages):
+            scores = np.stack(scores, axis=1)
+            scores -= reference.reshape(-1, 1)
+            scores /= self.epsilon
+            yield scores
+
+
+@staged_probe.register(FiniteDiffSensitivity)
+def _staged_fds(probe):
+    return StagedFiniteDiffSensitivity(
+        probe.inner,
+        epsilon=probe.epsilon,
+        n_directions=probe.n_directions,
+        seed=probe.seed,
+    )
 
 
 @staged_probe.register(Logits)
