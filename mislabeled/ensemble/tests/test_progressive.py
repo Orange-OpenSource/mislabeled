@@ -7,8 +7,11 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from mislabeled.detect import ModelProbingDetector
 from mislabeled.detect.detectors import AreaUnderMargin
-from mislabeled.probe import Margin, Precomputed
+from mislabeled.probe import Logits, Margin
+
+from .._progressive import ProgressiveEnsemble, staged_probe
 
 
 @pytest.mark.parametrize(
@@ -28,20 +31,73 @@ def test_progressive_staged(estimator):
     X, y = make_classification(n_samples=n_samples)
     X = X.astype(np.float32)
 
+    detector_staged_fit = AreaUnderMargin(estimator, staging="fit")
+    ts_staged_fit = detector_staged_fit.trust_score(X, y)
+
+    detector_staged_predict = AreaUnderMargin(estimator, staging="predict")
+    ts_staged_predict = detector_staged_predict.trust_score(X, y)
+
+    np.testing.assert_array_almost_equal(ts_staged_predict, ts_staged_fit, decimal=3)
+
+
+def test_progressive_predict_donothing():
+
+    estimator = HistGradientBoostingClassifier(
+        early_stopping=False, max_iter=100, random_state=1
+    )
+
+    n_samples = int(1e4)
+    X, y = make_classification(n_samples=n_samples)
+    X = X.astype(np.float32)
+
+    class DoNothing:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def __call__(self, estimator, X, y):
+            return self.inner(estimator, X, y)
+
+    detector_donothing_probe = ModelProbingDetector(
+        estimator,
+        ProgressiveEnsemble(staging="predict"),
+        DoNothing(Margin(Logits())),
+        "sum",
+    )
+    detector_probe_donothing = ModelProbingDetector(
+        estimator,
+        ProgressiveEnsemble(staging="predict"),
+        Margin(DoNothing(Logits())),
+        "sum",
+    )
+
+    np.testing.assert_array_almost_equal(
+        detector_donothing_probe.trust_score(X, y),
+        detector_probe_donothing.trust_score(X, y),
+        decimal=3,
+    )
+
+
+def test_progressive_predict_structure():
+
+    estimator = HistGradientBoostingClassifier(
+        early_stopping=False, max_iter=100, random_state=1
+    )
+
+    n_samples = int(1e4)
+    X, y = make_classification(n_samples=n_samples)
+    X = X.astype(np.float32)
+
     estimator.fit(X, y)
-    baseline_ts = []
-    for y_pred in estimator.staged_decision_function(X):
 
-        if y_pred.ndim == 1 or y_pred.shape[1] == 1:
-            y_pred = np.stack((-y_pred, y_pred), axis=1)
+    class DoNothing:
+        def __init__(self, inner):
+            self.inner = inner
 
-        baseline_ts.append(Margin(Precomputed(y_pred))(None, None, y))
-    baseline_ts = np.sum(baseline_ts, axis=0)
+        def __call__(self, estimator, X, y):
+            return self.inner(estimator, X, y)
 
-    detector_incr = AreaUnderMargin(estimator)
-    incr_ts = detector_incr.trust_score(X, y)
-
-    np.testing.assert_array_almost_equal(baseline_ts, incr_ts, decimal=3)
+    staged_margin_logits = staged_probe(DoNothing(DoNothing(Margin(Logits()))))
+    assert len(list(staged_margin_logits(estimator, X, y))) == 100
 
 
 def test_progressive_pipeline_of_pipeline():

@@ -1,3 +1,9 @@
+from functools import singledispatch
+
+import numpy as np
+from scipy.special import xlogy
+from scipy.stats import entropy
+
 from ._adjust import Adjust
 from ._complexity import ParameterCount, ParamNorm2
 from ._grads import GradSimilarity, L2GradSimilarity
@@ -48,21 +54,15 @@ __all__ = [
     "linearize",
 ]
 
-from functools import singledispatch
-
-import numpy as np
-from scipy.special import xlogy
-from scipy.stats import entropy
-
 
 class Probabilities:
 
-    def __call__(self, estimator, X, y):
-        return probabilities(estimator, X, y)
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        return normalize_probabilities(estimator.predict_proba(X))
 
 
-def probabilities(estimator, X, y):
-    probabilities = estimator.predict_proba(X)
+def normalize_probabilities(probabilities):
     if probabilities.ndim == 1 or probabilities.shape[1] == 1:
         probabilities = np.stack((1 - probabilities, probabilities), axis=1)
     return probabilities
@@ -70,12 +70,12 @@ def probabilities(estimator, X, y):
 
 class Logits:
 
-    def __call__(self, estimator, X, y):
-        return logits(estimator, X, y)
+    @staticmethod
+    def __call__(estimator, X, y=None):
+        return normalize_logits(estimator.decision_function(X))
 
 
-def logits(estimator, X, y):
-    logits = estimator.decision_function(X)
+def normalize_logits(logits):
     if logits.ndim == 1 or logits.shape[1] == 1:
         logits = np.stack((-logits, logits), axis=1)
     return logits
@@ -83,15 +83,19 @@ def logits(estimator, X, y):
 
 # TODO: Better Name ?
 class Scores:
-    def __call__(self, estimator, X, y):
+
+    @staticmethod
+    def __call__(estimator, X, y):
         if hasattr(estimator, "decision_function"):
-            return logits(estimator, X, y)
+            return normalize_logits(estimator.decision_function(X))
         else:
-            return probabilities(estimator, X, y)
+            return normalize_probabilities(estimator.predict_proba(X))
 
 
 class Predictions:
-    def __call__(self, estimator, X, y):
+
+    @staticmethod
+    def __call__(estimator, X, y):
         return estimator.predict(X)
 
 

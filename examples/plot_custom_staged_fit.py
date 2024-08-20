@@ -54,7 +54,7 @@ y_noisy_train = y_noisy_train[~unlabeled]
 
 
 @staged_fit.register(MLPClassifier)
-def _staged_fit_mlp(estimator: MLPClassifier, X, y):
+def batched_staged_fit_mlp(estimator: MLPClassifier, X, y):
     n_samples = X.shape[0]
     classes = np.unique(y)
     n_iter = estimator.get_params()["max_iter"]
