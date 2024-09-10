@@ -1,6 +1,6 @@
 flake8
 isort
-black==24.2
+black==24.3.0
 pytest
 pytest-xdist
 psutil
