@@ -6,6 +6,7 @@
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
+
 # TODO: better names for min/max?
 class Minimize:
     maximize = False
