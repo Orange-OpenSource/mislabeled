@@ -1,4 +1,13 @@
 #! /usr/bin/env python
+
+# Software Name : mislabeled
+# SPDX-FileCopyrightText: Copyright (c) Orange Innovation
+# SPDX-License-Identifier: MIT
+#
+# This software is distributed under the MIT license,
+# see the "LICENSE.md" file for more details
+# or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
+
 """A template for scikit-learn compatible packages."""
 
 import codecs

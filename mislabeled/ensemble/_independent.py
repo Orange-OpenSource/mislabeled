@@ -1,3 +1,11 @@
+# Software Name : mislabeled
+# SPDX-FileCopyrightText: Copyright (c) Orange Innovation
+# SPDX-License-Identifier: MIT
+#
+# This software is distributed under the MIT license,
+# see the "LICENSE.md" file for more details
+# or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
+
 import numpy as np
 from sklearn.model_selection import cross_validate, LeaveOneOut
 from sklearn.utils.validation import _num_samples
