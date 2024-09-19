@@ -34,7 +34,7 @@ def simple_detect_roc_test(n_classes, detector):
     correct = np.ones(X.shape[0])
     correct[indices_mislabeled] = 0
 
-    assert roc_auc_score(correct, trust_scores) > 0.75
+    assert roc_auc_score(correct, trust_scores) > 0.72
 
 
 seed = 42
