@@ -8,8 +8,6 @@
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
-"""A template for scikit-learn compatible packages."""
-
 import codecs
 
 from setuptools import find_packages, setup
@@ -19,10 +17,10 @@ DESCRIPTION = "Detect mislabeled examples in machine learning datasets"
 with codecs.open("README.md", encoding="utf-8-sig") as f:
     LONG_DESCRIPTION = f.read()
 MAINTAINER = "T. George"
-MAINTAINER_EMAIL = "tfjgeorge@gmail.com"
-URL = "https://github.com/scikit-learn-contrib/project-template"
+MAINTAINER_EMAIL = "thomas.george@orange.com"
+URL = "https://github.com/orange-opensource/mislabeled"
 LICENSE = "new BSD"
-DOWNLOAD_URL = "https://github.com/scikit-learn-contrib/project-template"
+DOWNLOAD_URL = "https://github.com/orange-opensource/mislabeled"
 USE_SCM_VERSION = {"local_scheme": "no-local-version"}
 SETUP_REQUIRES = ["setuptools_scm"]
 INSTALL_REQUIRES = [
