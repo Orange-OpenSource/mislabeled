@@ -8,7 +8,7 @@
 
 from abc import ABCMeta, abstractmethod
 
-from sklearn.base import BaseEstimator, ClassifierMixin, clone, MetaEstimatorMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, MetaEstimatorMixin, clone
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.multiclass import check_classification_targets

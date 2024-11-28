@@ -23,7 +23,7 @@ different model families on a non-linearly separable dataset (XOR).
 # %%
 
 import numpy as np
-from joblib import delayed, Parallel
+from joblib import Parallel, delayed
 from matplotlib import pyplot as plt
 from scipy.stats import pearsonr
 from sklearn.datasets import make_blobs

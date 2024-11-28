@@ -7,7 +7,7 @@
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
 import numpy as np
-from joblib import delayed, Parallel
+from joblib import Parallel, delayed
 from sklearn.base import clone
 from sklearn.utils import safe_mask
 from sklearn.utils.validation import _num_samples

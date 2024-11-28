@@ -43,12 +43,12 @@ def blobs_1_outlier_y(n_samples=1000, seed=1):
     # project to higher dimension space
     X_p = RBFSampler(gamma="scale", n_components=20, random_state=seed).fit_transform(X)
 
-    # sample random direction
-    dir = rng.normal(0, 1, size=(20))
-    dir /= np.linalg.norm(dir)
+    # sample random directions
+    directions = rng.normal(0, 1, size=(20))
+    directions /= np.linalg.norm(directions)
 
     # true target
-    y = X_p @ dir
+    y = X_p @ directions
 
     # swap min and max values
     indices_mislabeled = [np.argmin(y), np.argmax(y)]

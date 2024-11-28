@@ -7,7 +7,7 @@
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
 import numpy as np
-from sklearn.model_selection import cross_validate, LeaveOneOut
+from sklearn.model_selection import LeaveOneOut, cross_validate
 from sklearn.utils.validation import _num_samples
 
 from ._base import AbstractEnsemble
@@ -32,7 +32,6 @@ class IndependentEnsemble(AbstractEnsemble):
         self.n_jobs = n_jobs
 
     def probe_model(self, base_model, X, y, probe):
-
         n_samples = _num_samples(X)
 
         def no_scoring(estimator, X, y):

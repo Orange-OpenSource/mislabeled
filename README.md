@@ -17,3 +17,17 @@ If you use this library in a research project, please consider citing the corres
       url={https://openreview.net/forum?id=3YlOr7BHkx},
       note={}
     }
+
+## Development
+
+Install [hatch](#https://hatch.pypa.io/latest/install/).
+
+To format and lint:
+```console
+hatch fmt
+```
+
+To run tests:
+```console
+hatch test
+```

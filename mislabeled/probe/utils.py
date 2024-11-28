@@ -7,11 +7,11 @@
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
 from mislabeled.probe import (
+    L1,
+    L2,
     Accuracy,
     Confidence,
     CrossEntropy,
-    L1,
-    L2,
     Margin,
     Predictions,
     Probabilities,
@@ -36,4 +36,4 @@ def check_probe(probe):
         return probe
 
     else:
-        raise TypeError(f"${probe} not supported")
+        raise TypeError(f"{probe} not supported")

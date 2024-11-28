@@ -30,12 +30,12 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from mislabeled.probe import (
     FiniteDiffSensitivity,
     Logits,
-    normalize_logits,
-    normalize_probabilities,
     Precomputed,
     Predictions,
     Probabilities,
     Scores,
+    normalize_logits,
+    normalize_probabilities,
 )
 
 from ._base import AbstractEnsemble
@@ -151,28 +151,24 @@ def staged_probe(probe):
 
 
 class StagedLogits:
-
     @staticmethod
     def __call__(estimator, X, y=None):
         return map(normalize_logits, estimator.staged_decision_function(X))
 
 
 class StagedProbabilities:
-
     @staticmethod
     def __call__(estimator, X, y=None):
         return map(normalize_probabilities, estimator.staged_predict_proba(X))
 
 
 class StagedPredictions:
-
     @staticmethod
     def __call__(estimator, X, y=None):
         return estimator.staged_predict(X)
 
 
 class StagedScores:
-
     @staticmethod
     def __call__(estimator, X, y=None):
         if hasattr(estimator, "staged_decision_function"):
@@ -182,9 +178,7 @@ class StagedScores:
 
 
 class StagedFiniteDiffSensitivity(FiniteDiffSensitivity):
-
     def __call__(self, estimator, X, y):
-
         X = X.toarray() if sp.issparse(X) else X
 
         directions = self.directions(X)
@@ -253,7 +247,6 @@ class ProgressiveEnsemble(AbstractEnsemble):
         self.staging = staging
 
     def probe_model(self, base_model, X, y, probe):
-
         if self.steps is not numbers.Integral and self.steps <= 0:
             raise ValueError(
                 f"steps size should be a strictly positive integer, was : {self.steps}"
@@ -267,7 +260,6 @@ class ProgressiveEnsemble(AbstractEnsemble):
             probe_scores = (probe(stage, X, y) for stage in stages)
 
         elif self.staging == "predict":
-
             base_model.fit(X, y)
             stages = staged_probe(probe)(base_model, X, y)
             stages = islice(stages, None, None, self.steps)

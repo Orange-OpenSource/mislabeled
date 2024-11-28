@@ -1,9 +1,0 @@
-flake8
-isort
-black==24.2
-pytest
-pytest-xdist
-psutil
-coverage
-pytest-cov
-pandas

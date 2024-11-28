@@ -49,13 +49,11 @@ class LinearModel(NamedTuple):
 
 
 class LinearRegressor(LinearModel):
-
     def predict(self, X):
         return X @ self.coef + self.intercept
 
 
 class LinearClassifier(LinearModel):
-
     def decision_function(self, X):
         return X @ self.coef + self.intercept
 
@@ -144,7 +142,6 @@ def linearize_trees(
 @linearize.register(MLPClassifier)
 @linearize.register(MLPRegressor)
 def linearize_mlp(estimator, X, y):
-
     X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
 
     # Get output of last hidden layer

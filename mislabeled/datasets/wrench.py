@@ -57,7 +57,7 @@ def fetch_wrench(name, cache_folder=None, split="train"):
     NeurIPS Datasets Track 2021.
     """
 
-    if split not in WRENCH_SPLIT_FILES.keys():
+    if split not in WRENCH_SPLIT_FILES:
         raise ValueError(f"split should be in {WRENCH_SPLIT_FILES.keys()} was {split}")
 
     if cache_folder is None:

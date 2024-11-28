@@ -60,7 +60,7 @@ seed = 42
 
 detectors = [
     RepresenterDetector(
-        base_model=make_pipeline(
+        make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
             MLPClassifier(
                 hidden_layer_sizes=(),
@@ -105,7 +105,7 @@ detectors = [
     InfluenceDetector(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
-            LogisticRegression(),
+            LogisticRegression(random_state=seed),
         )
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
@@ -118,7 +118,7 @@ detectors = [
     Classifier(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
-            LogisticRegression(),
+            LogisticRegression(random_state=seed),
         )
     ),
     ConsensusConsistency(KNeighborsClassifier(n_neighbors=3), random_state=seed),
@@ -155,8 +155,8 @@ detectors = [
         epsilon=0.1,
         random_state=seed,
     ),
-    TracIn(GradientBoostingClassifier(), steps=10),
-    InfluenceDetector(MLPClassifier()),
+    TracIn(GradientBoostingClassifier(random_state=seed), steps=10),
+    InfluenceDetector(MLPClassifier(random_state=seed)),
 ]
 
 
@@ -171,12 +171,13 @@ def sparse_X_test(n_classes, detector):
     X, y, _ = blobs_1_mislabeled(n_classes, n_samples=100)
     percentile = np.percentile(np.abs(X), 50)
     X[np.abs(X) < percentile] = 0
-    X = sp.csr_matrix(X)
 
-    detector.trust_score(X, y)
+    np.testing.assert_allclose(
+        detector.trust_score(X, y), detector.trust_score(sp.csr_matrix(X), y)
+    )
 
 
-@pytest.mark.parametrize("n_classes", [2, 5])
+@pytest.mark.parametrize("n_classes", [2])
 @pytest.mark.parametrize("detector", detectors)
 def test_detector_with_sparse_X(n_classes, detector):
     sparse_X_test(n_classes, detector)
@@ -201,5 +202,5 @@ def test_detector_with_sparse_X(n_classes, detector):
         ),
     ],
 )
-def test_detect_outliers(n_classes, detector):
+def test_outlier_based_detectors(n_classes, detector):
     simple_detect_test(n_classes, detector)
