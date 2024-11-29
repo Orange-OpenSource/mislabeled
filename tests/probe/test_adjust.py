@@ -6,6 +6,8 @@
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
+import math
+
 import numpy as np
 from sklearn.datasets import make_moons
 from sklearn.linear_model import LogisticRegression
@@ -23,4 +25,4 @@ def test_means_per_class_when_adjusted_are_equals():
     confidence = Confidence(Adjust(Probabilities()))
     c = confidence(logreg, X, y)
 
-    assert np.mean(c[y == 0]) == np.mean(c[y == 1])
+    assert math.isclose(np.mean(c[y == 0]), np.mean(c[y == 1]))
