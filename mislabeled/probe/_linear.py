@@ -126,11 +126,14 @@ def linearize_trees(
     X,
     y,
     default_linear_model=dict(
-        classification=LogisticRegressionCV(max_iter=1000, n_jobs=-1),
-        regression=RidgeCV(),
+        classification=LogisticRegressionCV(
+            max_iter=1000, fit_intercept=False, n_jobs=-1
+        ),
+        regression=RidgeCV(fit_intercept=False),
     ),
 ):
     leaves = OneHotEncoder().fit_transform(estimator.apply(X).reshape(X.shape[0], -1))
+    leaves = leaves / np.sqrt(leaves.sum(axis=0))
     if is_classifier(estimator):
         linear = default_linear_model["classification"]
     else:

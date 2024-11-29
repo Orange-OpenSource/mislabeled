@@ -1,8 +1,51 @@
-# Model-probing mislabeled examples detection in machine learning datasets
+# mislabeled
 
-EN. Detect mislabeled examples in machine learning dataset, using the 4 components framework described in the paper [Mislabeled examples detection viewed as probing machine learning models: concepts, survey and extensive benchmark](https://openreview.net/forum?id=3YlOr7BHkx), which allows the implementation of a variety of model-probing detection methods.
+> Model-probing mislabeled examples detection in machine learning datasets
 
-FR. Détection d'exemples mal-étiquetés dans des jeux de données d'apprentissage automatique, en utilisant les 4 composants décrits dans l'article [Mislabeled examples detection viewed as probing machine learning models: concepts, survey and extensive benchmark](https://openreview.net/forum?id=3YlOr7BHkx), qui permet d'implémenter une multitude de méthodes de détection par sondage de modèle.
+A `ModelProbingDetector` assigns `trust_scores` to training examples $(x, y)$ from a dataset by `probing` an `Ensemble` of machine learning `model`.
+
+## Install
+
+```console
+pip install git+https://github.com/orange-opensource/mislabeled
+```
+
+## Find suspicious digits in MNIST
+
+### 1. Train a MLP on MNIST
+
+```python
+X, y = fetch_openml("mnist_784", return_X_y=True, as_frame=False)
+y = LabelEncoder().fit_transform(y)
+mlp = make_pipeline(MinMaxScaler(), MLPClassifier())
+mlp.fit(X, y)
+```
+
+### 2. Compute Self Representer values of the MLP
+
+```python
+probe = Representer()
+self_representer_values = probe(mlp, X, y)
+```
+
+### 3. Inspect your training data
+
+```python
+supicious = np.argsort(-self_representer_values)[0:top_k]
+for i in suspicious:
+  plt.imshow(X[i].reshape(28, 28))
+```
+
+### 4. Wanna get the variance of the Self Representer values during training ?
+
+```python
+detector = ModelProbingDetector(mlp, Representer(), ProgressiveEnsemble(), "var")
+var_self_representer_values = detector.trust_scores(X, y)
+```
+
+## Tutorials
+
+For more details and examples, check the [notebooks](https://github.com/orange-opensource/mislabeled/tree/master/examples) !
 
 ## Paper
 
