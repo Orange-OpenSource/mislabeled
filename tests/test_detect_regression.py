@@ -46,14 +46,6 @@ detectors = [
             Ridge(random_state=seed),
         ),
     ),
-    # ModelProbingDetector(
-    #     base_model=make_pipeline(
-    #         SGDRegressor(random_state=seed),
-    #     ),
-    #     ensemble=ProgressiveEnsemble(),
-    #     probe=L2GradSimilarity(),
-    #     aggregate="sum",
-    # ),
     TracIn(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),

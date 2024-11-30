@@ -55,7 +55,6 @@ detectors = [
     ),
     ModelProbingDetector(
         base_model=make_pipeline(
-            # StandardScaler(),
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
             LogisticRegression(penalty="l1", solver="saga", C=1e2),
         ),
@@ -65,7 +64,6 @@ detectors = [
     ),
     ModelProbingDetector(
         base_model=make_pipeline(
-            # StandardScaler(),
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
             LogisticRegression(C=1e5, max_iter=1000),
         ),
