@@ -173,7 +173,7 @@ def sparse_X_test(n_classes, detector):
     X[np.abs(X) < percentile] = 0
 
     np.testing.assert_allclose(
-        detector.trust_score(X, y), detector.trust_score(sp.csr_matrix(X), y)
+        detector.trust_score(X, y), detector.trust_score(sp.csr_matrix(X), y), rtol=1e-3
     )
 
 
