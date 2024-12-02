@@ -1,11 +1,61 @@
-[tool.black]
-line-length = 88
-target_version = ['py37', 'py38', 'py39']
-preview = true
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.isort]
-profile='black'
-line_length = 88
-known_third_party = ["docs","tests","examples"]
-force_sort_within_sections = "False"
-order_by_type = "False"
+[project]
+name = "mislabeled"
+dynamic = ["version"]
+description = "detect mislabeled examples in machine learning datasets"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "Thomas George", email = "thomas.george@orange.com"},
+  { name = "Pierre Nodet", email = "pierre.nodet@orange.com" },
+]
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved",
+  "Programming Language :: Python",
+  "Topic :: Software Development",
+  "Topic :: Scientific/Engineering",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX",
+  "Operating System :: Unix",
+  "Operating System :: MacOS",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+datasets = ["pooch", "pandas"]
+
+[project.urls]
+Documentation = "https://github.com/orange-opensource/mislabeled#readme"
+Issues = "https://github.com/orange-opensource/mislabeled/issues"
+Source = "https://github.com/orange-opensource/mislabeled"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.envs.hatch-test]
+extra-args =  ["--ignore=tests/datasets", "--ignore=tests/test_cache.py"]
+
+[tool.coverage.run]
+omit = ["tests"]
+
+[tool.ruff]
+line-length = 88
+exclude = ["docs", "examples"]
+
+[tool.ruff.lint]
+preview = true
+select = ["E", "F", "W", "I"]

@@ -109,7 +109,6 @@ def fetch_weasel(name, cache_folder=None, split="train"):
     # Apply rules to generate weak targets manually
     weak_targets = []
     for verbatim in data:
-
         # remove punctuations
         verbatim = (
             verbatim.replace(":", "")

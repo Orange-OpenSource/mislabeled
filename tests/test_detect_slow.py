@@ -8,7 +8,6 @@
 
 import numpy as np
 import pytest
-from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.kernel_approximation import Nystroem
 from sklearn.linear_model import LogisticRegression
@@ -34,7 +33,7 @@ def simple_detect_roc_test(n_classes, detector):
     correct = np.ones(X.shape[0])
     correct[indices_mislabeled] = 0
 
-    assert roc_auc_score(correct, trust_scores) > 0.72
+    assert roc_auc_score(correct, trust_scores) > 0.8
 
 
 seed = 42
@@ -56,7 +55,6 @@ detectors = [
     ),
     ModelProbingDetector(
         base_model=make_pipeline(
-            StandardScaler(),
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
             LogisticRegression(penalty="l1", solver="saga", C=1e2),
         ),
@@ -66,7 +64,6 @@ detectors = [
     ),
     ModelProbingDetector(
         base_model=make_pipeline(
-            StandardScaler(),
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
             LogisticRegression(C=1e5, max_iter=1000),
         ),

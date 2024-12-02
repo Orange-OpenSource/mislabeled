@@ -183,3 +183,6 @@ catboost_info/
 
 # joblib
 *.joblib
+
+# ruff
+.ruff_cache

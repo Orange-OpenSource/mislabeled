@@ -3,10 +3,10 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from ..west_african_languages import (
-    fetch_west_african_language_news,
+from mislabeled.datasets.west_african_languages import (
     WALN_DATASETS,
     WALN_LEXICONS,
+    fetch_west_african_language_news,
 )
 
 

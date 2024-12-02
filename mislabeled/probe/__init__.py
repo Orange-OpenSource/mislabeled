@@ -64,7 +64,6 @@ __all__ = [
 
 
 class Probabilities:
-
     @staticmethod
     def __call__(estimator, X, y=None):
         return normalize_probabilities(estimator.predict_proba(X))
@@ -77,7 +76,6 @@ def normalize_probabilities(probabilities):
 
 
 class Logits:
-
     @staticmethod
     def __call__(estimator, X, y=None):
         return normalize_logits(estimator.decision_function(X))
@@ -91,7 +89,6 @@ def normalize_logits(logits):
 
 # TODO: Better Name ?
 class Scores:
-
     @staticmethod
     def __call__(estimator, X, y):
         if hasattr(estimator, "decision_function"):
@@ -101,7 +98,6 @@ class Scores:
 
 
 class Predictions:
-
     @staticmethod
     def __call__(estimator, X, y):
         return estimator.predict(X)
@@ -116,7 +112,6 @@ class Precomputed:
 
 
 class Confidence(Maximize):
-
     def __init__(self, probe):
         self.inner = probe
 
@@ -191,7 +186,6 @@ class Entropy(Minimize):
 
 
 class Unsupervised:
-
     @property
     def maximize(self):
         return unsupervised(self.inner).maximize
@@ -243,6 +237,5 @@ class L2(Minimize):
 
 
 class Outliers(Maximize):
-
     def __call__(self, estimator, X, y):
         return estimator.score_samples(X)

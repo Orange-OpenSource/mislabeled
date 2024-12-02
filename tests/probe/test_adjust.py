@@ -6,23 +6,23 @@
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
+import math
+
 import numpy as np
-import pytest
 from sklearn.datasets import make_moons
 from sklearn.linear_model import LogisticRegression
 
-from mislabeled.probe import Accuracy, CORE, Peer, Predictions
+from mislabeled.probe import Adjust, Confidence, Probabilities
 
 
-@pytest.mark.parametrize("probe", [CORE, Peer])
-def test_peer_probe_core_with_null_alpha_equals_probe(probe):
+def test_means_per_class_when_adjusted_are_equals():
     logreg = LogisticRegression()
 
     X, y = make_moons(n_samples=1000, noise=0.2)
 
     logreg.fit(X, y)
 
-    acc = Accuracy(Predictions())
-    peer_acc = probe(acc, alpha=0.0)
+    confidence = Confidence(Adjust(Probabilities()))
+    c = confidence(logreg, X, y)
 
-    np.testing.assert_allclose(peer_acc(logreg, X, y), acc(logreg, X, y))
+    assert math.isclose(np.mean(c[y == 0]), np.mean(c[y == 1]))

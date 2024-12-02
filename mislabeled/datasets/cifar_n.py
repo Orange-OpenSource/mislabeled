@@ -189,7 +189,6 @@ def fetch_cifar_n(name, cache_folder=None, split="train"):
     target = np.concatenate(target, axis=0)
 
     if split == "train":
-
         # Download all cifar N targets
         noisy_targets_file_name = pooch.retrieve(
             url=CIFAR_N_TARGETS_URL[0],

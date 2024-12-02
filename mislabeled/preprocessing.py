@@ -9,7 +9,7 @@
 from statistics import multimode
 
 import numpy as np
-from sklearn.base import BaseEstimator, check_array, TransformerMixin
+from sklearn.base import BaseEstimator, TransformerMixin, check_array
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import check_random_state
 

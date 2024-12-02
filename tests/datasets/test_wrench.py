@@ -3,7 +3,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from ..wrench import fetch_wrench, WRENCH_DATASETS
+from mislabeled.datasets.wrench import WRENCH_DATASETS, fetch_wrench
 
 
 @pytest.mark.parametrize("name", WRENCH_DATASETS)

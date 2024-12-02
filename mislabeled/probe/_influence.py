@@ -21,13 +21,11 @@ def norm2(x, axis=1):
 
 
 class L2Influence(Maximize):
-
     def __init__(self, tol=0):
         self.tol = tol
 
     @linear
     def __call__(self, estimator, X, y):
-
         diff = 2 * (y - estimator.predict(X))
 
         grad = diff[:, None] * (X.toarray() if sp.issparse(X) else X)
@@ -45,13 +43,11 @@ class L2Influence(Maximize):
 
 
 class Influence(Maximize):
-
     def __init__(self, tol=0):
         self.tol = tol
 
     @linear
     def __call__(self, estimator, X, y):
-
         p = estimator.predict_proba(X)
 
         n_samples, n_features = X.shape
@@ -61,7 +57,6 @@ class Influence(Maximize):
         diff[np.arange(n_samples), y] -= 1
 
         if sp.issparse(X):
-
             X = sp.csr_matrix(X)
             grad = []
             for i in range(n_samples):
@@ -171,7 +166,6 @@ class Representer(Minimize):
 
     @linear
     def __call__(self, estimator, X, y):
-
         grad_log_loss = estimator.predict_proba(X)
         grad_log_loss_observed = grad_log_loss[np.arange(len(y)), y] - 1
 

@@ -54,12 +54,10 @@ def test_caching():
     splitter_classifier_caching.fit(X, y)
     end = time.perf_counter()
     time_caching = end - start
-    print(f"fitting time with caching : {time_caching}")
 
     start = time.perf_counter()
     splitter_classifier_no_caching.fit(X, y)
     end = time.perf_counter()
     time_no_caching = end - start
-    print(f"fitting time without caching : {time_no_caching}")
 
     assert time_no_caching > time_caching

@@ -121,7 +121,6 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
     # Apply rules to generate weak targets manually
     weak_targets = []
     for verbatim in data:
-
         # remove punctuations
         verbatim = (
             verbatim.replace(":", "")

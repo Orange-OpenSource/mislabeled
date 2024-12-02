@@ -113,12 +113,10 @@ class ParameterCount:
     """
 
     def __call__(self, estimator, X=None, y=None):
-
         return parameter_count(estimator)
 
 
 class ParamNorm2:
-
     @linear
     def __call__(self, estimator, X=None, y=None):
         return np.linalg.norm(estimator.coef)

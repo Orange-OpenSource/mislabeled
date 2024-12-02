@@ -34,7 +34,7 @@ def mean(iterable, weights=repeat(1), **kwargs):
     return sum / weight_sum
 
 
-class oob(object):
+class oob:
     def __init__(self, aggregate):
         self.aggregate = aggregate
 
@@ -52,7 +52,7 @@ class oob(object):
         )
 
 
-class itb(object):
+class itb:
     def __init__(self, aggregate):
         self.aggregate = aggregate
 
@@ -71,7 +71,7 @@ class itb(object):
         )
 
 
-class fromnumpy(object):
+class fromnumpy:
     def __init__(self, f, aggregate=partial(np.concatenate, axis=1)):
         self.f = f
         self.aggregate = aggregate
@@ -89,7 +89,7 @@ def minimize(aggregate):
     return aggregate
 
 
-class signed(object):
+class signed:
     def __init__(self, aggregate):
         self.aggregate = aggregate
 
@@ -100,15 +100,13 @@ class signed(object):
         if hasattr(self.aggregate, "maximize"):
             if not self.aggregate.maximize:
                 scores = -scores
-        else:
-            if not maximize_kwarg:
-                scores = -scores
+        elif not maximize_kwarg:
+            scores = -scores
         return scores
 
 
 @minimize
 def forget(iterable, weights=repeat(1), **kwargs):
-
     def f(a, b):
         n_forget_events, previous_probes = a
         probes, weight = b

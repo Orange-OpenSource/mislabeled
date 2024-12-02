@@ -19,9 +19,8 @@ from sklearn.preprocessing import StandardScaler
 
 from mislabeled.detect import ModelProbingDetector
 from mislabeled.detect.detectors import AreaUnderMargin, VoSG
+from mislabeled.ensemble import ProgressiveEnsemble, staged_probe
 from mislabeled.probe import Logits, Margin
-
-from .._progressive import ProgressiveEnsemble, staged_probe
 
 
 @pytest.mark.parametrize(
@@ -58,7 +57,6 @@ def test_progressive_staged(estimator, detector):
 
 
 def test_progressive_predict_donothing():
-
     estimator = HistGradientBoostingClassifier(
         early_stopping=False, max_iter=100, random_state=1
     )
@@ -95,7 +93,6 @@ def test_progressive_predict_donothing():
 
 
 def test_progressive_predict_structure():
-
     estimator = HistGradientBoostingClassifier(
         early_stopping=False, max_iter=100, random_state=1
     )
@@ -118,7 +115,6 @@ def test_progressive_predict_structure():
 
 
 def test_progressive_pipeline_of_pipeline():
-
     estimator_pop = make_pipeline(
         StandardScaler(),
         make_pipeline(RBFSampler(random_state=1), SGDClassifier(random_state=1)),
@@ -137,7 +133,6 @@ def test_progressive_pipeline_of_pipeline():
 
 
 def test_progressive_one_element_pipeline():
-
     estimator = SGDClassifier(random_state=1)
     estimator_oep = make_pipeline(estimator)
     n_samples = int(1e4)

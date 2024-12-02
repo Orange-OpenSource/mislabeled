@@ -16,7 +16,6 @@ from mislabeled.probe import ParameterCount
 
 
 def test_param_count_linear_model():
-
     X, y = make_moons(n_samples=1000, noise=0.2)
     param_count = ParameterCount()
 

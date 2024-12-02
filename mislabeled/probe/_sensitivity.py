@@ -68,7 +68,6 @@ class FiniteDiffSensitivity(Minimize):
         return directions
 
     def __call__(self, estimator, X, y):
-
         X = X.toarray() if sp.issparse(X) else X
 
         directions = self.directions(X)

@@ -114,19 +114,21 @@ class FiniteDiffComplexity(ModelProbingDetector):
         n_directions=20,
         random_state=None,
     ):
-        super().__init__(
-            base_model=base_model,
-            ensemble=NoEnsemble(),
-            probe=FiniteDiffSensitivity(
-                Margin(Scores()),
-                epsilon=epsilon,
-                n_directions=n_directions,
-                seed=random_state,
+        (
+            super().__init__(
+                base_model=base_model,
+                ensemble=NoEnsemble(),
+                probe=FiniteDiffSensitivity(
+                    Margin(Scores()),
+                    epsilon=epsilon,
+                    n_directions=n_directions,
+                    seed=random_state,
+                ),
+                aggregate=fromnumpy(
+                    lambda x, axis=-1: np.mean(np.abs(x), axis=axis), aggregate=mean
+                ),
             ),
-            aggregate=fromnumpy(
-                lambda x, axis=-1: np.mean(np.abs(x), axis=axis), aggregate=mean
-            ),
-        ),
+        )
         self.epsilon = epsilon
         self.n_directions = n_directions
         self.random_state = random_state

@@ -33,7 +33,6 @@ class GradSimilarity(Maximize):
 
     @linear
     def __call__(self, estimator, X, y):
-
         n_samples = _num_samples(X)
 
         # grads of the cross entropy w.r.t. pre-activations before the softmax
@@ -72,6 +71,6 @@ class L2GradSimilarity(GradSimilarity):
     def grad(estimator, X, y):
         grad_l2_loss = estimator.predict(X)
         grad_l2_loss -= y
-        if grad_l2_loss.ndim == 1 or grad_l2_loss.shape[1] == 1:
+        if grad_l2_loss.ndim == 1:
             grad_l2_loss = grad_l2_loss.reshape(-1, 1)
         return grad_l2_loss
