@@ -14,13 +14,7 @@ from ._base import AbstractEnsemble
 
 
 class IndependentEnsemble(AbstractEnsemble):
-    """Ensemble of bagged models.
-
-    Parameters
-    ----------
-    in_the_bag : bool, default=False
-        whether to also compute probe on in_the_bag examples
-    """
+    """Ensemble of bagged models."""
 
     def __init__(
         self,
