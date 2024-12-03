@@ -133,7 +133,6 @@ def linearize_trees(
     ),
 ):
     leaves = OneHotEncoder().fit_transform(estimator.apply(X).reshape(X.shape[0], -1))
-    leaves = leaves / np.sqrt(leaves.sum(axis=0))
     if is_classifier(estimator):
         linear = default_linear_model["classification"]
     else:
