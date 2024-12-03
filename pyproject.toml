@@ -37,6 +37,7 @@ dependencies = [
 
 [project.optional-dependencies]
 datasets = ["pooch", "pandas"]
+examples = ["mislabeled[datasets]", "matplotlib"]
 
 [project.urls]
 Documentation = "https://github.com/orange-opensource/mislabeled#readme"
