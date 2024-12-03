@@ -58,7 +58,7 @@ var_self_representer_values = detector.trust_scores(X, y)
 | Consensus (C-Scores) | [Applied Intelligence 2011](https://link.springer.com/article/10.1007/s10489-010-0225-4) | `import ConsensusConsistency`|
 | AGRA | [ECML 2023](https://dl.acm.org/doi/10.1007/978-3-031-43412-9_14) | `import AGRA` |
 
-and other limitless combinations by using `ModelProbinDetector` with `probe` and `Ensembles` from the library.
+and other limitless combinations by using `ModelProbingDetector` with any `probe` and `Ensembles` from the library.
 
 ## Tutorials
 
