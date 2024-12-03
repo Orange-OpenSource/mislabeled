@@ -25,8 +25,10 @@ from mislabeled.probe import (
     Confidence,
     FiniteDiffSensitivity,
     GradNorm2,
+    GradSimilarity,
     Influence,
     L2GradNorm2,
+    L2GradSimilarity,
     L2Influence,
     L2Representer,
     Logits,
@@ -85,6 +87,27 @@ class RepresenterDetector(ModelProbingDetector):
             base_model=base_model,
             ensemble=NoEnsemble(),
             probe=(Representer() if is_classifier(base_model) else L2Representer()),
+            aggregate="sum",
+        )
+
+
+class AGRA(ModelProbingDetector):
+    """Detector based on gradient similarity with the average gradient
+
+    References
+    ----------
+    .. [1] Anastasiia Sedova, Lena Zellinger, and Benjamin Roth.\
+        "Learning with Noisy Labels by Adaptive Gradient-Based Outlier Removal".\
+        ECML 2023.
+    """
+
+    def __init__(self, base_model):
+        super().__init__(
+            base_model=base_model,
+            ensemble=NoEnsemble(),
+            probe=(
+                GradSimilarity() if is_classifier(base_model) else L2GradSimilarity()
+            ),
             aggregate="sum",
         )
 
