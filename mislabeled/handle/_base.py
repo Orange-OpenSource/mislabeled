@@ -32,7 +32,7 @@ def _trust_score(detector, X, y):
 
 
 class BaseHandleClassifier(
-    BaseEstimator, ClassifierMixin, MetaEstimatorMixin, metaclass=ABCMeta
+    ClassifierMixin, BaseEstimator, MetaEstimatorMixin, metaclass=ABCMeta
 ):
     """
     Parameters
