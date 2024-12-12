@@ -16,9 +16,9 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect.detectors import (
-    SelfInfluenceDetector,
     Regressor,
     RepresenterDetector,
+    SelfInfluenceDetector,
     TracIn,
 )
 

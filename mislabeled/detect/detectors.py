@@ -26,11 +26,10 @@ from mislabeled.probe import (
     FiniteDiffSensitivity,
     GradNorm2,
     GradSimilarity,
-    SelfInfluence,
     L2GradNorm2,
     L2GradSimilarity,
-    L2SelfInfluence,
     L2Representer,
+    L2SelfInfluence,
     Logits,
     Margin,
     Outliers,
@@ -38,6 +37,7 @@ from mislabeled.probe import (
     Probabilities,
     Representer,
     Scores,
+    SelfInfluence,
     Sensitivity,
 )
 

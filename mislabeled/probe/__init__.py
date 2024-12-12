@@ -17,11 +17,11 @@ from ._complexity import ParameterCount, ParamNorm2
 from ._grads import GradSimilarity, L2GradSimilarity
 from ._influence import (
     GradNorm2,
-    SelfInfluence,
     L2GradNorm2,
-    L2SelfInfluence,
     L2Representer,
+    L2SelfInfluence,
     Representer,
+    SelfInfluence,
 )
 from ._linear import linear, linearize
 from ._minmax import Maximize, Minimize
