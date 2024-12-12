@@ -15,7 +15,8 @@ from mislabeled.aggregate import mean, oob
 from mislabeled.detect import ModelProbingDetector
 from mislabeled.ensemble import IndependentEnsemble
 from mislabeled.split import PerClassSplitter, QuantileSplitter
-from mislabeled.tests.utils import blobs_1_mislabeled
+
+from .utils import blobs_1_mislabeled
 
 
 @pytest.mark.parametrize("n_classes", [2, 5])
