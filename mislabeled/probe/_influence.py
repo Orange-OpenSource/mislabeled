@@ -37,24 +37,30 @@ class L2SelfInfluence(Maximize):
 
         H_inv = pinvh(H, atol=self.tol)
 
-        self_influence = -np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
+        self_influence = np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
 
         return self_influence
 
 
 class SelfInfluence(Maximize):
-    def __init__(self, tol=0):
-        self.tol = tol
+    def __init__(self):
+        pass
 
     @linear
     def __call__(self, estimator, X, y):
-        p = estimator.predict_proba(X)
-
         n_samples, n_features = X.shape
-        n_classes = p.shape[1]
 
-        diff = np.copy(p)
-        diff[np.arange(n_samples), y] -= 1
+        grads = estimator.gradient(X, y)
+        H = estimator.hessian(X, y)
+        H_inv = np.linalg.inv(H + 1. * np.eye(H.shape[0]))
+
+        self_influence = -np.einsum(
+            "ij,jk,ik->i", grads, H_inv, grads, optimize="greedy"
+        )
+
+        return self_influence
+
+        print(grads.shape, H.shape)
 
         if sp.issparse(X):
             X = sp.csr_matrix(X)

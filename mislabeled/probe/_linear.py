@@ -45,7 +45,35 @@ from sklearn.utils import check_X_y
 
 class LinearModel(NamedTuple):
     coef: np.ndarray
-    intercept: np.ndarray
+    intercept: np.ndarray | None
+    loss: str
+
+    def decision_function(self, X):
+        if self.intercept is None:
+            return X @ self.coef
+        else:
+            return X @ self.coef + self.intercept
+
+    def gradient(self, X, y):
+        if self.loss == "l2":
+            y_pred = self.decision_function(X)
+            dl_dy = 2 * y - 1.0 - y_pred # to {-1, 1}
+            X_p = X
+            if self.intercept is not None:
+                X_p = np.hstack((X, np.ones((X.shape[0], 1))))
+            return X_p * dl_dy[:, None]
+        else:
+            raise NotImplementedError()
+
+    def hessian(self, X, y):
+        if self.loss == "l2":
+            X_p = X
+            if self.intercept is not None:
+                X_p = np.hstack((X, np.ones((X.shape[0], 1))))
+
+            return X_p.T @ X_p / X.shape[0]
+        else:
+            raise NotImplementedError()
 
 
 class LinearRegressor(LinearModel):
@@ -82,6 +110,15 @@ def linearize_pipeline(estimator, X, y):
     return linearize(estimator[-1], X, y)
 
 
+@linearize.register(RidgeClassifier)
+def linearize_linear_model2(estimator, X, y):
+    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
+    coef = estimator.coef_.T
+    intercept = estimator.intercept_ if estimator.fit_intercept else None
+    linear = LinearModel(coef, intercept, loss="l2")
+    return linear, X, y
+
+
 @linearize.register(LogisticRegression)
 @linearize.register(LogisticRegressionCV)
 @linearize.register(SGDClassifier)
@@ -89,7 +126,6 @@ def linearize_pipeline(estimator, X, y):
 @linearize.register(ElasticNetCV)
 @linearize.register(Lasso)
 @linearize.register(LassoCV)
-@linearize.register(RidgeClassifier)
 @linearize.register(RidgeClassifierCV)
 @linearize.register(LinearSVC)
 @linearize.register(Ridge)
