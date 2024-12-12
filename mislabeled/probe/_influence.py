@@ -20,7 +20,7 @@ def norm2(x, axis=1):
     return (x * x).sum(axis=axis)
 
 
-class L2Influence(Maximize):
+class L2SelfInfluence(Maximize):
     def __init__(self, tol=0):
         self.tol = tol
 
@@ -42,7 +42,7 @@ class L2Influence(Maximize):
         return self_influence
 
 
-class Influence(Maximize):
+class SelfInfluence(Maximize):
     def __init__(self, tol=0):
         self.tol = tol
 

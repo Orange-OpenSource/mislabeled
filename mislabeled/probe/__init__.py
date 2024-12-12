@@ -17,9 +17,9 @@ from ._complexity import ParameterCount, ParamNorm2
 from ._grads import GradSimilarity, L2GradSimilarity
 from ._influence import (
     GradNorm2,
-    Influence,
+    SelfInfluence,
     L2GradNorm2,
-    L2Influence,
+    L2SelfInfluence,
     L2Representer,
     Representer,
 )
@@ -48,8 +48,8 @@ __all__ = [
     "Sensitivity",
     "ParameterCount",
     "ParamNorm2",
-    "Influence",
-    "L2Influence",
+    "SelfInfluence",
+    "L2SelfInfluence",
     "Representer",
     "L2Representer",
     "GradNorm2",

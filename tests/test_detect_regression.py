@@ -16,7 +16,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect.detectors import (
-    InfluenceDetector,
+    SelfInfluenceDetector,
     Regressor,
     RepresenterDetector,
     TracIn,
@@ -59,7 +59,7 @@ detectors = [
         )
     ),
     TracIn(GradientBoostingRegressor(), steps=10),
-    InfluenceDetector(MLPRegressor(random_state=seed)),
+    SelfInfluenceDetector(MLPRegressor(random_state=seed)),
 ]
 
 

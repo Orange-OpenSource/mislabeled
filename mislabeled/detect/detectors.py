@@ -26,10 +26,10 @@ from mislabeled.probe import (
     FiniteDiffSensitivity,
     GradNorm2,
     GradSimilarity,
-    Influence,
+    SelfInfluence,
     L2GradNorm2,
     L2GradSimilarity,
-    L2Influence,
+    L2SelfInfluence,
     L2Representer,
     Logits,
     Margin,
@@ -53,7 +53,7 @@ class OutlierDetector(ModelProbingDetector):
         self.n_jobs = n_jobs
 
 
-class InfluenceDetector(ModelProbingDetector):
+class SelfInfluenceDetector(ModelProbingDetector):
     """Detector based on influence function
 
     References
@@ -68,7 +68,7 @@ class InfluenceDetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=(Influence() if is_classifier(base_model) else L2Influence()),
+            probe=(SelfInfluence() if is_classifier(base_model) else L2SelfInfluence()),
             aggregate="sum",
         )
 
