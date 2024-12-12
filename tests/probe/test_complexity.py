@@ -35,4 +35,4 @@ def test_param_count_linear_model():
     assert param_count(logreg_nobiais) == 2
     assert param_count(kernel_logreg) == 1000 + 1
     assert param_count(bagged_logreg) == 100 * (2 + 1)
-    assert param_count(boosted_logreg) == 100 * (2 + 1)
+    assert param_count(boosted_logreg) == len(boosted_logreg.estimators_) * (2 + 1)
