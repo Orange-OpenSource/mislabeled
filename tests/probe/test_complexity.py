@@ -27,9 +27,7 @@ def test_param_count_linear_model():
     bagged_logreg = BaggingClassifier(
         LogisticRegression(), n_estimators=17, n_jobs=-1
     ).fit(X, y)
-    boosted_logreg = AdaBoostClassifier(LogisticRegression(), n_estimators=3).fit(
-        X, y
-    )
+    boosted_logreg = AdaBoostClassifier(LogisticRegression(), n_estimators=3).fit(X, y)
 
     assert param_count(logreg) == 2 + 1
     assert param_count(logreg_nobiais) == 2
