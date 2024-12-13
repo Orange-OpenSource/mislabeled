@@ -10,6 +10,7 @@ from functools import singledispatch, wraps
 from typing import NamedTuple
 
 import numpy as np
+import scipy as sp
 from scipy.special import log_softmax, softmax
 from sklearn.base import is_classifier
 from sklearn.ensemble import (
@@ -34,6 +35,7 @@ from sklearn.linear_model import (
     SGDClassifier,
     SGDRegressor,
 )
+from sklearn.naive_bayes import LabelBinarizer
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.neural_network._base import ACTIVATIONS
 from sklearn.pipeline import Pipeline
@@ -41,6 +43,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.svm import LinearSVC, LinearSVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
+
 
 from scipy.special import expit
 
@@ -60,35 +63,68 @@ class LinearModel(NamedTuple):
     def gradient(self, X, y):
         if self.loss == "l2":
             y_pred = self.decision_function(X)
-            dl_dy = 2 * (2 * y - 1.0 - y_pred)  # to {-1, 1}
+
+            lb = LabelBinarizer(pos_label=1, neg_label=-1)
+            y_p = lb.fit_transform(y)
+            if self._is_binary():
+                dl_dy = 2 * (y_p - y_pred[:, None])
+            else:
+                dl_dy = 2 * (y_p - y_pred)
+
         elif self.loss == "log_loss":
-            y_pred = self.decision_function(X)[:, 0]
-            dl_dy = y - expit(y_pred)
+            y_pred = self.decision_function(X)
+            if self._is_binary():
+                dl_dy = y[:, None] - expit(y_pred)
+            else:
+                dl_dy = -softmax(y_pred, axis=1)
+                dl_dy[np.arange(y.shape[0]), y] += 1
+
         else:
             raise NotImplementedError()
         X_p = X
         if self.intercept is not None:
             X_p = np.hstack((X, np.ones((X.shape[0], 1))))
-        return X_p * dl_dy[:, None]
+        return dl_dy[:, :, None] * X_p[:, None, :]
 
     def hessian(self, X, y):
         X_p = X
         if self.intercept is not None:
             X_p = np.hstack((X, np.ones((X.shape[0], 1))))
         if self.loss == "l2":
-            return 2.0 * X_p.T @ X_p + self.regul * 2 * np.eye(X_p.shape[1])
+            H = 2.0 * X_p.T @ X_p
+            if not self._is_binary():
+                H = np.eye(self.coef.shape[1])[:, None, :, None] * H[None, :, None, :]
+
+                Hs = H.shape
+                H = H.reshape(Hs[0] * Hs[1], Hs[2] * Hs[3]) / X.shape[0]
+
         elif self.loss == "log_loss":
-            y_pred = self.decision_function(X)[:, 0]
-            p = expit(y_pred)
-            d2y_dy2 = p * (1.0 - p)
-            return X_p.T @ (d2y_dy2[:, None] * X_p) / X.shape[0] + self.regul * np.eye(
-                X_p.shape[1]
-            )
+            if self._is_binary():
+                y_pred = self.decision_function(X)[:, 0]
+                p = expit(y_pred)
+                d2y_dy2 = p * (1.0 - p)
+                H = X_p.T @ (d2y_dy2[:, None] * X_p) / X.shape[0]
+            else:
+                y_pred = self.decision_function(X)
+                p = softmax(y_pred, axis=1)
+                H = (
+                    np.eye(p.shape[1])[:, None, :, None]
+                    * (X_p.T @ X_p)[None, :, None, :]
+                ) - np.einsum("ij,ik,il,im->jklm", p, X_p, p, X_p)
+                Hs = H.shape
+                H = H.reshape(Hs[0] * Hs[1], Hs[2] * Hs[3]) / X.shape[0]
+
         else:
             raise NotImplementedError()
 
+        # only regularize coefficients corresponding to weight
+        # parameters, excluding intercept
+        H[np.diag_indices(self.coef.size)] += self.regul * 2
+
+        return H
+
     def _is_binary(self):
-        return self.coef.shape[1] == 1
+        return len(self.coef.shape) == 1 or self.coef.shape[1] == 1
 
 
 class LinearRegressor(LinearModel):
@@ -139,7 +175,7 @@ def linearize_linear_model_sgdclassifier(estimator, X, y):
     X, y = check_X_y(X, y, accept_sparse=False, dtype=[np.float64, np.float32])
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
-    linear = LinearModel(coef, intercept, loss=estimator.loss, regul=1.0 / estimator.C)
+    linear = LinearModel(coef, intercept, loss=estimator.loss, regul=estimator.alpha)
     return linear, X, y
 
 

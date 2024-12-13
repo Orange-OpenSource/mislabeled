@@ -54,6 +54,9 @@ class SelfInfluence(Maximize):
         H = estimator.hessian(X, y)
         H_inv = np.linalg.inv(H)
 
+        print(grads.shape, H.shape)
+        grads = grads.reshape(grads.shape[0], -1)
+
         self_influence = -np.einsum(
             "ij,jk,ik->i", grads, H_inv, grads, optimize="greedy"
         )
