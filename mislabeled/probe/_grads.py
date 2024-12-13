@@ -25,18 +25,12 @@ class GradSimilarity(Maximize):
     NB: it assumes that the loss used is the log loss a.k.a. the cross entropy
     """
 
-    @staticmethod
-    def grad(estimator, X, y):
-        grad_log_loss = estimator.predict_proba(X)
-        grad_log_loss[np.arange(len(y)), y] -= 1
-        return grad_log_loss
-
     @linear
     def __call__(self, estimator, X, y):
         n_samples = _num_samples(X)
 
         # grads of the cross entropy w.r.t. pre-activations before the softmax
-        grad_log_loss = self.grad(estimator, X, y)
+        grad_log_loss = estimator.grad_y(X, y)
 
         average_grad = grad_log_loss.T @ X / n_samples
 

@@ -56,27 +56,46 @@ class LinearModel(NamedTuple):
         else:
             return X @ self.coef + self.intercept
 
-    def gradient(self, X, y):
+    def predict_proba(self, X):
+        y_linear = self.decision_function(X)
         if self.loss == "l2":
-            y_pred = self.decision_function(X)
+            return y_linear
+        elif self.loss == "log_loss":
+            if self._is_binary():
+                return expit(y_linear)
+            else:
+                return softmax(y_linear, axis=1)
+        else:
+            raise NotImplementedError()
 
+    def grad_y(self, X, y):
+        # gradients w.r.t. the output of the linear op, i.e. the logit
+        # in the logistic model
+        y_linear = self.decision_function(X)
+        if self.loss == "l2":
             lb = LabelBinarizer(pos_label=1, neg_label=-1)
             y_p = lb.fit_transform(y)
             if self._is_binary():
-                dl_dy = 2 * (y_p - y_pred[:, None])
+                dl_dy = 2 * (y_p - y_linear[:, None])
             else:
-                dl_dy = 2 * (y_p - y_pred)
+                dl_dy = 2 * (y_p - y_linear)
 
         elif self.loss == "log_loss":
-            y_pred = self.decision_function(X)
+            y_linear = self.decision_function(X)
             if self._is_binary():
-                dl_dy = y[:, None] - expit(y_pred)
+                dl_dy = y[:, None] - expit(y_linear)
             else:
-                dl_dy = -softmax(y_pred, axis=1)
+                dl_dy = -softmax(y_linear, axis=1)
                 dl_dy[np.arange(y.shape[0]), y] += 1
 
         else:
             raise NotImplementedError()
+        return dl_dy
+
+    def grad_p(self, X, y):
+        # gradients w.r.t. the parameters (weight, intercept)
+        dl_dy = self.grad_y(X, y)
+
         X_p = X
         if self.intercept is not None:
             X_p = np.hstack((X, np.ones((X.shape[0], 1))))
@@ -106,7 +125,7 @@ class LinearModel(NamedTuple):
                 H = (
                     np.eye(p.shape[1])[:, None, :, None]
                     * (X_p.T @ X_p)[None, :, None, :]
-                ) - np.einsum("ij,ik,il,im->jklm", p, X_p, p, X_p)
+                ) - np.einsum("ij,ik,il,im->jklm", p, X_p, p, X_p, optimize="greedy")
                 Hs = H.shape
                 H = H.reshape(Hs[0] * Hs[1], Hs[2] * Hs[3]) / X.shape[0]
 
@@ -258,14 +277,11 @@ def linearize_mlp(estimator, X, y):
     intercept = estimator.intercepts_[-1]
 
     if is_classifier(estimator):
-        if coef.ndim > 1 and coef.shape[1] == 1:
-            coef = np.hstack((-coef, coef))
-        linear = LinearClassifier(coef, intercept)
+        loss = "log_loss"
     else:
-        if coef.ndim > 1 and coef.shape[1] == 1:
-            coef = coef.ravel()
-            intercept = intercept.item()
-        linear = LinearRegressor(coef, intercept)
+        loss = "l2"
+
+    linear = LinearModel(coef, intercept, loss=loss, regul=estimator.alpha)
 
     return linear, activation, y
 

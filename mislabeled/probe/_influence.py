@@ -48,11 +48,10 @@ class SelfInfluence(Maximize):
 
     @linear
     def __call__(self, estimator, X, y):
-        grads = estimator.gradient(X, y)
+        grads = estimator.grad_p(X, y)
         H = estimator.hessian(X, y)
         H_inv = np.linalg.inv(H)
 
-        print(grads.shape, H.shape)
         grads = grads.reshape(grads.shape[0], -1)
 
         self_influence = -np.einsum(
@@ -95,8 +94,7 @@ class GradNorm2(Minimize):
             n x 1 array of the per-examples gradients
         """
 
-        grad_log_loss = estimator.predict_proba(X)
-        grad_log_loss[np.arange(len(y)), y] -= 1
+        grad_log_loss = estimator.grad_y(X, y)
 
         return norm2(grad_log_loss) * norm2(X)
 
@@ -126,10 +124,15 @@ class Representer(Minimize):
 
     @linear
     def __call__(self, estimator, X, y):
-        grad_log_loss = estimator.predict_proba(X)
-        grad_log_loss_observed = grad_log_loss[np.arange(len(y)), y] - 1
+        grad = estimator.grad_y(X, y)
+        # grad observed
+        if estimator._is_binary():
+            grad_observed = grad[:, 0]
+        else:
+            grad_observed = grad[np.arange(X.shape[0]), y]
 
-        return np.abs(grad_log_loss_observed) * norm2(X)
+        # print(grad.shape,norm2(X).shape )
+        return np.abs(grad_observed) * norm2(X)
 
 
 class L2Representer(Minimize):
