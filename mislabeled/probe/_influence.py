@@ -48,8 +48,6 @@ class SelfInfluence(Maximize):
 
     @linear
     def __call__(self, estimator, X, y):
-        n_samples, n_features = X.shape
-
         grads = estimator.gradient(X, y)
         H = estimator.hessian(X, y)
         H_inv = np.linalg.inv(H)
@@ -60,53 +58,6 @@ class SelfInfluence(Maximize):
         self_influence = -np.einsum(
             "ij,jk,ik->i", grads, H_inv, grads, optimize="greedy"
         )
-
-        return self_influence
-
-        print(grads.shape, H.shape)
-
-        if sp.issparse(X):
-            X = sp.csr_matrix(X)
-            grad = []
-            for i in range(n_samples):
-                d = diff[i].reshape(1, n_classes)
-                g = sp.kron(d, X[i])
-                grad.append(g)
-
-            grad = sp.vstack(grad).toarray()
-
-            H = np.zeros((n_features * n_classes, n_features * n_classes))
-            for i in range(n_samples):
-                P = np.diagflat(p[i]) - np.outer(p[i], p[i])
-                xxt = X[i].T @ X[i]
-                h = sp.kron(P, xxt, format="coo")
-                H[h.row, h.col] += h.data
-            H /= n_samples
-
-        else:
-            grad = diff[:, :, None] * X[:, None, :]
-            grad = grad.reshape(n_samples, n_features * n_classes)
-            P = np.eye(n_classes) * p[:, None, :]
-            P -= p[:, None, :] * p[:, :, None]
-            H = np.einsum("ijl,ik,im->jklm", P, X, X)
-            H /= n_samples
-            H = H.reshape(n_features * n_classes, n_features * n_classes)
-
-        # Full Batch version
-        # grad = diff[:, :, None] * X[:, None, :]
-        # grad = grad.reshape(n_samples, n_features * n_classes)
-        # P = np.eye(n_classes) * p[:, None, :]
-        # P -= p[:, None, :] * p[:, :, None]
-        # XXt = X[:, None, :] * X[:, :, None]
-        # H = P[:, :, None, :, None] * XXt[:, None, :, None, :]
-        # H = H.reshape(n_samples, n_features * n_classes, n_features * n_classes)
-        # H = np.mean(H, axis=0)
-        # influence = -grad @ H_inv @ grad.T
-        # self_influence = np.diag(influence)
-
-        H_inv = pinvh(H, atol=self.tol)
-
-        self_influence = -np.einsum("ij,jk,ik->i", grad, H_inv, grad, optimize="greedy")
 
         return self_influence
 

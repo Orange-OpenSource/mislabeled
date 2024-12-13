@@ -10,8 +10,7 @@ from functools import singledispatch, wraps
 from typing import NamedTuple
 
 import numpy as np
-import scipy as sp
-from scipy.special import log_softmax, softmax
+from scipy.special import expit, log_softmax, softmax
 from sklearn.base import is_classifier
 from sklearn.ensemble import (
     ExtraTreesClassifier,
@@ -43,9 +42,6 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.svm import LinearSVC, LinearSVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
-
-
-from scipy.special import expit
 
 
 class LinearModel(NamedTuple):
