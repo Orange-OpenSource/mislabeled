@@ -42,11 +42,14 @@ from sklearn.svm import LinearSVC, LinearSVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
 
+from scipy.special import expit
+
 
 class LinearModel(NamedTuple):
     coef: np.ndarray
     intercept: np.ndarray | None
     loss: str
+    regul: float
 
     def decision_function(self, X):
         if self.intercept is None:
@@ -57,23 +60,35 @@ class LinearModel(NamedTuple):
     def gradient(self, X, y):
         if self.loss == "l2":
             y_pred = self.decision_function(X)
-            dl_dy = 2 * y - 1.0 - y_pred # to {-1, 1}
-            X_p = X
-            if self.intercept is not None:
-                X_p = np.hstack((X, np.ones((X.shape[0], 1))))
-            return X_p * dl_dy[:, None]
+            dl_dy = 2 * (2 * y - 1.0 - y_pred)  # to {-1, 1}
+        elif self.loss == "log_loss":
+            y_pred = self.decision_function(X)[:, 0]
+            dl_dy = y - expit(y_pred)
         else:
             raise NotImplementedError()
+        X_p = X
+        if self.intercept is not None:
+            X_p = np.hstack((X, np.ones((X.shape[0], 1))))
+        return X_p * dl_dy[:, None]
 
     def hessian(self, X, y):
+        X_p = X
+        if self.intercept is not None:
+            X_p = np.hstack((X, np.ones((X.shape[0], 1))))
         if self.loss == "l2":
-            X_p = X
-            if self.intercept is not None:
-                X_p = np.hstack((X, np.ones((X.shape[0], 1))))
-
-            return X_p.T @ X_p / X.shape[0]
+            return 2.0 * X_p.T @ X_p + self.regul * 2 * np.eye(X_p.shape[1])
+        elif self.loss == "log_loss":
+            y_pred = self.decision_function(X)[:, 0]
+            p = expit(y_pred)
+            d2y_dy2 = p * (1.0 - p)
+            return X_p.T @ (d2y_dy2[:, None] * X_p) / X.shape[0] + self.regul * np.eye(
+                X_p.shape[1]
+            )
         else:
             raise NotImplementedError()
+
+    def _is_binary(self):
+        return self.coef.shape[1] == 1
 
 
 class LinearRegressor(LinearModel):
@@ -111,17 +126,33 @@ def linearize_pipeline(estimator, X, y):
 
 
 @linearize.register(RidgeClassifier)
-def linearize_linear_model2(estimator, X, y):
-    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
+def linearize_linear_model_ridge_classifier(estimator, X, y):
+    X, y = check_X_y(X, y, accept_sparse=False, dtype=[np.float64, np.float32])
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
-    linear = LinearModel(coef, intercept, loss="l2")
+    linear = LinearModel(coef, intercept, loss="l2", regul=estimator.alpha)
+    return linear, X, y
+
+
+@linearize.register(SGDClassifier)
+def linearize_linear_model_sgdclassifier(estimator, X, y):
+    X, y = check_X_y(X, y, accept_sparse=False, dtype=[np.float64, np.float32])
+    coef = estimator.coef_.T
+    intercept = estimator.intercept_ if estimator.fit_intercept else None
+    linear = LinearModel(coef, intercept, loss=estimator.loss, regul=1.0 / estimator.C)
     return linear, X, y
 
 
 @linearize.register(LogisticRegression)
+def linearize_linear_model_logreg(estimator, X, y):
+    X, y = check_X_y(X, y, accept_sparse=False, dtype=[np.float64, np.float32])
+    coef = estimator.coef_.T
+    intercept = estimator.intercept_ if estimator.fit_intercept else None
+    linear = LinearModel(coef, intercept, loss="log_loss", regul=1.0 / estimator.C)
+    return linear, X, y
+
+
 @linearize.register(LogisticRegressionCV)
-@linearize.register(SGDClassifier)
 @linearize.register(ElasticNet)
 @linearize.register(ElasticNetCV)
 @linearize.register(Lasso)
