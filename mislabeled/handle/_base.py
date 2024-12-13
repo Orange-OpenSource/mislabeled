@@ -32,7 +32,7 @@ def _trust_score(detector, X, y):
 
 
 class BaseHandleClassifier(
-    BaseEstimator, ClassifierMixin, MetaEstimatorMixin, metaclass=ABCMeta
+    ClassifierMixin, MetaEstimatorMixin, BaseEstimator, metaclass=ABCMeta
 ):
     """
     Parameters
@@ -147,12 +147,3 @@ class BaseHandleClassifier(
     def decision_function(self, X):
         check_is_fitted(self)
         return self.estimator_.decision_function(X)
-
-    def _more_tags(self):
-        return {
-            "_xfail_checks": {
-                "check_parameters_default_constructible": (
-                    "no default detector at the moment"
-                ),
-            },
-        }
