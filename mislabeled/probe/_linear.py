@@ -10,6 +10,7 @@ from functools import singledispatch, wraps
 from typing import NamedTuple
 
 import numpy as np
+import scipy.sparse as sp
 from scipy.special import expit, log_softmax, softmax
 from sklearn.base import is_classifier
 from sklearn.ensemble import (
@@ -21,15 +22,10 @@ from sklearn.ensemble import (
     RandomForestRegressor,
 )
 from sklearn.linear_model import (
-    ElasticNet,
-    ElasticNetCV,
-    Lasso,
-    LassoCV,
     LogisticRegression,
     LogisticRegressionCV,
     Ridge,
     RidgeClassifier,
-    RidgeClassifierCV,
     RidgeCV,
     SGDClassifier,
     SGDRegressor,
@@ -39,7 +35,6 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.neural_network._base import ACTIVATIONS
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.svm import LinearSVC, LinearSVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
 
@@ -98,13 +93,17 @@ class LinearModel(NamedTuple):
         X_p = X
         if self.intercept is not None:
             X_p = np.hstack((X, np.ones((X.shape[0], 1))))
-
+        if sp.issparse(X_p):
+            X_p = X_p.toarray()
         return dl_dy[:, :, None] * X_p[:, None, :]
 
     def hessian(self, X, y):
         X_p = X
         if self.intercept is not None:
             X_p = np.hstack((X, np.ones((X.shape[0], 1))))
+        if sp.issparse(X_p):
+            X_p = X_p.toarray()
+
         if self.loss == "l2":
             H = 2.0 * X_p.T @ X_p
             if not self._is_binary():
@@ -202,7 +201,6 @@ def linearize_linear_model_sgdclassifier(estimator, X, y):
     X, y = check_X_y(X, y, accept_sparse=False, dtype=[np.float64, np.float32])
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
-    print("loss", estimator.loss)
     linear = LinearModel(coef, intercept, loss=estimator.loss, regul=estimator.alpha)
     return linear, X, y
 
@@ -221,28 +219,30 @@ def linearize_linear_model_logreg(estimator, X, y):
     return linear, X, y
 
 
-@linearize.register(ElasticNet)
-@linearize.register(ElasticNetCV)
-@linearize.register(Lasso)
-@linearize.register(LassoCV)
-@linearize.register(RidgeClassifierCV)
-@linearize.register(LinearSVC)
-@linearize.register(LinearRegressor)
-@linearize.register(LinearSVR)
-def linearize_linear_model(estimator, X, y):
-    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
-    coef = estimator.coef_.T
-    intercept = estimator.intercept_
-    if is_classifier(estimator):
-        if coef.ndim > 1 and coef.shape[1] == 1:
-            coef = np.hstack((-coef, coef))
-        linear = LinearClassifier(coef, intercept)
-    else:
-        if coef.ndim > 1 and coef.shape[1] == 1:
-            coef = coef.ravel()
-            intercept = intercept.item()
-        linear = LinearRegressor(coef, intercept)
-    return linear, X, y
+# commented out while they are not used in tests
+# Lasso and Elasticnet are yet to be added
+# @linearize.register(ElasticNet)
+# @linearize.register(ElasticNetCV)
+# @linearize.register(Lasso)
+# @linearize.register(LassoCV)
+# @linearize.register(RidgeClassifierCV)
+# @linearize.register(LinearSVC)
+# @linearize.register(LinearRegressor)
+# @linearize.register(LinearSVR)
+# def linearize_linear_model(estimator, X, y):
+#     X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
+#     coef = estimator.coef_.T
+#     intercept = estimator.intercept_
+#     if is_classifier(estimator):
+#         if coef.ndim > 1 and coef.shape[1] == 1:
+#             coef = np.hstack((-coef, coef))
+#         linear = LinearClassifier(coef, intercept)
+#     else:
+#         if coef.ndim > 1 and coef.shape[1] == 1:
+#             coef = coef.ravel()
+#             intercept = intercept.item()
+#         linear = LinearRegressor(coef, intercept)
+#     return linear, X, y
 
 
 @linearize.register(GradientBoostingClassifier)

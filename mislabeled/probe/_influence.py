@@ -88,7 +88,6 @@ class Representer(Minimize):
         else:
             grad_observed = grad[np.arange(X.shape[0]), y]
 
-        # print(grad.shape,norm2(X).shape )
         return np.abs(grad_observed) * norm2(X)
 
 
