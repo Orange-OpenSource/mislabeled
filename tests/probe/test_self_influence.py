@@ -40,7 +40,7 @@ MODEL = [
         SGDClassifier(
             fit_intercept=True,
             loss="log_loss",
-            alpha=1.0,
+            alpha=1e-2,
             max_iter=100,
             random_state=1,
         ),
@@ -50,7 +50,7 @@ MODEL = [
         SGDClassifier(
             fit_intercept=False,
             loss="log_loss",
-            alpha=1.0,
+            alpha=1e-2,
             max_iter=100,
             random_state=1,
         ),

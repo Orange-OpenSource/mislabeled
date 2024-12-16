@@ -46,15 +46,17 @@ from sklearn.utils import check_X_y
 
 class LinearModel(NamedTuple):
     coef: np.ndarray
-    intercept: np.ndarray | None
+    intercept: np.ndarray
     loss: str
     regul: float
 
     def decision_function(self, X):
-        if self.intercept is None:
-            return X @ self.coef
-        else:
-            return X @ self.coef + self.intercept
+        y_linear = X @ self.coef
+        if self.intercept is not None:
+            y_linear += self.intercept
+        if y_linear.ndim == 1:
+            y_linear = y_linear[:, None]
+        return y_linear
 
     def predict_proba(self, X):
         y_linear = self.decision_function(X)
@@ -73,12 +75,9 @@ class LinearModel(NamedTuple):
         # in the logistic model
         y_linear = self.decision_function(X)
         if self.loss == "l2":
-            lb = LabelBinarizer(pos_label=1, neg_label=-1)
-            y_p = lb.fit_transform(y)
-            if self._is_binary():
-                dl_dy = 2 * (y_p - y_linear[:, None])
-            else:
-                dl_dy = 2 * (y_p - y_linear)
+            if y.ndim == 1:
+                y = y[:, None]
+            dl_dy = 2 * (y - y_linear)
 
         elif self.loss == "log_loss":
             y_linear = self.decision_function(X)
@@ -99,6 +98,7 @@ class LinearModel(NamedTuple):
         X_p = X
         if self.intercept is not None:
             X_p = np.hstack((X, np.ones((X.shape[0], 1))))
+
         return dl_dy[:, :, None] * X_p[:, None, :]
 
     def hessian(self, X, y):
@@ -176,12 +176,24 @@ def linearize_pipeline(estimator, X, y):
     return linearize(estimator[-1], X, y)
 
 
+@linearize.register(SGDRegressor)
+@linearize.register(Ridge)
+@linearize.register(RidgeCV)
 @linearize.register(RidgeClassifier)
-def linearize_linear_model_ridge_classifier(estimator, X, y):
-    X, y = check_X_y(X, y, accept_sparse=False, dtype=[np.float64, np.float32])
+def linearize_linear_model_ridge(estimator, X, y):
+    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
-    linear = LinearModel(coef, intercept, loss="l2", regul=estimator.alpha)
+    if is_classifier(estimator):
+        lb = LabelBinarizer(pos_label=1, neg_label=-1)
+        y = lb.fit_transform(y)
+
+    if hasattr(estimator, "alpha_"):
+        regul = estimator.alpha_
+    else:
+        regul = estimator.alpha
+
+    linear = LinearModel(coef, intercept, loss="l2", regul=regul)
     return linear, X, y
 
 
@@ -190,31 +202,33 @@ def linearize_linear_model_sgdclassifier(estimator, X, y):
     X, y = check_X_y(X, y, accept_sparse=False, dtype=[np.float64, np.float32])
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
+    print("loss", estimator.loss)
     linear = LinearModel(coef, intercept, loss=estimator.loss, regul=estimator.alpha)
     return linear, X, y
 
 
 @linearize.register(LogisticRegression)
+@linearize.register(LogisticRegressionCV)
 def linearize_linear_model_logreg(estimator, X, y):
-    X, y = check_X_y(X, y, accept_sparse=False, dtype=[np.float64, np.float32])
+    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
-    linear = LinearModel(coef, intercept, loss="log_loss", regul=1.0 / estimator.C)
+    if hasattr(estimator, "C_"):
+        regul = 1.0 / estimator.C_
+    else:
+        regul = 1.0 / estimator.C
+    linear = LinearModel(coef, intercept, loss="log_loss", regul=regul)
     return linear, X, y
 
 
-@linearize.register(LogisticRegressionCV)
 @linearize.register(ElasticNet)
 @linearize.register(ElasticNetCV)
 @linearize.register(Lasso)
 @linearize.register(LassoCV)
 @linearize.register(RidgeClassifierCV)
 @linearize.register(LinearSVC)
-@linearize.register(Ridge)
-@linearize.register(RidgeCV)
 @linearize.register(LinearRegressor)
 @linearize.register(LinearSVR)
-@linearize.register(SGDRegressor)
 def linearize_linear_model(estimator, X, y):
     X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
     coef = estimator.coef_.T
@@ -253,10 +267,12 @@ def linearize_trees(
     leaves = OneHotEncoder().fit_transform(estimator.apply(X).reshape(X.shape[0], -1))
     if is_classifier(estimator):
         linear = default_linear_model["classification"]
+        linear.fit(leaves, y)
+        return linearize_linear_model_logreg(linear, leaves, y)
     else:
         linear = default_linear_model["regression"]
-    linear.fit(leaves, y)
-    return linearize_linear_model(linear, leaves, y)
+        linear.fit(leaves, y)
+        return linearize_linear_model_ridge(linear, leaves, y)
 
 
 @linearize.register(MLPClassifier)

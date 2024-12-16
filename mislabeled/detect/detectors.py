@@ -26,10 +26,7 @@ from mislabeled.probe import (
     FiniteDiffSensitivity,
     GradNorm2,
     GradSimilarity,
-    L2GradNorm2,
-    L2GradSimilarity,
     L2Representer,
-    L2SelfInfluence,
     Logits,
     Margin,
     Outliers,
@@ -68,7 +65,7 @@ class SelfInfluenceDetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=(SelfInfluence() if is_classifier(base_model) else L2SelfInfluence()),
+            probe=SelfInfluence(),
             aggregate="sum",
         )
 
@@ -105,9 +102,7 @@ class AGRA(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=(
-                GradSimilarity() if is_classifier(base_model) else L2GradSimilarity()
-            ),
+            probe=GradSimilarity(),
             aggregate="sum",
         )
 
@@ -280,7 +275,7 @@ class TracIn(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
-            probe=GradNorm2() if is_classifier(base_model) else L2GradNorm2(),
+            probe=GradNorm2(),
             aggregate="sum",
         )
         self.steps = steps

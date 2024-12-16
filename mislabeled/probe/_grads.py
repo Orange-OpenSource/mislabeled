@@ -48,23 +48,3 @@ class GradSimilarity(Maximize):
             cos_sim /= np.linalg.norm(X, axis=1)
 
         return cos_sim
-
-
-class L2GradSimilarity(GradSimilarity):
-    """Cosine Similarity between the individual gradients in a linear model, and the
-    averaged batch gradient, as proposed in:
-
-    Anastasiia Sedova, Lena Zellinger, Benjamin Roth
-    "Learning with Noisy Labels by Adaptive Gradient-Based Outlier Removal"
-    ECML PKDD 2023
-
-    NB: it assumes that the loss used is the l2 loss a.k.a. the mean squared error
-    """
-
-    @staticmethod
-    def grad(estimator, X, y):
-        grad_l2_loss = estimator.predict(X)
-        grad_l2_loss -= y
-        if grad_l2_loss.ndim == 1:
-            grad_l2_loss = grad_l2_loss.reshape(-1, 1)
-        return grad_l2_loss

@@ -105,7 +105,7 @@ detectors = [
     SelfInfluenceDetector(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
-            LogisticRegression(random_state=seed),
+            LogisticRegression(random_state=seed, C=10),
         )
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
