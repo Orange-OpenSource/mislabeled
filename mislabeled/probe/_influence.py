@@ -8,7 +8,6 @@
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.linalg import pinvh
 
 from mislabeled.probe._linear import linear
 from mislabeled.probe._minmax import Maximize, Minimize
