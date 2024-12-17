@@ -89,7 +89,7 @@ class Representer(Minimize):
             if estimator.loss == "log_loss":
                 grad_observed = np.abs(grad[np.arange(X.shape[0]), y])
             elif estimator.loss == "l2":
-                grad_observed = np.abs(estimator.grad_y(X, y)).sum(axis=1)
+                grad_observed = np.abs(grad).sum(axis=1)
             else:
                 raise NotImplementedError()
 

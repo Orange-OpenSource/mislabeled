@@ -141,25 +141,6 @@ class LinearModel(NamedTuple):
         return len(self.coef.shape) == 1 or self.coef.shape[1] == 1
 
 
-class LinearRegressor(LinearModel):
-    def predict(self, X):
-        return X @ self.coef + self.intercept
-
-
-class LinearClassifier(LinearModel):
-    def decision_function(self, X):
-        return X @ self.coef + self.intercept
-
-    def predict_proba(self, X):
-        return softmax(self.decision_function(X), axis=1)
-
-    def predict_log_proba(self, X):
-        return log_softmax(self.decision_function(X), axis=1)
-
-    def predict(self, X):
-        return np.argmax(self.decision_function(X), axis=1)
-
-
 @singledispatch
 def linearize(estimator, X, y):
     raise NotImplementedError(
