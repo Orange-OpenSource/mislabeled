@@ -11,7 +11,7 @@ from typing import NamedTuple
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.special import expit, log_softmax, softmax
+from scipy.special import expit, softmax
 from sklearn.base import is_classifier
 from sklearn.ensemble import (
     ExtraTreesClassifier,
@@ -200,32 +200,6 @@ def linearize_linear_model_logreg(estimator, X, y):
     return linear, X, y
 
 
-# commented out while they are not used in tests
-# Lasso and Elasticnet are yet to be added
-# @linearize.register(ElasticNet)
-# @linearize.register(ElasticNetCV)
-# @linearize.register(Lasso)
-# @linearize.register(LassoCV)
-# @linearize.register(RidgeClassifierCV)
-# @linearize.register(LinearSVC)
-# @linearize.register(LinearRegressor)
-# @linearize.register(LinearSVR)
-# def linearize_linear_model(estimator, X, y):
-#     X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
-#     coef = estimator.coef_.T
-#     intercept = estimator.intercept_
-#     if is_classifier(estimator):
-#         if coef.ndim > 1 and coef.shape[1] == 1:
-#             coef = np.hstack((-coef, coef))
-#         linear = LinearClassifier(coef, intercept)
-#     else:
-#         if coef.ndim > 1 and coef.shape[1] == 1:
-#             coef = coef.ravel()
-#             intercept = intercept.item()
-#         linear = LinearRegressor(coef, intercept)
-#     return linear, X, y
-
-
 @linearize.register(GradientBoostingClassifier)
 @linearize.register(GradientBoostingRegressor)
 @linearize.register(RandomForestClassifier)
@@ -289,3 +263,15 @@ def linear(probe):
         return probe(self, linearized, K, y)
 
     return linearized_probe
+
+
+# TODO commented out while they are not used in tests
+# Lasso and Elasticnet are yet to be added
+# @linearize.register(ElasticNet)
+# @linearize.register(ElasticNetCV)
+# @linearize.register(Lasso)
+# @linearize.register(LassoCV)
+# @linearize.register(RidgeClassifierCV)
+# @linearize.register(LinearSVC)
+# @linearize.register(LinearRegressor)
+# @linearize.register(LinearSVR)
