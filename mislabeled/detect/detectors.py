@@ -9,7 +9,6 @@
 """A detector zoo of techniques found in the litterature."""
 
 import numpy as np
-from sklearn.base import is_classifier
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 from mislabeled.aggregate import forget, fromnumpy, mean, oob, sum, var
