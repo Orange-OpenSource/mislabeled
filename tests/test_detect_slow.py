@@ -56,7 +56,7 @@ detectors = [
     ModelProbingDetector(
         base_model=make_pipeline(
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
-            LogisticRegression(penalty="l1", solver="saga", C=1e2),
+            LogisticRegression(penalty="l1", solver="saga", C=1e2, random_state=seed),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
         probe=ParameterCount(),
@@ -65,7 +65,7 @@ detectors = [
     ModelProbingDetector(
         base_model=make_pipeline(
             Nystroem(gamma=0.5, n_components=50, random_state=seed),
-            LogisticRegression(C=1e5, max_iter=1000),
+            LogisticRegression(C=1e5, max_iter=1000, random_state=seed),
         ),
         ensemble=LeaveOneOutEnsemble(n_jobs=-1),
         probe=ParamNorm2(),

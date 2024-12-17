@@ -9,7 +9,6 @@
 """A detector zoo of techniques found in the litterature."""
 
 import numpy as np
-from sklearn.base import is_classifier
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 from mislabeled.aggregate import forget, fromnumpy, mean, oob, sum, var
@@ -26,11 +25,6 @@ from mislabeled.probe import (
     FiniteDiffSensitivity,
     GradNorm2,
     GradSimilarity,
-    Influence,
-    L2GradNorm2,
-    L2GradSimilarity,
-    L2Influence,
-    L2Representer,
     Logits,
     Margin,
     Outliers,
@@ -38,6 +32,7 @@ from mislabeled.probe import (
     Probabilities,
     Representer,
     Scores,
+    SelfInfluence,
     Sensitivity,
 )
 
@@ -53,7 +48,7 @@ class OutlierDetector(ModelProbingDetector):
         self.n_jobs = n_jobs
 
 
-class InfluenceDetector(ModelProbingDetector):
+class SelfInfluenceDetector(ModelProbingDetector):
     """Detector based on influence function
 
     References
@@ -68,7 +63,7 @@ class InfluenceDetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=(Influence() if is_classifier(base_model) else L2Influence()),
+            probe=SelfInfluence(),
             aggregate="sum",
         )
 
@@ -86,7 +81,7 @@ class RepresenterDetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=(Representer() if is_classifier(base_model) else L2Representer()),
+            probe=Representer(),
             aggregate="sum",
         )
 
@@ -105,9 +100,7 @@ class AGRA(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=(
-                GradSimilarity() if is_classifier(base_model) else L2GradSimilarity()
-            ),
+            probe=GradSimilarity(),
             aggregate="sum",
         )
 
@@ -280,7 +273,7 @@ class TracIn(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps),
-            probe=GradNorm2() if is_classifier(base_model) else L2GradNorm2(),
+            probe=GradNorm2(),
             aggregate="sum",
         )
         self.steps = steps

@@ -29,9 +29,9 @@ from mislabeled.detect.detectors import (
     DecisionTreeComplexity,
     FiniteDiffComplexity,
     ForgetScores,
-    InfluenceDetector,
     OutlierDetector,
     RepresenterDetector,
+    SelfInfluenceDetector,
     SmallLoss,
     TracIn,
     VoSG,
@@ -102,10 +102,10 @@ detectors = [
             ),
         )
     ),
-    InfluenceDetector(
+    SelfInfluenceDetector(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
-            LogisticRegression(random_state=seed),
+            LogisticRegression(random_state=seed, C=10),
         )
     ),
     DecisionTreeComplexity(DecisionTreeClassifier()),
@@ -156,7 +156,7 @@ detectors = [
         random_state=seed,
     ),
     TracIn(GradientBoostingClassifier(random_state=seed), steps=10),
-    InfluenceDetector(MLPClassifier(random_state=seed)),
+    SelfInfluenceDetector(MLPClassifier(random_state=seed)),
 ]
 
 

@@ -14,14 +14,11 @@ from scipy.stats import entropy
 
 from ._adjust import Adjust
 from ._complexity import ParameterCount, ParamNorm2
-from ._grads import GradSimilarity, L2GradSimilarity
+from ._grads import GradSimilarity
 from ._influence import (
     GradNorm2,
-    Influence,
-    L2GradNorm2,
-    L2Influence,
-    L2Representer,
     Representer,
+    SelfInfluence,
 )
 from ._linear import linear, linearize
 from ._minmax import Maximize, Minimize
@@ -48,14 +45,10 @@ __all__ = [
     "Sensitivity",
     "ParameterCount",
     "ParamNorm2",
-    "Influence",
-    "L2Influence",
+    "SelfInfluence",
     "Representer",
-    "L2Representer",
     "GradNorm2",
-    "L2GradNorm2",
     "GradSimilarity",
-    "L2GradSimilarity",
     "Peer",
     "CORE",
     "linear",
