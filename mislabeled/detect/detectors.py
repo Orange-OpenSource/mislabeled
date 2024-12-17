@@ -26,7 +26,6 @@ from mislabeled.probe import (
     FiniteDiffSensitivity,
     GradNorm2,
     GradSimilarity,
-    L2Representer,
     Logits,
     Margin,
     Outliers,
@@ -83,7 +82,7 @@ class RepresenterDetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=(Representer() if is_classifier(base_model) else L2Representer()),
+            probe=Representer(),
             aggregate="sum",
         )
 

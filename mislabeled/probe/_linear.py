@@ -268,11 +268,10 @@ def linearize_trees(
     if is_classifier(estimator):
         linear = default_linear_model["classification"]
         linear.fit(leaves, y)
-        return linearize_linear_model_logreg(linear, leaves, y)
     else:
         linear = default_linear_model["regression"]
         linear.fit(leaves, y)
-        return linearize_linear_model_ridge(linear, leaves, y)
+    return linearize(linear, leaves, y)
 
 
 @linearize.register(MLPClassifier)

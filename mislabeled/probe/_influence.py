@@ -8,6 +8,7 @@
 
 import numpy as np
 import scipy.sparse as sp
+from sklearn.base import is_classifier
 
 from mislabeled.probe._linear import linear
 from mislabeled.probe._minmax import Maximize, Minimize
@@ -84,17 +85,11 @@ class Representer(Minimize):
         grad = estimator.grad_y(X, y)
         # grad observed
         if estimator._is_binary():
-            grad_observed = grad[:, 0]
+            grad_observed = np.abs(grad[:, 0])
         else:
-            grad_observed = grad[np.arange(X.shape[0]), y]
+            if is_classifier(estimator):
+                grad_observed = np.abs(grad[np.arange(X.shape[0]), y])
+            else:
+                grad_observed = np.abs(estimator.grad_y(X, y)).sum(axis=1)
 
-        return np.abs(grad_observed) * norm2(X)
-
-
-class L2Representer(Minimize):
-    """L2 Representer values"""
-
-    @linear
-    def __call__(self, estimator, X, y):
-        grad = estimator.grad_y(X, y)
-        return np.abs(grad).sum(axis=1) * norm2(X)
+        return grad_observed * norm2(X)
