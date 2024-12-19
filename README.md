@@ -21,26 +21,26 @@ mlp = make_pipeline(MinMaxScaler(), MLPClassifier())
 mlp.fit(X, y)
 ```
 
-### 2. Compute Self Representer values of the MLP
+### 2. Compute Representer values of the MLP
 
 ```python
 probe = Representer()
-self_representer_values = probe(mlp, X, y)
+representer_values = probe(mlp, X, y)
 ```
 
 ### 3. Inspect your training data
 
 ```python
-supicious = np.argsort(-self_representer_values)[0:top_k]
+supicious = np.argsort(-representer_values)[0:top_k]
 for i in suspicious:
   plt.imshow(X[i].reshape(28, 28))
 ```
 
-### 4. Wanna get the variance of the Self Representer values during training ?
+### 4. Wanna get the variance of the Representer values during training ?
 
 ```python
 detector = ModelProbingDetector(mlp, Representer(), ProgressiveEnsemble(), "var")
-var_self_representer_values = detector.trust_scores(X, y)
+var_representer_values = detector.trust_scores(X, y)
 ```
 
 ## Predefined detectors
@@ -80,7 +80,7 @@ If you use this library in a research project, please consider citing the corres
 
 ## Development
 
-Install [hatch](#https://hatch.pypa.io/latest/install/).
+Install [hatch](https://hatch.pypa.io/latest/install/).
 
 To format and lint:
 ```console
