@@ -119,12 +119,12 @@ class LinearModel(NamedTuple):
             else:
                 y_pred = self.decision_function(X)
                 p = softmax(y_pred, axis=1)
-                H = (
-                    np.eye(p.shape[1])[:, None, :, None]
-                    * (X_p.T @ X_p)[None, :, None, :]
-                ) - np.einsum("ij,ik,il,im->jklm", p, X_p, p, X_p, optimize="greedy")
-                Hs = H.shape
-                H = H.reshape(Hs[0] * Hs[1], Hs[2] * Hs[3]) / X.shape[0]
+                n, d, k = X_p.shape[0], X_p.shape[1], p.shape[1]
+                H1 = np.eye(k)[:, None, :, None] * (X_p.T @ X_p)[None, :, None, :]
+                H2 = (p[:, :, None] * X_p[:, None, :]).reshape(n, -1)
+                H2 = (H2.T @ H2).reshape(k, d, k, d)
+                H = H1 - H2
+                H = H.reshape(d * k, d * k) / n
 
         else:
             raise NotImplementedError()
