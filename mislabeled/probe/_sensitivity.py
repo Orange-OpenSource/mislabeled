@@ -110,10 +110,4 @@ class Sensitivity(Minimize):
             direction
         """
 
-        softmax = estimator.predict_proba(X)
-        proba = softmax[np.arange(len(y)), y].reshape(-1, 1)
-
-        grad_softmax = estimator.coef[y] * proba * (1 - proba)
-        grad_softmax = grad_softmax.astype(estimator.coef.dtype)
-
-        return grad_softmax
+        return estimator.grad_X(X, y)
