@@ -147,3 +147,7 @@ class BaseHandleClassifier(
     def decision_function(self, X):
         check_is_fitted(self)
         return self.estimator_.decision_function(X)
+
+    @available_if(_estimator_has("__sklearn_tags__"))
+    def __sklearn_tags__(self):
+        return self.estimator.__sklearn_tags__()

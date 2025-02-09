@@ -5,7 +5,6 @@
 # This software is distributed under the MIT license,
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
-# %%
 
 import numpy as np
 import pytest

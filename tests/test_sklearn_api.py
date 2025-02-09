@@ -98,6 +98,13 @@ class ByPassBiquality(BaseEstimator, MetaEstimatorMixin):
     def decision_function(self, X):
         return self.estimator.decision_function(X)
 
+    def __sklearn_tags__(self):
+        if hasattr(self.estimator, "__sklearn_tags__"):
+            tags = self.estimator.__sklearn_tags__()
+        else:
+            tags = {}
+        return tags
+
 
 handlers = [
     partial(FilterClassifier, estimator=LogisticRegression()),
