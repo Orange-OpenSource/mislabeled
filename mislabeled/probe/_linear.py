@@ -111,7 +111,7 @@ class LinearModel(NamedTuple):
         else:
             raise NotImplementedError()
         dZ_dX = self.coef.T
-        return np.vecmat(dl_dy, dy_dZ) @ dZ_dX
+        return (dl_dy[:, None, :] @ dy_dZ).sum(axis=1) @ dZ_dX
 
     def hessian(self, X, y):
         X_p = X if not sp.issparse(X) else X.toarray()

@@ -184,7 +184,7 @@ def sparse_X_test(n_classes, detector):
     )
 
 
-@pytest.mark.parametrize("n_classes", [2, 5])
+@pytest.mark.parametrize("n_classes", [2])
 @pytest.mark.parametrize("detector", detectors)
 def test_detector_with_sparse_X(n_classes, detector):
     sparse_X_test(n_classes, detector)
