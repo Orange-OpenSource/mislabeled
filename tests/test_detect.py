@@ -161,7 +161,7 @@ detectors = [
     LinearVoSG(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
-            LogisticRegression(),
+            LogisticRegression(random_state=seed),
         )
     ),
 ]
@@ -175,7 +175,7 @@ def test_detect(n_classes, detector):
 
 def sparse_X_test(n_classes, detector):
     # we just detect whether computing trust scores works
-    X, y, _ = blobs_1_mislabeled(n_classes, n_samples=100)
+    X, y, _ = blobs_1_mislabeled(n_classes, n_samples=1000)
     percentile = np.percentile(np.abs(X), 50)
     X[np.abs(X) < percentile] = 0
 
@@ -184,7 +184,7 @@ def sparse_X_test(n_classes, detector):
     )
 
 
-@pytest.mark.parametrize("n_classes", [2])
+@pytest.mark.parametrize("n_classes", [2, 5])
 @pytest.mark.parametrize("detector", detectors)
 def test_detector_with_sparse_X(n_classes, detector):
     sparse_X_test(n_classes, detector)
