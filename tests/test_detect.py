@@ -164,6 +164,7 @@ detectors = [
             LogisticRegression(random_state=seed),
         )
     ),
+    LinearVoSG(MLPClassifier(random_state=seed)),
 ]
 
 

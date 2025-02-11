@@ -98,20 +98,8 @@ class LinearModel(NamedTuple):
     def grad_X(self, X, y):
         # gradients w.r.t the input features
         dl_dy = self.grad_y(X, y)
-        # Z = X @ coef + intercept, pre-logit in the logistic model
-        if self.loss == "l2":
-            out = 1 if y.ndim == 1 else y.shape[1]
-            dy_dZ = np.ones((y.shape[0], out, out))
-        elif self.loss == "log_loss":
-            p = self.predict_proba(X)
-            if self._is_binary():
-                dy_dZ = (p * (1.0 - p))[:, :, None]
-            else:
-                dy_dZ = (np.eye(p.shape[1])[None, :, :] - p[:, None, :]) * p[:, :, None]
-        else:
-            raise NotImplementedError()
-        dZ_dX = self.coef.T
-        return (dl_dy[:, None, :] @ dy_dZ).sum(axis=1) @ dZ_dX
+        dy_dX = self.coef.T
+        return dl_dy @ dy_dX
 
     def hessian(self, X, y):
         X_p = X if not sp.issparse(X) else X.toarray()
