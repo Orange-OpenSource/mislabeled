@@ -6,6 +6,8 @@
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
+import math
+
 import numpy as np
 import pytest
 from joblib import Parallel, delayed
@@ -92,7 +94,7 @@ def test_self_influence_LOO_2_classes(model_loss):
             y[test], model.fit(X, y).decision_function(X[test])
         ) - loss_fn(y[test], model.fit(X[train], y[train]).decision_function(X[test]))
 
-        return loo_diff * X.shape[0]
+        return loo_diff
 
     loo_diff = Parallel(n_jobs=-1)(
         delayed(eval)(base_model, X, y, train, test)
@@ -172,7 +174,7 @@ def test_self_influence_LOO_3_classes(model_loss):
             y[test], model.fit(X, y).decision_function(X[test])
         ) - loss_fn(y[test], model.fit(X[train], y[train]).decision_function(X[test]))
 
-        return loo_diff * X.shape[0]
+        return loo_diff
 
     loo_diff = Parallel(n_jobs=-1)(
         delayed(eval)(base_model, X, y, train, test)
@@ -181,3 +183,43 @@ def test_self_influence_LOO_3_classes(model_loss):
 
     corr = pearsonr(probe_scores, loo_diff).statistic
     assert corr > 0.75
+
+
+@pytest.mark.parametrize(
+    "model_loss",
+    [
+        (
+            LogisticRegression(fit_intercept=False, C=1e-4, random_state=1),
+            loss_fn_logreg_2classes,
+        ),
+        (
+            RidgeClassifier(fit_intercept=False, alpha=1e4, random_state=1),
+            loss_fn_ridge_classif_2classes,
+        ),
+    ],
+)
+def test_regul_scaling(model_loss):
+    base_model, loss_fn = model_loss
+
+    X, y = make_blobs(n_samples=30, random_state=1, centers=2)
+
+    X = StandardScaler().fit_transform(X)
+    base_model.fit(X, y)
+
+    probe = SelfInfluence()
+
+    probe_scores = probe(base_model, X, y)
+
+    def eval(model, X, y, train, test):
+        loo_diff = loss_fn(
+            y[test], model.fit(X, y).decision_function(X[test])
+        ) - loss_fn(y[test], model.fit(X[train], y[train]).decision_function(X[test]))
+
+        return loo_diff
+
+    loo_diff = Parallel(n_jobs=-1)(
+        delayed(eval)(base_model, X, y, train, test)
+        for train, test in LeaveOneOut().split(X)
+    )
+
+    assert math.isclose(np.mean(probe_scores / loo_diff), 1, abs_tol=1e-3)
