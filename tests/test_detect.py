@@ -156,7 +156,7 @@ detectors = [
         random_state=seed,
     ),
     TracIn(GradientBoostingClassifier(random_state=seed), steps=10),
-    SelfInfluenceDetector(MLPClassifier(random_state=seed)),
+    SelfInfluenceDetector(MLPClassifier(random_state=seed, alpha=0.1)),
 ]
 
 

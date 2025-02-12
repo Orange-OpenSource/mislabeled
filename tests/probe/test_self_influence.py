@@ -11,7 +11,7 @@ import math
 import numpy as np
 import pytest
 from joblib import Parallel, delayed
-from scipy.special import softmax
+from scipy.special import expit, softmax
 from scipy.stats import pearsonr
 from sklearn.datasets import make_blobs
 from sklearn.linear_model import (
@@ -33,7 +33,7 @@ def loss_fn_ridge_classif_2classes(y, y_pred):
 
 
 def loss_fn_logreg_2classes(y, y_pred):
-    return log_loss(y, 1.0 / (1.0 + np.exp(-y_pred)), labels=[0, 1])
+    return log_loss(y, expit(y_pred), labels=[0, 1])
 
 
 MODEL = [
