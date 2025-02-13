@@ -302,8 +302,8 @@ class ForgetScores(ModelProbingDetector):
         self.staging = staging
 
 
-class FiniteDiffVoLG(ModelProbingDetector):
-    """Detector based on variance of logits' gradients. The original VoG.
+class FiniteDiffVoG(ModelProbingDetector):
+    """Detector based on variance of logits' gradients. The original VoLG.
 
     References
     ----------
@@ -340,8 +340,8 @@ class FiniteDiffVoLG(ModelProbingDetector):
         self.random_state = random_state
 
 
-class FiniteDiffVoG(ModelProbingDetector):
-    """Detector based on variance of losses' gradients. The corrected VoG."""
+class FiniteDiffVoLG(ModelProbingDetector):
+    """Detector based on variance of losses' gradients. The corrected VoLG."""
 
     def __init__(
         self,
@@ -371,7 +371,7 @@ class FiniteDiffVoG(ModelProbingDetector):
         self.random_state = random_state
 
 
-class VoG(ModelProbingDetector):
+class VoLG(ModelProbingDetector):
     """Detector based on variance of loss gradients wrt inputs."""
 
     def __init__(
