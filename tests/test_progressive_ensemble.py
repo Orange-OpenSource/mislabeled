@@ -18,7 +18,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from mislabeled.detect import ModelProbingDetector
-from mislabeled.detect.detectors import AreaUnderMargin, VoSG
+from mislabeled.detect.detectors import AreaUnderMargin, FiniteDiffVoG
 from mislabeled.ensemble import ProgressiveEnsemble, staged_probe
 from mislabeled.probe import Logits, Margin
 
@@ -39,7 +39,7 @@ from mislabeled.probe import Logits, Margin
     "detector",
     [
         AreaUnderMargin,
-        partial(VoSG, random_state=1),
+        partial(FiniteDiffVoG, random_state=1),
     ],
 )
 def test_progressive_staged(estimator, detector):

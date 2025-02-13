@@ -22,6 +22,7 @@ from mislabeled.ensemble import (
 )
 from mislabeled.probe import (
     Confidence,
+    CrossEntropy,
     FiniteDiffSensitivity,
     GradNorm2,
     GradSimilarity,
@@ -301,7 +302,7 @@ class ForgetScores(ModelProbingDetector):
         self.staging = staging
 
 
-class VoLG(ModelProbingDetector):
+class FiniteDiffVoLG(ModelProbingDetector):
     """Detector based on variance of logits' gradients. The original VoG.
 
     References
@@ -339,8 +340,8 @@ class VoLG(ModelProbingDetector):
         self.random_state = random_state
 
 
-class VoSG(ModelProbingDetector):
-    """Detector based on variance of softmax's gradients. The corrected VoG."""
+class FiniteDiffVoG(ModelProbingDetector):
+    """Detector based on variance of losses' gradients. The corrected VoG."""
 
     def __init__(
         self,
@@ -356,7 +357,7 @@ class VoSG(ModelProbingDetector):
             base_model=base_model,
             ensemble=ProgressiveEnsemble(steps=steps, staging=staging),
             probe=FiniteDiffSensitivity(
-                Confidence(Probabilities()),
+                CrossEntropy(Probabilities()),
                 epsilon=epsilon,
                 n_directions=n_directions,
                 seed=random_state,
@@ -370,9 +371,8 @@ class VoSG(ModelProbingDetector):
         self.random_state = random_state
 
 
-class LinearVoSG(ModelProbingDetector):
-    """Detector based on variance of softmax's gradients.
-    The exact formulation for linear model."""
+class VoG(ModelProbingDetector):
+    """Detector based on variance of loss gradients wrt inputs."""
 
     def __init__(
         self,

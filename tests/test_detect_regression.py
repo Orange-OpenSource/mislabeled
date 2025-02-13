@@ -16,11 +16,11 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import make_pipeline
 
 from mislabeled.detect.detectors import (
-    LinearVoSG,
     Regressor,
     RepresenterDetector,
     SelfInfluenceDetector,
     TracIn,
+    VoG,
 )
 
 from .utils import blobs_1_outlier_y
@@ -61,13 +61,13 @@ detectors = [
     ),
     TracIn(GradientBoostingRegressor(), steps=10),
     SelfInfluenceDetector(MLPRegressor(random_state=seed)),
-    LinearVoSG(
+    VoG(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
             SGDRegressor(random_state=seed),
         )
     ),
-    LinearVoSG(MLPRegressor(random_state=seed, alpha=10)),
+    VoG(MLPRegressor(random_state=seed, alpha=10)),
 ]
 
 

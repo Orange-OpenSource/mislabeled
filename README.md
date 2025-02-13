@@ -52,7 +52,7 @@ var_representer_values = detector.trust_scores(X, y)
 | Representer | [Paper 1972](https://www.jstor.org/stable/2240067) | `import RepresenterDetector` |
 | TracIn | [NeurIPS 2020](https://proceedings.neurips.cc/paper_files/paper/2020/file/e6385d39ec9394f2f3a354d9d2b88eec-Paper.pdf) | `import TracIn` |
 | Forget Scores | [ICLR 2019](https://openreview.net/pdf?id=BJlxm30cKm) | `import ForgetScores` |
-| VoG | [CVPR 2022](https://openaccess.thecvf.com/content/CVPR2022/papers/Agarwal_Estimating_Example_Difficulty_Using_Variance_of_Gradients_CVPR_2022_paper.pdf) | `import VoLG, VoSG, LinearVoSG`|
+| VoG | [CVPR 2022](https://openaccess.thecvf.com/content/CVPR2022/papers/Agarwal_Estimating_Example_Difficulty_Using_Variance_of_Gradients_CVPR_2022_paper.pdf) | `import FiniteDiffVoLG, FiniteDiffVoG, VoG`|
 | Small Loss | [ICML 2018](https://proceedings.mlr.press/v80/jiang18c/jiang18c.pdf) | `import SmallLoss`|
 | CleanLab | [JAIR 2021](https://www.jair.org/index.php/jair/article/view/12125/26676) | `import ConfidentLearning` |
 | Consensus (C-Scores) | [Applied Intelligence 2011](https://link.springer.com/article/10.1007/s10489-010-0225-4) | `import ConsensusConsistency`|

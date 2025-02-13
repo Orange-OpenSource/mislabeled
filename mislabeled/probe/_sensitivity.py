@@ -18,7 +18,7 @@ from mislabeled.probe._minmax import Minimize
 
 class FiniteDiffSensitivity(Minimize):
     """Detects likely mislabeled examples based on local smoothness of an overfitted
-    classifier. Smoothness is measured using an estimate of the gradients around
+    classifier. Smoothness is measured using an estimate of a probe around
     candidate examples using finite differences.
 
     Parameters
@@ -86,7 +86,7 @@ class FiniteDiffSensitivity(Minimize):
 
 class Sensitivity(Minimize):
     """Detects likely mislabeled examples based on the
-    softmax derivative with respect to the inputs for linear models."""
+    loss derivative with respect to the inputs for linear models."""
 
     @linear
     def __call__(self, estimator, X, y):

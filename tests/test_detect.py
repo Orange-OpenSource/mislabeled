@@ -28,14 +28,14 @@ from mislabeled.detect.detectors import (
     ConsensusConsistency,
     DecisionTreeComplexity,
     FiniteDiffComplexity,
+    FiniteDiffVoG,
     ForgetScores,
-    LinearVoSG,
     OutlierDetector,
     RepresenterDetector,
     SelfInfluenceDetector,
     SmallLoss,
     TracIn,
-    VoSG,
+    VoG,
 )
 from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble, ProgressiveEnsemble
 from mislabeled.probe import GradSimilarity
@@ -141,7 +141,7 @@ detectors = [
     AreaUnderMargin(
         DecisionTreeClassifier(),
     ),
-    VoSG(
+    FiniteDiffVoG(
         GradientBoostingClassifier(
             max_depth=None,
             n_estimators=100,
@@ -158,13 +158,13 @@ detectors = [
     ),
     TracIn(GradientBoostingClassifier(random_state=seed), steps=10),
     SelfInfluenceDetector(MLPClassifier(random_state=seed)),
-    LinearVoSG(
+    VoG(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
             LogisticRegression(random_state=seed),
         )
     ),
-    LinearVoSG(MLPClassifier(random_state=seed)),
+    VoG(MLPClassifier(random_state=seed)),
 ]
 
 
