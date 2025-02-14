@@ -75,7 +75,6 @@ class LinearModel(NamedTuple):
             dl_dy = 2 * (y - y_linear)
 
         elif self.loss == "log_loss":
-            y_linear = self.decision_function(X)
             if self._is_binary():
                 dl_dy = y[:, None] - expit(y_linear)
             else:
@@ -95,6 +94,12 @@ class LinearModel(NamedTuple):
             X_p = np.hstack((X_p, np.ones((X_p.shape[0], 1))))
 
         return dl_dy[:, :, None] * X_p[:, None, :]
+
+    def grad_X(self, X, y):
+        # gradients w.r.t the input features
+        dl_dy = self.grad_y(X, y)
+        dy_dX = self.coef.T
+        return dl_dy @ dy_dX
 
     def hessian(self, X, y):
         X_p = X if not sp.issparse(X) else X.toarray()
@@ -170,6 +175,9 @@ def linearize_linear_model_ridge(estimator, X, y):
         regul = estimator.alpha_
     else:
         regul = estimator.alpha
+
+    if coef.ndim == 1:
+        coef = coef.reshape(-1, 1)
 
     linear = LinearModel(coef, intercept, loss="l2", regul=regul)
     return linear, X, y

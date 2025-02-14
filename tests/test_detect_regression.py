@@ -20,6 +20,7 @@ from mislabeled.detect.detectors import (
     RepresenterDetector,
     SelfInfluenceDetector,
     TracIn,
+    VoLG,
 )
 
 from .utils import blobs_1_outlier_y
@@ -60,6 +61,13 @@ detectors = [
     ),
     TracIn(GradientBoostingRegressor(), steps=10),
     SelfInfluenceDetector(MLPRegressor(random_state=seed)),
+    VoLG(
+        make_pipeline(
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
+            SGDRegressor(random_state=seed),
+        )
+    ),
+    VoLG(MLPRegressor(random_state=seed, alpha=10)),
 ]
 
 
