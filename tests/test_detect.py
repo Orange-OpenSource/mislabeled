@@ -157,7 +157,7 @@ detectors = [
         random_state=seed,
     ),
     TracIn(GradientBoostingClassifier(random_state=seed), steps=10),
-    SelfInfluenceDetector(MLPClassifier(random_state=seed)),
+    SelfInfluenceDetector(MLPClassifier(random_state=seed, alpha=0.1)),
     VoLG(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),

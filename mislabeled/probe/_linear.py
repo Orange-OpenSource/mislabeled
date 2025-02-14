@@ -113,14 +113,14 @@ class LinearModel(NamedTuple):
                 H = np.eye(self.coef.shape[1])[:, None, :, None] * H[None, :, None, :]
 
                 Hs = H.shape
-                H = H.reshape(Hs[0] * Hs[1], Hs[2] * Hs[3]) / X.shape[0]
+                H = H.reshape(Hs[0] * Hs[1], Hs[2] * Hs[3])
 
         elif self.loss == "log_loss":
             if self._is_binary():
                 y_pred = self.decision_function(X)[:, 0]
                 p = expit(y_pred)
                 d2y_dy2 = p * (1.0 - p)
-                H = X_p.T @ (d2y_dy2[:, None] * X_p) / X.shape[0]
+                H = X_p.T @ (d2y_dy2[:, None] * X_p)
             else:
                 y_pred = self.decision_function(X)
                 p = softmax(y_pred, axis=1)
@@ -129,7 +129,7 @@ class LinearModel(NamedTuple):
                 H2 = (p[:, :, None] * X_p[:, None, :]).reshape(n, -1)
                 H2 = (H2.T @ H2).reshape(k, d, k, d)
                 H = H1 - H2
-                H = H.reshape(d * k, d * k) / n
+                H = H.reshape(d * k, d * k)
 
         else:
             raise NotImplementedError()
@@ -199,9 +199,9 @@ def linearize_linear_model_logreg(estimator, X, y):
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
     if hasattr(estimator, "C_"):
-        regul = 1.0 / estimator.C_
+        regul = 1.0 / (2.0 * estimator.C_)
     else:
-        regul = 1.0 / estimator.C
+        regul = 1.0 / (2.0 * estimator.C)
     linear = LinearModel(coef, intercept, loss="log_loss", regul=regul)
     return linear, X, y
 
