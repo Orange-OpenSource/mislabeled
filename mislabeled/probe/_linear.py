@@ -30,6 +30,7 @@ from sklearn.linear_model import (
     SGDClassifier,
     SGDRegressor,
 )
+from sklearn.metrics import log_loss
 from sklearn.naive_bayes import LabelBinarizer
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.neural_network._base import ACTIVATIONS
@@ -65,6 +66,16 @@ class LinearModel(NamedTuple):
         else:
             raise NotImplementedError()
 
+    def objective(self, X, y):
+        if self.loss == "l2":
+            objective = ((y - self.predict_proba(X)) ** 2).mean(axis=0).sum(axis=0)
+        elif self.loss == "log_loss":
+            objective = log_loss(y, self.predict_proba(X))
+        else:
+            raise NotImplementedError()
+
+        return X.shape[0] * (objective + self.regul * np.linalg.norm(self.coef) ** 2)
+
     def grad_y(self, X, y):
         # gradients w.r.t. the output of the linear op, i.e. the logit
         # in the logistic model
@@ -85,6 +96,20 @@ class LinearModel(NamedTuple):
             raise NotImplementedError()
         return dl_dy
 
+    @property
+    def packed_coef(self):
+        packed = self.coef
+        if self.intercept is not None:
+            packed = np.concatenate((packed, self.intercept[None, :]))
+        return packed
+
+    @property
+    def packed_regul(self):
+        packed = np.full_like(self.coef, self.regul)
+        if self.intercept is not None:
+            packed = np.concatenate((packed, np.zeros_like(self.intercept[None, :])))
+        return packed
+
     def grad_p(self, X, y):
         # gradients w.r.t. the parameters (weight, intercept)
         dl_dy = self.grad_y(X, y)
@@ -93,7 +118,9 @@ class LinearModel(NamedTuple):
         if self.intercept is not None:
             X_p = np.hstack((X_p, np.ones((X_p.shape[0], 1))))
 
-        return dl_dy[:, :, None] * X_p[:, None, :]
+        dl_dp = dl_dy[:, None, :] * X_p[:, :, None]
+        dl_dp += 2 * self.packed_regul * self.packed_coef
+        return dl_dp.reshape(X_p.shape[0], -1)
 
     def grad_X(self, X, y):
         # gradients w.r.t the input features
@@ -107,13 +134,12 @@ class LinearModel(NamedTuple):
         if self.intercept is not None:
             X_p = np.hstack((X_p, np.ones((X_p.shape[0], 1))))
 
+        d, k = self.packed_coef.shape
+
         if self.loss == "l2":
             H = 2.0 * X_p.T @ X_p
             if not self._is_binary():
-                H = np.eye(self.coef.shape[1])[:, None, :, None] * H[None, :, None, :]
-
-                Hs = H.shape
-                H = H.reshape(Hs[0] * Hs[1], Hs[2] * Hs[3])
+                H = np.eye(self.coef.shape[1])[None, :, None, :] * H[:, None, :, None]
 
         elif self.loss == "log_loss":
             if self._is_binary():
@@ -129,14 +155,16 @@ class LinearModel(NamedTuple):
                 H2 = (p[:, :, None] * X_p[:, None, :]).reshape(n, -1)
                 H2 = (H2.T @ H2).reshape(k, d, k, d)
                 H = H1 - H2
-                H = H.reshape(d * k, d * k)
 
         else:
             raise NotImplementedError()
 
+        H = H.reshape(k * d, k * d)
+
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
-        H[np.diag_indices(self.coef.size)] += self.regul * 2
+        if self.regul is not None:
+            H[np.diag_indices(H.shape[0])] += X.shape[0] * 2 * self.packed_regul.ravel()
 
         return H
 
