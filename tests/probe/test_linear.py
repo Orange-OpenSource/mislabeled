@@ -1,7 +1,7 @@
 import numpy as np
-from sklearn.base import is_classifier
 import pytest
 from scipy.differentiate import hessian, jacobian
+from sklearn.base import is_classifier
 from sklearn.datasets import make_blobs, make_regression
 from sklearn.linear_model import (
     LinearRegression,

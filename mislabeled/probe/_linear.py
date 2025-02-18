@@ -27,8 +27,8 @@ from sklearn.linear_model import (
     LogisticRegressionCV,
     Ridge,
     RidgeClassifier,
-    RidgeCV,
     RidgeClassifierCV,
+    RidgeCV,
     SGDClassifier,
     SGDRegressor,
 )
@@ -152,7 +152,7 @@ class LinearModel(NamedTuple):
             X_p = X
 
         # n = X.shape[0]
-        d, k = self.packed_coef.shape
+        _, k = self.packed_coef.shape
 
         if self.loss == "l2":
             H = 2.0 * X_p.T @ X_p

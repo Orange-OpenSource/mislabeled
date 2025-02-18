@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
+import scipy.sparse as sp
 from sklearn.datasets import make_regression
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
-import scipy.sparse as sp
+
 from mislabeled.probe import linearize
 
 
