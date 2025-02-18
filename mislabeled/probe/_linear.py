@@ -258,10 +258,16 @@ def linearize_linear_model_logreg(estimator, X, y):
     X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
-    if hasattr(estimator, "C_"):
-        regul = 1.0 / (2.0 * estimator.C_)
+    if estimator.penalty is None:
+        regul = None
+    elif estimator.penalty == "l2":
+        if hasattr(estimator, "C_"):
+            regul = 1.0 / (2.0 * estimator.C_)
+        else:
+            regul = 1.0 / (2.0 * estimator.C)
     else:
-        regul = 1.0 / (2.0 * estimator.C)
+        raise NotImplementedError()
+
     linear = LinearModel(coef, intercept, loss="log_loss", regul=regul)
     return linear, X, y
 
