@@ -128,33 +128,87 @@ class LinearModel(NamedTuple):
         dy_dX = self.coef.T
         return dl_dy @ dy_dX
 
+    def fast_block_diag(self, V):
+        n, k = V.shape[0], V.shape[1]
+
+        row = np.arange(n * k).repeat(k)
+        col = np.tile(np.arange(k), n * k) + np.repeat(np.arange(n) * k, k * k)
+
+        return sp.coo_matrix((V.ravel(), (row, col)), shape=(n * k, n * k)).tocsr()
+
     def hessian(self, X, y):
-        X_p = X if not sp.issparse(X) else X.toarray()
+        # X_p = X if not sp.issparse(X) else X.toarray()
 
         if self.intercept is not None:
-            X_p = np.hstack((X_p, np.ones((X_p.shape[0], 1))))
+            if sp.issparse(X):
+                X_p = sp.hstack((X, sp.ones((X.shape[0], 1))))
+            else:
+                X_p = np.hstack((X, np.ones((X.shape[0], 1))))
+        else:
+            X_p = X
 
+        # n = X.shape[0]
         d, k = self.packed_coef.shape
 
         if self.loss == "l2":
             H = 2.0 * X_p.T @ X_p
+            H = H if not sp.issparse(H) else H.toarray()
             if not self._is_binary():
                 H = np.eye(self.coef.shape[1])[None, :, None, :] * H[:, None, :, None]
 
         elif self.loss == "log_loss":
+            p = self.predict_proba(X)
             if self._is_binary():
-                y_pred = self.decision_function(X)[:, 0]
-                p = expit(y_pred)
-                d2y_dy2 = p * (1.0 - p)
-                H = X_p.T @ (d2y_dy2[:, None] * X_p)
+                V = p * (1.0 - p)
+                W = self.fast_block_diag(V)
+                H = X_p.T @ W @ X_p
             else:
-                y_pred = self.decision_function(X)
-                p = softmax(y_pred, axis=1)
-                n, d, k = X_p.shape[0], X_p.shape[1], p.shape[1]
-                H1 = np.eye(k)[:, None, :, None] * (X_p.T @ X_p)[None, :, None, :]
-                H2 = (p[:, :, None] * X_p[:, None, :]).reshape(n, -1)
-                H2 = (H2.T @ H2).reshape(k, d, k, d)
-                H = H1 - H2
+                # X_p = np.eye(k)[None, :, None, :] * X_p[:, None, :, None]
+                # X_p = X_p.reshape(n * k, d * k)
+                if sp.issparse(X_p):
+                    X_p = sp.kron(X_p, sp.eye(k))
+                else:
+                    X_p = np.kron(X_p, np.eye(k))
+                # X_p = X_p
+                # W = block_diag(
+                #     *[p[i, None].T * (np.eye(k) - p[i, None]) for i in range(n)]
+                # )
+                V = p[:, :, None] * (np.eye(k)[None, :, :] - p[:, None, :])
+                # WX =
+                # H = X_p.T @ X_p
+                # H = X_p.reshape(n * k, d * k).T @ (
+                #     V @ X_p.reshape(n, k, d * k)
+                # ).reshape(n * k, d * k)
+                W = self.fast_block_diag(V)
+                # V = V.reshape(n, k * k)
+                # W = np.eye(n)[:, None, :, None] * V[:, :, None, :]
+                # W = W.reshape(n * k, n * k)
+                H = X_p.T @ W @ X_p
+                # with np.printoptions(precision=3, suppress=True):
+                #     print(H)
+                # W = p[:, :, None] * (np.eye(p.shape[1])[None, :, :] - p[:, None, :])
+                # H = (X_p.T @ W)
+                # n, d, k = X_p.shape[0], X_p.shape[1], p.shape[1]
+                # H11 = X_p
+                # H12 = (p[:, None, :] * X_p[:, :, None]).reshape(n, -1)
+                # H11 = (np.ones((n, k))[:, None, :] * X_p[:, :, None]).reshape(n, -1)
+                # H11 = X_p
+                # H12 = (p[:, None, :] * X_p[:, :, None]).reshape(n, -1)
+                # H1 = (H11.T @ H12).reshape(d, k, d, k)
+                # H1 = (np.eye(k)[None, None, :, :] * X_p[:, :, None, None]).reshape(
+                #     n, -1
+                # ).T @ (p[:, None, :, None] * X_p[:, :, None, None]).reshape(n, -1)
+                # print(H1.shape)
+                # H1 = X_p.T @ W @ X_p
+                # H2 = (p[:, None, :] * X_p[:, :, None]).reshape(n, -1)
+                # H2 = H2.T @ H2  # .reshape(d, k, d, k)
+                # H = -H2
+                # H = H1 - H2
+                # n, d, k = X_p.shape[0], X_p.shape[1], p.shape[1]
+                # H1 = np.eye(k)[None, :, None, :] * (X_p.T @ X_p)[:, None, :, None]
+                # H2 = (p[:, None, :] * X_p[:, :, None]).reshape(n, -1)
+                # H2 = (H2.T @ H2).reshape(d, k, d, k)
+                # H = H1 - H2
 
         else:
             raise NotImplementedError()
