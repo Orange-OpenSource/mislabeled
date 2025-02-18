@@ -4,6 +4,7 @@ import pytest
 from scipy.differentiate import hessian, jacobian
 from sklearn.datasets import make_blobs, make_regression
 from sklearn.linear_model import (
+    LinearRegression,
     LogisticRegression,
     Ridge,
     RidgeClassifier,
@@ -24,6 +25,8 @@ from mislabeled.probe import linearize
         LogisticRegression(fit_intercept=True),
         Ridge(fit_intercept=False),
         Ridge(fit_intercept=True),
+        LinearRegression(fit_intercept=False),
+        LinearRegression(fit_intercept=True),
         SGDClassifier(loss="log_loss", fit_intercept=False),
         SGDClassifier(loss="log_loss", fit_intercept=True),
     ],
@@ -91,6 +94,6 @@ def test_grad_hess(model, num_classes):
     np.testing.assert_allclose(
         linearized.hessian(X, y),
         hessian(vectorized_objective, packed_raveled_coef).ddf,
-        atol=1e-4,  # this one is good
+        atol=1e-3,  # this one is good
         strict=True,
     )

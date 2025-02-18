@@ -22,11 +22,13 @@ from sklearn.ensemble import (
     RandomForestRegressor,
 )
 from sklearn.linear_model import (
+    LinearRegression,
     LogisticRegression,
     LogisticRegressionCV,
     Ridge,
     RidgeClassifier,
     RidgeCV,
+    RidgeClassifierCV,
     SGDClassifier,
     SGDRegressor,
 )
@@ -74,7 +76,10 @@ class LinearModel(NamedTuple):
         else:
             raise NotImplementedError()
 
-        return X.shape[0] * (objective + self.regul * np.linalg.norm(self.coef) ** 2)
+        if self.regul is not None:
+            objective += self.regul * np.linalg.norm(self.coef) ** 2
+
+        return objective * X.shape[0]
 
     def grad_y(self, X, y):
         # gradients w.r.t. the output of the linear op, i.e. the logit
@@ -103,6 +108,9 @@ class LinearModel(NamedTuple):
 
     @property
     def packed_regul(self):
+        if self.regul is None:
+            return np.zeros_like(self.packed_coef)
+
         packed = np.full_like(self.coef, self.regul)
         if self.intercept is not None:
             packed = np.concatenate((packed, np.zeros_like(self.intercept[None, :])))
@@ -172,8 +180,7 @@ class LinearModel(NamedTuple):
 
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
-        if self.regul is not None:
-            H[np.diag_indices(H.shape[0])] += X.shape[0] * 2 * self.packed_regul.ravel()
+        H[np.diag_indices(H.shape[0])] += X.shape[0] * 2 * self.packed_regul.ravel()
 
         return H
 
@@ -200,6 +207,8 @@ def linearize_pipeline(estimator, X, y):
 @linearize.register(Ridge)
 @linearize.register(RidgeCV)
 @linearize.register(RidgeClassifier)
+@linearize.register(RidgeClassifierCV)
+@linearize.register(LinearRegression)
 def linearize_linear_model_ridge(estimator, X, y):
     X, y = check_X_y(
         X,
@@ -219,8 +228,10 @@ def linearize_linear_model_ridge(estimator, X, y):
 
     if hasattr(estimator, "alpha_"):
         regul = estimator.alpha_
-    else:
+    elif hasattr(estimator, "alpha"):
         regul = estimator.alpha
+    else:
+        regul = None
 
     if coef.ndim == 1:
         coef = coef.reshape(-1, 1)
@@ -331,7 +342,5 @@ def linear(probe):
 # @linearize.register(ElasticNetCV)
 # @linearize.register(Lasso)
 # @linearize.register(LassoCV)
-# @linearize.register(RidgeClassifierCV)
 # @linearize.register(LinearSVC)
-# @linearize.register(LinearRegressor)
 # @linearize.register(LinearSVR)
