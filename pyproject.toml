@@ -7,7 +7,7 @@ name = "mislabeled"
 dynamic = ["version"]
 description = "detect mislabeled examples in machine learning datasets"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 keywords = []
 authors = [
@@ -26,7 +26,6 @@ classifiers = [
   "Operating System :: Unix",
   "Operating System :: MacOS",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
@@ -52,6 +51,7 @@ extra-args =  ["--ignore=tests/datasets", "--ignore=tests/test_cache.py"]
 extra-dependencies = [
   "mislabeled[examples]",
   "pytest-benchmark",
+  "scipy>=1.15.0"
 ]
 
 [tool.coverage.run]
