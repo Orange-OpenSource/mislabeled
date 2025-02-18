@@ -174,6 +174,7 @@ class LinearModel(NamedTuple):
                 V = p[:, :, None] * (np.eye(k)[None, :, :] - p[:, None, :])
                 W = self.fast_block_diag(V)
                 H = X_p.T @ W @ X_p
+            H = H if not sp.issparse(H) else H.toarray()
 
         else:
             raise NotImplementedError()
