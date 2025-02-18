@@ -49,6 +49,10 @@ source = "vcs"
 
 [tool.hatch.envs.hatch-test]
 extra-args =  ["--ignore=tests/datasets", "--ignore=tests/test_cache.py"]
+extra-dependencies = [
+  "mislabeled[examples]",
+  "pytest-benchmark",
+]
 
 [tool.coverage.run]
 omit = ["tests"]
