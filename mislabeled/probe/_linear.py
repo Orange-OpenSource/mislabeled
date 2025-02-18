@@ -12,7 +12,7 @@ from typing import NamedTuple
 import numpy as np
 import scipy.sparse as sp
 from scipy.special import expit, softmax
-from sklearn.base import is_classifier
+from sklearn.base import is_classifier, is_regressor
 from sklearn.ensemble import (
     ExtraTreesClassifier,
     ExtraTreesRegressor,
@@ -202,7 +202,11 @@ def linearize_pipeline(estimator, X, y):
 @linearize.register(RidgeClassifier)
 def linearize_linear_model_ridge(estimator, X, y):
     X, y = check_X_y(
-        X, y, multi_output=True, accept_sparse=True, dtype=[np.float64, np.float32]
+        X,
+        y,
+        multi_output=is_regressor(estimator),
+        accept_sparse=True,
+        dtype=[np.float64, np.float32],
     )
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
@@ -280,7 +284,13 @@ def linearize_trees(
 @linearize.register(MLPClassifier)
 @linearize.register(MLPRegressor)
 def linearize_mlp(estimator, X, y):
-    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
+    X, y = check_X_y(
+        X,
+        y,
+        multi_output=is_regressor(estimator),
+        accept_sparse=True,
+        dtype=[np.float64, np.float32],
+    )
 
     # Get output of last hidden layer
     activation = X
@@ -298,6 +308,8 @@ def linearize_mlp(estimator, X, y):
         loss = "log_loss"
     else:
         loss = "l2"
+        if y.ndim == 1:
+            y = y.reshape(-1, 1)
 
     linear = LinearModel(coef, intercept, loss=loss, regul=estimator.alpha)
 
