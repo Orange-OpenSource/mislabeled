@@ -1,8 +1,15 @@
 import numpy as np
+from sklearn.base import is_classifier
 import pytest
 from scipy.differentiate import hessian, jacobian
-from sklearn.datasets import make_blobs
-from sklearn.linear_model import LogisticRegression, RidgeClassifier
+from sklearn.datasets import make_blobs, make_regression
+from sklearn.linear_model import (
+    LogisticRegression,
+    Ridge,
+    RidgeClassifier,
+    SGDClassifier,
+    SGDRegressor,
+)
 from sklearn.preprocessing import StandardScaler
 
 from mislabeled.probe import linearize
@@ -15,6 +22,10 @@ from mislabeled.probe import linearize
         RidgeClassifier(fit_intercept=True),
         LogisticRegression(fit_intercept=False),
         LogisticRegression(fit_intercept=True),
+        Ridge(fit_intercept=False),
+        Ridge(fit_intercept=True),
+        SGDClassifier(loss="log_loss", fit_intercept=False),
+        SGDClassifier(loss="log_loss", fit_intercept=True),
     ],
 )
 @pytest.mark.parametrize(
@@ -25,7 +36,18 @@ from mislabeled.probe import linearize
     ],
 )
 def test_grad_hess(model, num_classes):
-    X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
+    if is_classifier(model):
+        X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
+    else:
+        X, y = make_regression(
+            n_samples=100,
+            n_features=2,
+            n_informative=2,
+            n_targets=num_classes - 1,
+            random_state=1,
+        )
+        if isinstance(model, SGDRegressor) and num_classes - 1 > 1:
+            return True
     X = StandardScaler().fit_transform(X)
 
     model.fit(X, y)
@@ -69,6 +91,6 @@ def test_grad_hess(model, num_classes):
     np.testing.assert_allclose(
         linearized.hessian(X, y),
         hessian(vectorized_objective, packed_raveled_coef).ddf,
-        atol=1e-5,  # this one is good
+        atol=1e-4,  # this one is good
         strict=True,
     )

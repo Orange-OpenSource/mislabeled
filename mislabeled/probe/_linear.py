@@ -81,8 +81,6 @@ class LinearModel(NamedTuple):
         # in the logistic model
         y_linear = self.decision_function(X)
         if self.loss == "l2":
-            if y.ndim == 1:
-                y = y[:, None]
             dl_dy = 2 * (y - y_linear)
 
         elif self.loss == "log_loss":
@@ -134,14 +132,12 @@ class LinearModel(NamedTuple):
         row = np.arange(n * k).repeat(k)
         col = np.tile(np.arange(k), n * k) + np.repeat(np.arange(n) * k, k * k)
 
-        return sp.coo_matrix((V.ravel(), (row, col)), shape=(n * k, n * k)).tocsr()
+        return sp.coo_matrix((V.ravel(), (row, col)), shape=(n * k, n * k))
 
     def hessian(self, X, y):
-        # X_p = X if not sp.issparse(X) else X.toarray()
-
         if self.intercept is not None:
             if sp.issparse(X):
-                X_p = sp.hstack((X, sp.ones((X.shape[0], 1))))
+                X_p = sp.hstack((X, np.ones((X.shape[0], 1))))
             else:
                 X_p = np.hstack((X, np.ones((X.shape[0], 1))))
         else:
@@ -154,7 +150,7 @@ class LinearModel(NamedTuple):
             H = 2.0 * X_p.T @ X_p
             H = H if not sp.issparse(H) else H.toarray()
             if not self._is_binary():
-                H = np.eye(self.coef.shape[1])[None, :, None, :] * H[:, None, :, None]
+                H = np.kron(H, np.eye(k))
 
         elif self.loss == "log_loss":
             p = self.predict_proba(X)
@@ -163,57 +159,16 @@ class LinearModel(NamedTuple):
                 W = self.fast_block_diag(V)
                 H = X_p.T @ W @ X_p
             else:
-                # X_p = np.eye(k)[None, :, None, :] * X_p[:, None, :, None]
-                # X_p = X_p.reshape(n * k, d * k)
                 if sp.issparse(X_p):
-                    X_p = sp.kron(X_p, sp.eye(k))
+                    X_p = sp.kron(X_p, sp.eye(k), format="coo")
                 else:
                     X_p = np.kron(X_p, np.eye(k))
-                # X_p = X_p
-                # W = block_diag(
-                #     *[p[i, None].T * (np.eye(k) - p[i, None]) for i in range(n)]
-                # )
                 V = p[:, :, None] * (np.eye(k)[None, :, :] - p[:, None, :])
-                # WX =
-                # H = X_p.T @ X_p
-                # H = X_p.reshape(n * k, d * k).T @ (
-                #     V @ X_p.reshape(n, k, d * k)
-                # ).reshape(n * k, d * k)
                 W = self.fast_block_diag(V)
-                # V = V.reshape(n, k * k)
-                # W = np.eye(n)[:, None, :, None] * V[:, :, None, :]
-                # W = W.reshape(n * k, n * k)
                 H = X_p.T @ W @ X_p
-                # with np.printoptions(precision=3, suppress=True):
-                #     print(H)
-                # W = p[:, :, None] * (np.eye(p.shape[1])[None, :, :] - p[:, None, :])
-                # H = (X_p.T @ W)
-                # n, d, k = X_p.shape[0], X_p.shape[1], p.shape[1]
-                # H11 = X_p
-                # H12 = (p[:, None, :] * X_p[:, :, None]).reshape(n, -1)
-                # H11 = (np.ones((n, k))[:, None, :] * X_p[:, :, None]).reshape(n, -1)
-                # H11 = X_p
-                # H12 = (p[:, None, :] * X_p[:, :, None]).reshape(n, -1)
-                # H1 = (H11.T @ H12).reshape(d, k, d, k)
-                # H1 = (np.eye(k)[None, None, :, :] * X_p[:, :, None, None]).reshape(
-                #     n, -1
-                # ).T @ (p[:, None, :, None] * X_p[:, :, None, None]).reshape(n, -1)
-                # print(H1.shape)
-                # H1 = X_p.T @ W @ X_p
-                # H2 = (p[:, None, :] * X_p[:, :, None]).reshape(n, -1)
-                # H2 = H2.T @ H2  # .reshape(d, k, d, k)
-                # H = -H2
-                # H = H1 - H2
-                # n, d, k = X_p.shape[0], X_p.shape[1], p.shape[1]
-                # H1 = np.eye(k)[None, :, None, :] * (X_p.T @ X_p)[:, None, :, None]
-                # H2 = (p[:, None, :] * X_p[:, :, None]).reshape(n, -1)
-                # H2 = (H2.T @ H2).reshape(d, k, d, k)
-                # H = H1 - H2
 
         else:
             raise NotImplementedError()
-
-        H = H.reshape(k * d, k * d)
 
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
@@ -246,12 +201,17 @@ def linearize_pipeline(estimator, X, y):
 @linearize.register(RidgeCV)
 @linearize.register(RidgeClassifier)
 def linearize_linear_model_ridge(estimator, X, y):
-    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
+    X, y = check_X_y(
+        X, y, multi_output=True, accept_sparse=True, dtype=[np.float64, np.float32]
+    )
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
     if is_classifier(estimator):
         lb = LabelBinarizer(pos_label=1, neg_label=-1)
         y = lb.fit_transform(y)
+    else:
+        if y.ndim == 1:
+            y = y.reshape(-1, 1)
 
     if hasattr(estimator, "alpha_"):
         regul = estimator.alpha_
@@ -260,6 +220,9 @@ def linearize_linear_model_ridge(estimator, X, y):
 
     if coef.ndim == 1:
         coef = coef.reshape(-1, 1)
+
+    if isinstance(intercept, float):
+        intercept = np.array([intercept])
 
     linear = LinearModel(coef, intercept, loss="l2", regul=regul)
     return linear, X, y
