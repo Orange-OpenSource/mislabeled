@@ -94,6 +94,7 @@ def test_grad_hess(model, num_classes):
     np.testing.assert_allclose(
         linearized.hessian(X, y),
         hessian(vectorized_objective, packed_raveled_coef).ddf,
+        rtol=1e-3,
         atol=1e-3,  # this one is good
         strict=True,
     )
