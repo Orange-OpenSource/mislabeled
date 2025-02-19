@@ -142,42 +142,46 @@ class LinearModel(NamedTuple):
 
         return sp.coo_matrix((V.ravel(), (row, col)), shape=(n * k, n * k))
 
-    def hessian(self, X, y):
+    def add_bias(self, X):
         if self.intercept is not None:
             if sp.issparse(X):
-                X_p = sp.hstack((X, np.ones((X.shape[0], 1))))
+                return sp.hstack((X, np.ones((X.shape[0], 1))))
             else:
-                X_p = np.hstack((X, np.ones((X.shape[0], 1))))
-        else:
-            X_p = X
+                return np.hstack((X, np.ones((X.shape[0], 1))))
+        return X
 
-        # n = X.shape[0]
-        _, k = self.packed_coef.shape
+    def pseudo(self, X):
+        if (k := self.out_dim) > 1:
+            if sp.issparse(X):
+                return sp.kron(X, sp.eye(k))
+            else:
+                return np.kron(X, np.eye(k))
+        return X
+
+    def hessian(self, X, y):
+        k = self.out_dim
 
         if self.loss == "l2":
-            H = 2.0 * X_p.T @ X_p
-            H = H if not sp.issparse(H) else H.toarray()
-            if not self._is_binary():
-                H = np.kron(H, np.eye(k))
+            X_p = self.add_bias(X)
+            H = 2.0 * (X_p.T @ X_p)
+            H = self.pseudo(H)
 
         elif self.loss == "log_loss":
             p = self.predict_proba(X)
+            X_p = self.pseudo(self.add_bias(X))
             if self._is_binary():
                 V = p * (1.0 - p)
                 W = self.fast_block_diag(V)
                 H = X_p.T @ W @ X_p
             else:
-                if sp.issparse(X_p):
-                    X_p = sp.kron(X_p, sp.eye(k), format="coo")
-                else:
-                    X_p = np.kron(X_p, np.eye(k))
                 V = p[:, :, None] * (np.eye(k)[None, :, :] - p[:, None, :])
                 W = self.fast_block_diag(V)
                 H = X_p.T @ W @ X_p
-            H = H if not sp.issparse(H) else H.toarray()
 
         else:
             raise NotImplementedError()
+
+        H = H.toarray() if sp.issparse(H) else H
 
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
@@ -186,7 +190,11 @@ class LinearModel(NamedTuple):
         return H
 
     def _is_binary(self):
-        return len(self.coef.shape) == 1 or self.coef.shape[1] == 1
+        return self.out_dim == 1
+
+    @property
+    def out_dim(self):
+        return 1 if self.coef.ndim == 1 else self.coef.shape[1]
 
 
 @singledispatch

@@ -47,7 +47,8 @@ Source = "https://github.com/orange-opensource/mislabeled"
 source = "vcs"
 
 [tool.hatch.envs.hatch-test]
-extra-args =  ["--ignore=tests/datasets", 
+extra-args =  [
+  "--ignore=tests/datasets", 
   "--ignore=tests/test_cache.py", 
   "--ignore=tests/probe/test_linear.py"
 ]

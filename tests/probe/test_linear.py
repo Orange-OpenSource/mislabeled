@@ -19,9 +19,13 @@ from mislabeled.probe import linearize
 @pytest.mark.parametrize(
     "model",
     [
-        RidgeClassifier(fit_intercept=False),
+        RidgeClassifier(fit_intercept=False, alpha=1e-4),
+        RidgeClassifier(fit_intercept=False, alpha=1e4),
+        RidgeClassifier(fit_intercept=False, alpha=1e-4),
         RidgeClassifier(fit_intercept=True),
         LogisticRegression(fit_intercept=False),
+        LogisticRegression(fit_intercept=False, C=1e-4),
+        LogisticRegression(fit_intercept=False, C=1e4),
         LogisticRegression(fit_intercept=True),
         Ridge(fit_intercept=False),
         Ridge(fit_intercept=True),
