@@ -16,6 +16,7 @@ from ._adjust import Adjust
 from ._complexity import ParameterCount, ParamNorm2
 from ._grads import GradSimilarity
 from ._influence import (
+    ALOO,
     GradNorm2,
     Representer,
     SelfInfluence,
@@ -46,6 +47,7 @@ __all__ = [
     "ParameterCount",
     "ParamNorm2",
     "SelfInfluence",
+    "ALOO",
     "Representer",
     "GradNorm2",
     "GradSimilarity",

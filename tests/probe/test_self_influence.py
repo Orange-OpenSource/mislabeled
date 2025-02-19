@@ -6,220 +6,115 @@
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
+
 import math
 
 import numpy as np
 import pytest
 from joblib import Parallel, delayed
-from scipy.special import expit, softmax
 from scipy.stats import pearsonr
-from sklearn.datasets import make_blobs
+from sklearn import clone
+from sklearn.base import is_classifier
+from sklearn.datasets import make_blobs, make_regression
 from sklearn.linear_model import (
+    LinearRegression,
     LogisticRegression,
+    Ridge,
     RidgeClassifier,
-    SGDClassifier,
 )
-from sklearn.metrics import log_loss
+from sklearn.metrics import log_loss, mean_squared_error
 from sklearn.model_selection import LeaveOneOut
 from sklearn.preprocessing import LabelBinarizer, StandardScaler
 
-from mislabeled.probe import SelfInfluence
-
-lb_2classes = LabelBinarizer(neg_label=-1, pos_label=1).fit([0, 1])
-
-
-def loss_fn_ridge_classif_2classes(y, y_pred):
-    return ((lb_2classes.transform(y) - y_pred) ** 2.0).sum()
-
-
-def loss_fn_logreg_2classes(y, y_pred):
-    return log_loss(y, expit(y_pred), labels=[0, 1])
-
-
-MODEL = [
-    (
-        SGDClassifier(
-            fit_intercept=True,
-            loss="log_loss",
-            alpha=1e-2,
-            max_iter=100,
-            random_state=1,
-        ),
-        loss_fn_logreg_2classes,
-    ),
-    (
-        SGDClassifier(
-            fit_intercept=False,
-            loss="log_loss",
-            alpha=1e-2,
-            max_iter=100,
-            random_state=1,
-        ),
-        loss_fn_logreg_2classes,
-    ),
-    (
-        LogisticRegression(fit_intercept=False, random_state=1),
-        loss_fn_logreg_2classes,
-    ),
-    (
-        LogisticRegression(fit_intercept=True, random_state=1),
-        loss_fn_logreg_2classes,
-    ),
-    (
-        RidgeClassifier(fit_intercept=False, alpha=1e-1, random_state=1),
-        loss_fn_ridge_classif_2classes,
-    ),
-    (
-        RidgeClassifier(fit_intercept=True, alpha=1e-1, random_state=1),
-        loss_fn_ridge_classif_2classes,
-    ),
-]
-
-
-@pytest.mark.parametrize("model_loss", MODEL)
-def test_self_influence_LOO_2_classes(model_loss):
-    base_model, loss_fn = model_loss
-
-    X, y = make_blobs(n_samples=30, random_state=1, centers=2)
-
-    X = StandardScaler().fit_transform(X)
-    base_model.fit(X, y)
-
-    probe = SelfInfluence()
-
-    probe_scores = probe(base_model, X, y)
-
-    def eval(model, X, y, train, test):
-        loo_diff = loss_fn(
-            y[test], model.fit(X, y).decision_function(X[test])
-        ) - loss_fn(y[test], model.fit(X[train], y[train]).decision_function(X[test]))
-
-        return loo_diff
-
-    loo_diff = Parallel(n_jobs=-1)(
-        delayed(eval)(base_model, X, y, train, test)
-        for train, test in LeaveOneOut().split(X)
-    )
-
-    corr = pearsonr(probe_scores, loo_diff).statistic
-    assert corr > 0.75
-
-
-lb_3classes = LabelBinarizer(neg_label=-1, pos_label=1).fit([0, 1, 2])
-
-
-def loss_fn_ridge_classif_3classes(y, y_pred):
-    return ((lb_3classes.transform(y) - y_pred) ** 2.0).sum()
-
-
-def loss_fn_logreg_3classes(y, y_pred):
-    return log_loss(y, softmax(y_pred, axis=1), labels=[0, 1, 2])
+from mislabeled.probe._influence import ALOO, SelfInfluence
 
 
 @pytest.mark.parametrize(
-    "model_loss",
+    "model",
     [
-        (
-            SGDClassifier(
-                fit_intercept=True,
-                loss="log_loss",
-                alpha=1e-1,
-                max_iter=100,
-                random_state=1,
-            ),
-            loss_fn_logreg_3classes,
-        ),
-        (
-            SGDClassifier(
-                fit_intercept=False,
-                loss="log_loss",
-                alpha=1e-1,
-                max_iter=100,
-                random_state=1,
-            ),
-            loss_fn_logreg_3classes,
-        ),
-        (
-            LogisticRegression(fit_intercept=False, random_state=1),
-            loss_fn_logreg_3classes,
-        ),
-        (
-            LogisticRegression(fit_intercept=True, random_state=1),
-            loss_fn_logreg_3classes,
-        ),
-        (
-            RidgeClassifier(fit_intercept=False, alpha=1e-1, random_state=1),
-            loss_fn_ridge_classif_3classes,
-        ),
-        (
-            RidgeClassifier(fit_intercept=True, alpha=1e-1, random_state=1),
-            loss_fn_ridge_classif_3classes,
-        ),
+        RidgeClassifier(fit_intercept=False, alpha=1e-4),
+        RidgeClassifier(fit_intercept=False, alpha=1e4),
+        RidgeClassifier(fit_intercept=False, alpha=1e-4),
+        RidgeClassifier(fit_intercept=True),
+        LogisticRegression(fit_intercept=False),
+        LogisticRegression(fit_intercept=False, C=1e-4),
+        LogisticRegression(fit_intercept=False),
+        # LogisticRegression(fit_intercept=True),
+        Ridge(fit_intercept=False),
+        Ridge(fit_intercept=True),
+        LinearRegression(fit_intercept=False),
+        # LinearRegression(fit_intercept=True),
     ],
 )
-def test_self_influence_LOO_3_classes(model_loss):
-    base_model, loss_fn = model_loss
-
-    X, y = make_blobs(n_samples=30, random_state=1, centers=3)
-
-    X = StandardScaler().fit_transform(X)
-    base_model.fit(X, y)
-
-    probe = SelfInfluence()
-
-    probe_scores = probe(base_model, X, y)
-
-    def eval(model, X, y, train, test):
-        loo_diff = loss_fn(
-            y[test], model.fit(X, y).decision_function(X[test])
-        ) - loss_fn(y[test], model.fit(X[train], y[train]).decision_function(X[test]))
-
-        return loo_diff
-
-    loo_diff = Parallel(n_jobs=-1)(
-        delayed(eval)(base_model, X, y, train, test)
-        for train, test in LeaveOneOut().split(X)
-    )
-
-    corr = pearsonr(probe_scores, loo_diff).statistic
-    assert corr > 0.75
-
-
 @pytest.mark.parametrize(
-    "model_loss",
+    "num_classes",
     [
-        (
-            LogisticRegression(fit_intercept=False, C=1e-4, random_state=1),
-            loss_fn_logreg_2classes,
-        ),
-        (
-            RidgeClassifier(fit_intercept=False, alpha=1e4, random_state=1),
-            loss_fn_ridge_classif_2classes,
-        ),
+        2,
+        3,
     ],
 )
-def test_regul_scaling(model_loss):
-    base_model, loss_fn = model_loss
+def test_si_aloo_approximates_loo(model, num_classes):
+    if is_classifier(model):
+        X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
+        if isinstance(model, RidgeClassifier):
 
-    X, y = make_blobs(n_samples=30, random_state=1, centers=2)
+            def loss_fn(model, X, y):
+                return mean_squared_error(
+                    LabelBinarizer(neg_label=-1)
+                    .fit(np.arange(num_classes))
+                    .transform(y),
+                    model.decision_function(X),
+                ) * (num_classes if num_classes > 2 else 1)
+        else:
+
+            def loss_fn(model, X, y):
+                return log_loss(
+                    y, model.predict_proba(X), labels=np.arange(num_classes)
+                )
+    else:
+        if num_classes - 1 > 1:
+            return True
+        X, y = make_regression(
+            n_samples=100,
+            n_features=2,
+            n_informative=2,
+            n_targets=num_classes - 1,
+            random_state=1,
+        )
+
+        def loss_fn(model, X, y):
+            return mean_squared_error(y, model.predict(X))
 
     X = StandardScaler().fit_transform(X)
-    base_model.fit(X, y)
 
-    probe = SelfInfluence()
+    model.fit(X, y)
 
-    probe_scores = probe(base_model, X, y)
+    si = SelfInfluence()
+    aloo = ALOO()
+
+    si_scores = si(model, X, y)
+    aloo_scores = aloo(model, X, y)
 
     def eval(model, X, y, train, test):
-        loo_diff = loss_fn(
-            y[test], model.fit(X, y).decision_function(X[test])
-        ) - loss_fn(y[test], model.fit(X[train], y[train]).decision_function(X[test]))
+        loo_model = clone(model).fit(X[train], y[train])
+
+        loo_diff = loss_fn(model, X[test], y[test]) - loss_fn(
+            loo_model, X[test], y[test]
+        )
 
         return loo_diff
 
     loo_diff = Parallel(n_jobs=-1)(
-        delayed(eval)(base_model, X, y, train, test)
+        delayed(eval)(model, X, y, train, test)
         for train, test in LeaveOneOut().split(X)
     )
+    loo_diff = np.asarray(loo_diff)
 
-    assert math.isclose(np.mean(probe_scores / loo_diff), 1, abs_tol=1e-3)
+    assert pearsonr(si_scores, loo_diff).statistic > 0.95
+    assert pearsonr(aloo_scores, loo_diff).statistic > 0.95
+    assert math.isclose(
+        np.linalg.lstsq(si_scores[..., None], loo_diff)[0].item(), 1, abs_tol=0.12
+    )
+    assert math.isclose(
+        np.linalg.lstsq(aloo_scores[..., None], loo_diff)[0].item(), 1, abs_tol=0.05
+    )

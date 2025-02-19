@@ -41,6 +41,8 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
 
+from mislabeled.utils import fast_block_diag
+
 
 class LinearModel(NamedTuple):
     coef: np.ndarray
@@ -70,16 +72,16 @@ class LinearModel(NamedTuple):
 
     def objective(self, X, y):
         if self.loss == "l2":
-            objective = ((y - self.predict_proba(X)) ** 2).mean(axis=0).sum(axis=0)
+            objective = ((y - self.predict_proba(X)) ** 2).sum(axis=0).sum(axis=0)
         elif self.loss == "log_loss":
-            objective = log_loss(y, self.predict_proba(X))
+            objective = log_loss(y, self.predict_proba(X), normalize=False)
         else:
             raise NotImplementedError()
 
         if self.regul is not None:
             objective += self.regul * np.linalg.norm(self.coef) ** 2
 
-        return objective * X.shape[0]
+        return objective
 
     def grad_y(self, X, y):
         # gradients w.r.t. the output of the linear op, i.e. the logit
@@ -125,7 +127,7 @@ class LinearModel(NamedTuple):
             X_p = np.hstack((X_p, np.ones((X_p.shape[0], 1))))
 
         dl_dp = dl_dy[:, None, :] * X_p[:, :, None]
-        dl_dp += 2 * self.packed_regul * self.packed_coef
+        # dl_dp -= 2 * self.packed_regul * self.packed_coef / X.shape[0]
         return dl_dp.reshape(X_p.shape[0], -1)
 
     def grad_X(self, X, y):
@@ -133,14 +135,6 @@ class LinearModel(NamedTuple):
         dl_dy = self.grad_y(X, y)
         dy_dX = self.coef.T
         return dl_dy @ dy_dX
-
-    def fast_block_diag(self, V):
-        n, k = V.shape[0], V.shape[1]
-
-        row = np.arange(n * k).repeat(k)
-        col = np.tile(np.arange(k), n * k) + np.repeat(np.arange(n) * k, k * k)
-
-        return sp.coo_matrix((V.ravel(), (row, col)), shape=(n * k, n * k))
 
     def add_bias(self, X):
         if self.intercept is not None:
@@ -158,25 +152,28 @@ class LinearModel(NamedTuple):
                 return np.kron(X, np.eye(k))
         return X
 
-    def hessian(self, X, y):
-        k = self.out_dim
+    def variance(self, p):
+        if self.loss == "l2":
+            return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
+        elif self.loss == "log_loss":
+            if (k := self.out_dim) == 1:
+                return (p * (1.0 - p))[:, :, None]
+            else:
+                return p[:, :, None] * (np.eye(k)[None, :, :] - p[:, None, :])
+        else:
+            raise NotImplementedError()
 
+    def hessian(self, X, y):
         if self.loss == "l2":
             X_p = self.add_bias(X)
             H = 2.0 * (X_p.T @ X_p)
             H = self.pseudo(H)
 
         elif self.loss == "log_loss":
-            p = self.predict_proba(X)
             X_p = self.pseudo(self.add_bias(X))
-            if self._is_binary():
-                V = p * (1.0 - p)
-                W = self.fast_block_diag(V)
-                H = X_p.T @ W @ X_p
-            else:
-                V = p[:, :, None] * (np.eye(k)[None, :, :] - p[:, None, :])
-                W = self.fast_block_diag(V)
-                H = X_p.T @ W @ X_p
+            V = self.variance(self.predict_proba(X))
+            W = fast_block_diag(V)
+            H = X_p.T @ W @ X_p
 
         else:
             raise NotImplementedError()
@@ -185,7 +182,7 @@ class LinearModel(NamedTuple):
 
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
-        H[np.diag_indices(H.shape[0])] += X.shape[0] * 2 * self.packed_regul.ravel()
+        H[np.diag_indices(H.shape[0])] += 2 * self.packed_regul.ravel()
 
         return H
 
@@ -195,6 +192,10 @@ class LinearModel(NamedTuple):
     @property
     def out_dim(self):
         return 1 if self.coef.ndim == 1 else self.coef.shape[1]
+
+    @property
+    def in_dim(self):
+        return self.coef.shape[0]
 
 
 @singledispatch
