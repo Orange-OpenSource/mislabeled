@@ -123,8 +123,7 @@ class LinearModel(NamedTuple):
         dl_dy = self.grad_y(X, y)
 
         X_p = X if not sp.issparse(X) else X.toarray()
-        if self.intercept is not None:
-            X_p = np.hstack((X_p, np.ones((X_p.shape[0], 1))))
+        X_p = self.add_bias(X_p)
 
         dl_dp = dl_dy[:, None, :] * X_p[:, :, None]
         # dl_dp -= 2 * self.packed_regul * self.packed_coef / X.shape[0]

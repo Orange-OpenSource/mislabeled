@@ -49,9 +49,10 @@ class ALOO(Maximize):
             invsqrtV = 1 / sqrtV
         else:
             # V is block diagonal (with k,k block) of shape n,k,k
-            u, S, vt = np.linalg.svd(V)
-            sqrtV = u @ (np.sqrt(S)[..., None] * vt)
-            invsqrtV = u @ ((1 / np.sqrt(S))[..., None] * vt)
+            u, S, vt = np.linalg.svd(V, hermitian=True)
+            sqrtV = u @ ((sqrtS := np.sqrt(S))[..., None] * vt)
+            # eigen value cutoff, maybe use k-1,k-1 matrices ?
+            invsqrtV = u @ (np.divide(1, sqrtS, where=S > 1e-8)[..., None] * vt)
         sqrtW = fast_block_diag(sqrtV)
         X_p = estimator.pseudo(estimator.add_bias(X))
         H = sqrtW @ X_p @ np.linalg.inv(estimator.hessian(X, y)) @ X_p.T @ sqrtW.T
