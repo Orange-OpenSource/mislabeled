@@ -1,6 +1,6 @@
 import math
+
 import numpy as np
-from sklearn.neural_network import MLPClassifier, MLPRegressor
 import pytest
 from scipy.differentiate import hessian, jacobian
 from sklearn.base import is_classifier
@@ -13,9 +13,10 @@ from sklearn.linear_model import (
     SGDClassifier,
     SGDRegressor,
 )
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
-from mislabeled.probe import linearize, ParamNorm2
+from mislabeled.probe import ParamNorm2, linearize
 
 
 @pytest.mark.parametrize(

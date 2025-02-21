@@ -21,7 +21,6 @@ from sklearn.linear_model import (
     LogisticRegression,
     Ridge,
     RidgeClassifier,
-    HuberRegressor,
 )
 from sklearn.metrics import log_loss, mean_squared_error
 from sklearn.model_selection import LeaveOneOut
