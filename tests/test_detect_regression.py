@@ -11,6 +11,7 @@ import pytest
 import scipy.sparse as sp
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.kernel_approximation import Nystroem
+from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import Ridge, SGDRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import make_pipeline
@@ -68,6 +69,7 @@ detectors = [
         )
     ),
     VoLG(MLPRegressor(random_state=seed, alpha=10)),
+    SelfInfluenceDetector(KernelRidge(kernel="rbf")),
 ]
 
 

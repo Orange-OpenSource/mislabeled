@@ -21,7 +21,7 @@ from ._influence import (
     Representer,
     SelfInfluence,
 )
-from ._linear import linear, linearize, LinearModel
+from ._linear import LinearModel, linear, linearize
 from ._minmax import Maximize, Minimize
 from ._peer import CORE, Peer
 from ._sensitivity import FiniteDiffSensitivity, Sensitivity

@@ -38,6 +38,7 @@ from mislabeled.detect.detectors import (
     VoLG,
 )
 from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble, ProgressiveEnsemble
+from mislabeled.kernel import KernelRidgeClassifier
 from mislabeled.probe import GradSimilarity
 
 from .utils import blobs_1_mislabeled
@@ -165,6 +166,7 @@ detectors = [
         )
     ),
     VoLG(MLPClassifier(random_state=seed)),
+    SelfInfluenceDetector(KernelRidgeClassifier(kernel="rbf", gamma=0.1)),
 ]
 
 

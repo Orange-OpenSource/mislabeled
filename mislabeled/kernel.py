@@ -1,11 +1,9 @@
-from sklearn.base import ClassifierMixin, is_classifier, _fit_context
+from sklearn.base import ClassifierMixin, _fit_context
 from sklearn.kernel_ridge import KernelRidge
-from sklearn.utils._param_validation import StrOptions
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.utils import compute_sample_weight
-from sklearn.utils.validation import _check_sample_weight
-from sklearn.utils.validation import validate_data
-from mislabeled.probe import linearize, LinearModel
+from sklearn.utils._param_validation import StrOptions
+from sklearn.utils.validation import _check_sample_weight, validate_data
 
 
 class KernelRidgeClassifier(ClassifierMixin, KernelRidge):
@@ -70,15 +68,3 @@ class KernelRidgeClassifier(ClassifierMixin, KernelRidge):
         tags = super().__sklearn_tags__()
         tags.classifier_tags.multi_label = True
         return tags
-
-
-@linearize.register(KernelRidge)
-@linearize.register(KernelRidgeClassifier)
-def linearize_linear_model_sgdclassifier(estimator, X, y):
-    if is_classifier(estimator):
-        Y = estimator._label_binarizer.transform(y)
-    else:
-        Y = y
-    K = estimator._get_kernel(X, estimator.X_fit_)
-    linear = LinearModel(estimator.dual_coef_, None, loss="l2", regul=estimator.alpha)
-    return linear, K, Y

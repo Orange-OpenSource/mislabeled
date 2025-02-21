@@ -21,6 +21,7 @@ from sklearn.ensemble import (
     RandomForestClassifier,
     RandomForestRegressor,
 )
+from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import (
     LinearRegression,
     LogisticRegression,
@@ -41,6 +42,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
 
+from mislabeled.kernel import KernelRidgeClassifier
 from mislabeled.utils import fast_block_diag
 
 
@@ -379,6 +381,20 @@ def linearize_mlp(estimator, X, y):
     )
 
     return linear, activation, y
+
+
+@linearize.register(KernelRidge)
+@linearize.register(KernelRidgeClassifier)
+def linearize_linear_model_kernelridge(estimator, X, y):
+    if is_classifier(estimator):
+        Y = estimator._label_binarizer.transform(y)
+    else:
+        Y = y.reshape(-1, 1) if y.ndim == 1 else y
+    K = estimator._get_kernel(X, estimator.X_fit_)
+    coef = estimator.dual_coef_
+    coef = coef.reshape(-1, 1) if coef.ndim == 1 else coef
+    linear = LinearModel(coef, None, loss="l2", regul=estimator.alpha)
+    return linear, K, Y
 
 
 def linear(probe):
