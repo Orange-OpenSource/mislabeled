@@ -212,7 +212,6 @@ def linearize_pipeline(estimator, X, y):
     return linearize(estimator[-1], X, y)
 
 
-@linearize.register(SGDRegressor)
 @linearize.register(Ridge)
 @linearize.register(RidgeCV)
 @linearize.register(RidgeClassifier)
@@ -253,11 +252,37 @@ def linearize_linear_model_ridge(estimator, X, y):
 
 
 @linearize.register(SGDClassifier)
-def linearize_linear_model_sgdclassifier(estimator, X, y):
-    X, y = check_X_y(X, y, accept_sparse=True, dtype=[np.float64, np.float32])
+@linearize.register(SGDRegressor)
+def linearize_linear_model_sgd(estimator, X, y):
+    X, y = check_X_y(
+        X,
+        y,
+        multi_output=is_regressor(estimator),
+        accept_sparse=True,
+        dtype=[np.float64, np.float32],
+    )
+
     coef = estimator.coef_.T
     intercept = estimator.intercept_ if estimator.fit_intercept else None
-    linear = LinearModel(coef, intercept, loss=estimator.loss, regul=estimator.alpha)
+
+    if is_classifier(estimator) and estimator.loss == "squared_error":
+        lb = LabelBinarizer(pos_label=1, neg_label=-1)
+        y = lb.fit_transform(y)
+
+    if is_regressor(estimator):
+        if y.ndim == 1:
+            y = y.reshape(-1, 1)
+        if coef.ndim == 1:
+            coef = coef.reshape(-1, 1)
+
+    if estimator.penalty is None:
+        regul = None
+    elif estimator.penalty == "l2":
+        regul = estimator.alpha * X.shape[0]
+    else:
+        raise NotImplementedError("lasso not implemented yet.")
+
+    linear = LinearModel(coef, intercept, loss=estimator.loss, regul=regul)
     return linear, X, y
 
 
@@ -271,11 +296,11 @@ def linearize_linear_model_logreg(estimator, X, y):
         regul = None
     elif estimator.penalty == "l2":
         if hasattr(estimator, "C_"):
-            regul = 1.0 / (2.0 * estimator.C_)
+            regul = 1.0 / (estimator.C_)
         else:
-            regul = 1.0 / (2.0 * estimator.C)
+            regul = 1.0 / (estimator.C)
     else:
-        raise NotImplementedError()
+        raise NotImplementedError("lasso not implemented yet.")
 
     linear = LinearModel(coef, intercept, loss="log_loss", regul=regul)
     return linear, X, y
@@ -337,7 +362,12 @@ def linearize_mlp(estimator, X, y):
         if y.ndim == 1:
             y = y.reshape(-1, 1)
 
-    linear = LinearModel(coef, intercept, loss=loss, regul=estimator.alpha)
+    linear = LinearModel(
+        coef,
+        intercept,
+        loss=loss,
+        regul=estimator.alpha * estimator.batch_size / X.shape[0],
+    )
 
     return linear, activation, y
 

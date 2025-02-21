@@ -1,4 +1,6 @@
+import math
 import numpy as np
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 import pytest
 from scipy.differentiate import hessian, jacobian
 from sklearn.base import is_classifier
@@ -13,7 +15,7 @@ from sklearn.linear_model import (
 )
 from sklearn.preprocessing import StandardScaler
 
-from mislabeled.probe import linearize
+from mislabeled.probe import linearize, ParamNorm2
 
 
 @pytest.mark.parametrize(
@@ -35,13 +37,7 @@ from mislabeled.probe import linearize
         SGDClassifier(loss="log_loss", fit_intercept=True),
     ],
 )
-@pytest.mark.parametrize(
-    "num_classes",
-    [
-        2,
-        3,
-    ],
-)
+@pytest.mark.parametrize("num_classes", [2, 3])
 def test_grad_hess(model, num_classes):
     if is_classifier(model):
         X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
@@ -107,3 +103,142 @@ def test_grad_hess(model, num_classes):
         atol=1e-3,  # this one is good
         strict=True,
     )
+
+
+@pytest.mark.parametrize("num_samples", [100, 1_000])
+@pytest.mark.parametrize("num_classes", [2, 10])
+@pytest.mark.parametrize("alpha", [1e-2, 1, 1e2])
+def test_l2_regul_clf(num_samples, num_classes, alpha):
+    X, y = make_blobs(
+        n_samples=num_samples,
+        n_features=2,
+        cluster_std=0.1,
+        centers=num_classes,
+        random_state=1,
+    )
+    X = StandardScaler().fit_transform(X)
+
+    models = [
+        lambda alpha: LogisticRegression(
+            random_state=1,
+            C=1 / alpha,
+            max_iter=10000,
+            tol=1e-8,
+        ),
+        lambda alpha: MLPClassifier(
+            hidden_layer_sizes=(),
+            solver="sgd",
+            shuffle=False,
+            random_state=1,
+            learning_rate_init=0.1 * num_classes,
+            max_iter=100000,
+            n_iter_no_change=10000,
+            tol=1e-8,
+            learning_rate="constant",
+            alpha=alpha,
+            batch_size=X.shape[0],
+        ),
+    ]
+    if num_classes == 2:
+        models += [
+            lambda alpha: SGDClassifier(
+                loss="log_loss",
+                learning_rate="constant",
+                eta0=0.1 * num_classes,
+                tol=1e-8,
+                shuffle=False,
+                random_state=1,
+                max_iter=100000,
+                n_iter_no_change=10000,
+                alpha=alpha / X.shape[0],
+                n_jobs=-1,
+            )
+        ]
+
+    models = [model(alpha).fit(X, y) for model in models]
+    norms = [ParamNorm2()(model, X, y).item() for model in models]
+
+    assert math.isclose(min(norms), max(norms), rel_tol=0.1)
+
+
+@pytest.mark.parametrize("num_samples", [100, 1_000])
+@pytest.mark.parametrize("num_classes", [2, 10])
+@pytest.mark.parametrize("alpha", [1e-2, 1, 1e2])
+def test_l2_regul_clf_as_reg(num_samples, num_classes, alpha):
+    X, y = make_blobs(
+        n_samples=num_samples,
+        n_features=2,
+        cluster_std=0.1,
+        centers=num_classes,
+        random_state=1,
+    )
+    X = StandardScaler().fit_transform(X)
+
+    models = [
+        lambda alpha: RidgeClassifier(
+            random_state=1,
+            alpha=alpha,
+            max_iter=10000,
+            tol=1e-8,
+        ),
+        lambda alpha: SGDClassifier(
+            loss="squared_error",
+            learning_rate="constant",
+            eta0=0.0001,
+            tol=1e-8,
+            shuffle=False,
+            random_state=1,
+            max_iter=100000,
+            n_iter_no_change=10000,
+            alpha=alpha / X.shape[0],
+            n_jobs=-1,
+        ),
+    ]
+
+    models = [model(alpha).fit(X, y) for model in models]
+    norms = [ParamNorm2()(model, X, y).item() for model in models]
+
+    assert math.isclose(min(norms), max(norms), rel_tol=0.01)
+
+
+@pytest.mark.parametrize("num_samples", [100, 1_000, 10_000])
+@pytest.mark.parametrize("alpha", [1e-2, 1, 1e2])
+def test_l2_regul_reg(num_samples, alpha):
+    X, y = make_regression(n_samples=num_samples, n_features=2, random_state=1)
+    X = StandardScaler().fit_transform(X)
+
+    models = [
+        lambda alpha: Ridge(
+            random_state=1,
+            alpha=alpha,
+            solver="cholesky",
+            max_iter=10000,
+            tol=1e-8,
+        ),
+        lambda alpha: SGDRegressor(
+            learning_rate="constant",
+            eta0=0.00001,
+            tol=1e-10,
+            shuffle=False,
+            random_state=1,
+            max_iter=10000,
+            n_iter_no_change=1000,
+            alpha=alpha / X.shape[0],
+        ),
+        lambda alpha: MLPRegressor(
+            hidden_layer_sizes=(),
+            solver="sgd",
+            shuffle=False,
+            random_state=1,
+            max_iter=10000,
+            tol=1e-8,
+            learning_rate="constant",
+            alpha=alpha,
+            batch_size=X.shape[0],
+        ),
+    ]
+
+    models = [model(alpha).fit(X, y) for model in models]
+    norms = [ParamNorm2()(model, X, y).item() for model in models]
+
+    assert math.isclose(min(norms), max(norms), rel_tol=0.001)
