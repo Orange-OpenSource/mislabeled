@@ -364,9 +364,12 @@ def linearize_mlp(estimator, X, y):
         if y.ndim == 1:
             y = y.reshape(-1, 1)
 
-    batch_size = (
-        min(200, X.shape[0]) if estimator.batch_size == "auto" else estimator.batch_size
-    )
+    if estimator.solver == "lbfgs":
+        batch_size = X.shape[0]
+    elif estimator.batch_size == "auto":
+        batch_size = min(200, X.shape[0])
+    else:
+        batch_size = estimator.batch_size
 
     linear = LinearModel(
         coef,
