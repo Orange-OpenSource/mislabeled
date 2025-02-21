@@ -37,7 +37,7 @@ from mislabeled.probe._influence import ALOO, SelfInfluence
         RidgeClassifier(fit_intercept=False),
         RidgeClassifier(fit_intercept=True),
         # LogisticRegression(fit_intercept=True, max_iter=10000, tol=1e-8),
-        LogisticRegression(fit_intercept=True, C=1e-2, max_iter=10000, tol=1e-8),
+        # LogisticRegression(fit_intercept=True, C=1e-2, max_iter=10000, tol=1e-8),
         # LogisticRegression(fit_intercept=True, C=1e2, max_iter=10000, tol=1e-8),
         LogisticRegression(fit_intercept=True, max_iter=10000, tol=1e-8),
         Ridge(fit_intercept=False),
