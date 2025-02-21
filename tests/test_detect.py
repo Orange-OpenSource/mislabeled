@@ -39,6 +39,7 @@ from mislabeled.detect.detectors import (
     VoLG,
 )
 from mislabeled.ensemble import LeaveOneOutEnsemble, NoEnsemble, ProgressiveEnsemble
+from mislabeled.kernel import KernelRidgeClassifier
 from mislabeled.probe import GradSimilarity
 
 from .utils import blobs_1_mislabeled
@@ -172,6 +173,7 @@ detectors = [
             LogisticRegression(random_state=seed, C=10),
         )
     ),
+    SelfInfluenceDetector(KernelRidgeClassifier(kernel="rbf", gamma=0.1)),
 ]
 
 
