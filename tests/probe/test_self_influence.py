@@ -25,8 +25,10 @@ from sklearn.linear_model import (
 from sklearn.metrics import log_loss, mean_squared_error
 from sklearn.model_selection import LeaveOneOut
 from sklearn.preprocessing import LabelBinarizer, StandardScaler
+from statsmodels.genmod import families
+from statsmodels.genmod.generalized_linear_model import GLM
 
-from mislabeled.probe._influence import ALOO, SelfInfluence
+from mislabeled.probe import ALOO, SelfInfluence, linearize
 
 
 @pytest.mark.parametrize(
@@ -123,4 +125,30 @@ def test_si_aloo_approximates_loo(model, num_classes):
         np.linalg.lstsq(aloo_scores[..., None], loo_diff)[0].item(),
         1,
         abs_tol=0.005 if close_form else 0.2,
+    )
+
+
+@pytest.mark.parametrize(
+    "model", [LogisticRegression(fit_intercept=False, penalty=None)]
+)
+@pytest.mark.parametrize("num_classes", [2])
+def test_aloo_against_statmodels(model, num_classes):
+    X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
+
+    X = StandardScaler().fit_transform(X)
+
+    model.fit(X, y)
+
+    aloo = ALOO()
+
+    res = GLM(y, X, family=families.Binomial()).fit()
+    model.coef_ = res.params.reshape(1, -1)
+
+    aloo_scores = aloo(model, X, y)
+
+    np.testing.assert_allclose(
+        aloo_scores, -2 * res.get_influence(observed=True).cooks_distance[0]
+    )
+    np.testing.assert_allclose(
+        linearize(model, X, y)[0].hessian(X, y), -res.model.hessian(res.params)
     )
