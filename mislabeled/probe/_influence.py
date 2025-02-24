@@ -37,7 +37,7 @@ class SelfInfluence(Maximize):
         return self_influence
 
 
-class ALOO(Maximize):
+class ApproximateLOO(Maximize):
     def __init__(self):
         pass
 

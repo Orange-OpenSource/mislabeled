@@ -21,7 +21,7 @@ from mislabeled.ensemble import (
     ProgressiveEnsemble,
 )
 from mislabeled.probe import (
-    ALOO,
+    ApproximateLOO,
     Confidence,
     CrossEntropy,
     FiniteDiffSensitivity,
@@ -70,7 +70,7 @@ class SelfInfluenceDetector(ModelProbingDetector):
         )
 
 
-class ALOODetector(ModelProbingDetector):
+class ApproximateLOODetector(ModelProbingDetector):
     """Detector based on Approximate LeaveOneOut for GLM models.
 
     References
@@ -85,7 +85,7 @@ class ALOODetector(ModelProbingDetector):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe=ALOO(),
+            probe=ApproximateLOO(),
             aggregate="sum",
         )
 

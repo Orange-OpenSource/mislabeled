@@ -152,6 +152,7 @@ class LinearModel(NamedTuple):
         return X
 
     def variance(self, p):
+        # variance of the GLM link function
         if self.loss == "l2":
             return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
         elif self.loss == "log_loss":

@@ -28,7 +28,7 @@ from sklearn.preprocessing import LabelBinarizer, StandardScaler
 from statsmodels.genmod import families
 from statsmodels.genmod.generalized_linear_model import GLM
 
-from mislabeled.probe import ALOO, SelfInfluence, linearize
+from mislabeled.probe import ApproximateLOO, SelfInfluence, linearize
 
 
 @pytest.mark.parametrize(
@@ -92,7 +92,7 @@ def test_si_aloo_approximates_loo(model, num_classes):
     model.fit(X, y)
 
     si = SelfInfluence()
-    aloo = ALOO()
+    aloo = ApproximateLOO()
 
     si_scores = si(model, X, y)
     aloo_scores = aloo(model, X, y)
@@ -139,7 +139,7 @@ def test_aloo_against_statmodels(model, num_classes):
 
     model.fit(X, y)
 
-    aloo = ALOO()
+    aloo = ApproximateLOO()
 
     res = GLM(y, X, family=families.Binomial()).fit()
     model.coef_ = res.params.reshape(1, -1)
