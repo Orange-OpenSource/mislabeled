@@ -26,7 +26,7 @@ from sklearn.metrics import log_loss, mean_squared_error
 from sklearn.model_selection import LeaveOneOut
 from sklearn.preprocessing import LabelBinarizer, StandardScaler
 
-from mislabeled.probe._influence import ALOO, SelfInfluence
+from mislabeled.probe._influence import ApproximateLOO, SelfInfluence
 
 
 @pytest.mark.parametrize(
@@ -90,7 +90,7 @@ def test_si_aloo_approximates_loo(model, num_classes):
     model.fit(X, y)
 
     si = SelfInfluence()
-    aloo = ALOO()
+    aloo = ApproximateLOO()
 
     si_scores = si(model, X, y)
     aloo_scores = aloo(model, X, y)

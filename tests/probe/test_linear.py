@@ -91,7 +91,7 @@ def test_grad_hess(model, num_classes):
         print(np.round(jacobian(vectorized_objective, packed_raveled_coef).df, 2))
 
     # I dont know why the gradient should not take into account the regul
-    # to compute ALOO and SelfInfluence ...
+    # to compute ApproximateLOO and SelfInfluence ...
     # np.testing.assert_allclose(
     #     linearized.grad_p(X, y).sum(axis=0),
     #     jacobian(vectorized_objective, packed_raveled_coef).df,

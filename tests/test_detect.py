@@ -22,7 +22,7 @@ from sklearn.tree import DecisionTreeClassifier
 from mislabeled.aggregate import oob, sum
 from mislabeled.detect import ModelProbingDetector
 from mislabeled.detect.detectors import (
-    ALOODetector,
+    ApproximateLOODetector,
     AreaUnderMargin,
     Classifier,
     ConfidentLearning,
@@ -166,7 +166,7 @@ detectors = [
         )
     ),
     VoLG(MLPClassifier(random_state=seed)),
-    ALOODetector(
+    ApproximateLOODetector(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
             LogisticRegression(random_state=seed, C=10),
