@@ -11,6 +11,7 @@ import scipy.sparse as sp
 
 from mislabeled.probe._linear import linear
 from mislabeled.probe._minmax import Maximize, Minimize
+from mislabeled.utils import fast_block_diag
 
 
 def norm2(x, axis=1):
@@ -29,13 +30,42 @@ class SelfInfluence(Maximize):
         H = estimator.hessian(X, y)
         H_inv = np.linalg.inv(H)
 
-        grads = grads.reshape(grads.shape[0], -1)
-
         self_influence = -np.einsum(
             "ij,jk,ik->i", grads, H_inv, grads, optimize="greedy"
         )
 
         return self_influence
+
+
+class ApproximateLOO(Maximize):
+    def __init__(self):
+        pass
+
+    @linear
+    def __call__(self, estimator, X, y):
+        V = estimator.variance(estimator.predict_proba(X))
+        if (k := estimator.out_dim) == 1:
+            sqrtV = np.sqrt(V)
+            invsqrtV = 1 / sqrtV
+        else:
+            # V is block diagonal (with k,k block) of shape n,k,k
+            u, S, vt = np.linalg.svd(V, hermitian=True)
+            sqrtV = u @ ((sqrtS := np.sqrt(S))[..., None] * vt)
+            # eigen value cutoff, maybe use k-1,k-1 matrices ?
+            invsqrtV = u @ (np.divide(1, sqrtS, where=S > 1e-8)[..., None] * vt)
+        sqrtW = fast_block_diag(sqrtV)
+        X_p = estimator.pseudo(estimator.add_bias(X))
+        H = sqrtW @ X_p @ np.linalg.inv(estimator.hessian(X, y)) @ X_p.T @ sqrtW.T
+        M = (sp.eye(H.shape[0]) if sp.issparse(H) else np.eye(H.shape[0])) - H
+        r = invsqrtV @ estimator.grad_y(X, y)[..., None]
+        n = X.shape[0]
+        # slice diagonal blocks (with k,k block) from a nk,nk matrix into a n,k,k matrix
+        h = H.reshape(n, k, n, k).diagonal(axis1=0, axis2=2).transpose(2, 1, 0)
+        m = M.reshape(n, k, n, k).diagonal(axis1=0, axis2=2).transpose(2, 1, 0)
+
+        return -(
+            r.transpose(0, 2, 1) @ np.linalg.inv(m) @ h @ np.linalg.inv(m) @ r
+        ).squeeze((1, 2))
 
 
 class GradNorm2(Minimize):
