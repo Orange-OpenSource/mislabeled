@@ -55,7 +55,8 @@ extra-args =  [
 extra-dependencies = [
   "mislabeled[examples]",
   "pytest-benchmark",
-  "scipy>=1.15.0"
+  "scipy>=1.15.0",
+  "statsmodels"
 ]
 
 [tool.coverage.run]
