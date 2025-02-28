@@ -376,7 +376,9 @@ def linearize_mlp(estimator, X, y):
         coef,
         intercept,
         loss=loss,
-        regul=estimator.alpha * batch_size / X.shape[0],
+        regul=estimator.alpha * batch_size / X.shape[0]
+        if not estimator.solver == "lbfgs"
+        else estimator.alpha,
     )
 
     return linear, activation, y

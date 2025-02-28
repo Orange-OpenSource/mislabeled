@@ -81,8 +81,10 @@ def test_grad_hess(model, num_classes):
         return np.apply_along_axis(f, axis=0, arr=packed_raveled_coef)
 
     with np.printoptions(precision=3, suppress=True):
-        print(np.round(linearized.hessian(X, y), 2))
-        print(np.round(hessian(vectorized_objective, packed_raveled_coef).ddf, 2))
+        print(np.round(H := linearized.hessian(X, y), 2))
+        print(
+            np.round(H_ddf := hessian(vectorized_objective, packed_raveled_coef).ddf, 2)
+        )
 
         print(np.round(linearized.grad_p(X, y).sum(axis=0), 2))
         print(np.round(jacobian(vectorized_objective, packed_raveled_coef).df, 2))
@@ -90,16 +92,16 @@ def test_grad_hess(model, num_classes):
     # I dont know why the gradient should not take into account the regul
     # to compute ApproximateLOO and SelfInfluence ...
     # np.testing.assert_allclose(
-    #     linearized.grad_p(X, y).sum(axis=0),
-    #     jacobian(vectorized_objective, packed_raveled_coef).df,
+    #     J,
+    #     J_df,
     #     rtol=1e-1,  # would be nice to lower these tolerances
     #     atol=1e-1,
     #     strict=True,
     # )
 
     np.testing.assert_allclose(
-        linearized.hessian(X, y),
-        hessian(vectorized_objective, packed_raveled_coef).ddf,
+        H,
+        H_ddf,
         rtol=1e-3,
         atol=1e-3,  # this one is good
         strict=True,
@@ -136,8 +138,8 @@ def test_l2_regul_clf(num_samples, num_classes, alpha):
             n_iter_no_change=10000,
             tol=1e-8,
             learning_rate="constant",
-            alpha=alpha,
-            batch_size=X.shape[0],
+            alpha=alpha * 100 / X.shape[0],
+            batch_size=100,
         ),
     ]
     if num_classes == 2:
@@ -234,8 +236,28 @@ def test_l2_regul_reg(num_samples, alpha):
             max_iter=10000,
             tol=1e-8,
             learning_rate="constant",
+            alpha=alpha * 100 / X.shape[0],
+            batch_size=100,
+        ),
+        lambda alpha: MLPRegressor(
+            hidden_layer_sizes=(),
+            solver="lbfgs",
+            shuffle=False,
+            random_state=1,
+            max_iter=10000,
+            tol=1e-8,
+            learning_rate="constant",
             alpha=alpha,
-            batch_size=X.shape[0],
+        ),
+        lambda alpha: MLPRegressor(
+            hidden_layer_sizes=(),
+            solver="adam",
+            shuffle=False,
+            random_state=1,
+            max_iter=100000,
+            tol=1e-10,
+            alpha=alpha * 100 / X.shape[0],
+            batch_size=100,
         ),
     ]
 
