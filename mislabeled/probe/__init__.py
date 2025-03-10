@@ -9,7 +9,7 @@
 from functools import singledispatch
 
 import numpy as np
-from scipy.special import xlogy
+from scipy.special import log_softmax, xlogy
 from scipy.stats import entropy
 
 from ._adjust import Adjust
@@ -172,6 +172,17 @@ class CrossEntropy(Minimize):
         eps = np.finfo(scores.dtype).eps
         np.clip(scores, eps, 1 - eps, out=scores)
         return -xlogy(one_hot(y, c=scores.shape[1]), scores).sum(axis=1)
+
+
+class CrossEntropyWithLogits(Minimize):
+    def __init__(self, probe):
+        self.inner = probe
+
+    def __call__(self, estimator, X, y):
+        scores = self.inner(estimator, X, y)
+        return -(one_hot(y, c=scores.shape[1]) * log_softmax(scores, axis=1)).sum(
+            axis=1
+        )
 
 
 class Entropy(Minimize):
