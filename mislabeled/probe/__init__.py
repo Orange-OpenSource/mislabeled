@@ -169,6 +169,8 @@ class CrossEntropy(Minimize):
 
     def __call__(self, estimator, X, y):
         scores = self.inner(estimator, X, y)
+        eps = np.finfo(scores.dtype).eps
+        np.clip(scores, eps, 1 - eps, out=scores)
         return -xlogy(one_hot(y, c=scores.shape[1]), scores).sum(axis=1)
 
 
