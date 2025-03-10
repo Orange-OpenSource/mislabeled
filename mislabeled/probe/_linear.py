@@ -299,9 +299,9 @@ def linearize_linear_model_logreg(estimator, X, y):
         regul = None
     elif estimator.penalty == "l2":
         if hasattr(estimator, "C_"):
-            regul = 1.0 / (estimator.C_)
+            regul = 1.0 / estimator.C_
         else:
-            regul = 1.0 / (estimator.C)
+            regul = 1.0 / estimator.C
     else:
         raise NotImplementedError("lasso not implemented yet.")
 
@@ -372,14 +372,12 @@ def linearize_mlp(estimator, X, y):
     else:
         batch_size = estimator.batch_size
 
-    linear = LinearModel(
-        coef,
-        intercept,
-        loss=loss,
-        regul=estimator.alpha * batch_size / X.shape[0]
-        if not estimator.solver == "lbfgs"
-        else estimator.alpha,
-    )
+    if not estimator.solver == "lbfgs":
+        regul = estimator.alpha * batch_size / X.shape[0]
+    else:
+        regul = estimator.alpha
+
+    linear = LinearModel(coef, intercept, loss=loss, regul=regul)
 
     return linear, activation, y
 

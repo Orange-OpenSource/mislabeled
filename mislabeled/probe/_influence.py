@@ -43,19 +43,22 @@ class ApproximateLOO(Maximize):
 
     @linear
     def __call__(self, estimator, X, y):
-        V = estimator.variance(estimator.predict_proba(X))
+        p = estimator.predict_proba(X)
+        eps = np.finfo(p.dtype).eps
+        np.clip(p, eps, 1 - eps, out=p)
+        V = estimator.variance(p)
         if (k := estimator.out_dim) == 1:
             sqrtV = np.sqrt(V)
-            invsqrtV = 1 / sqrtV
+            invsqrtV = np.sqrt(1 / V)
         else:
             # V is block diagonal (with k,k block) of shape n,k,k
             u, S, vt = np.linalg.svd(V, hermitian=True)
-            sqrtV = u @ ((sqrtS := np.sqrt(S))[..., None] * vt)
+            sqrtV = u @ (np.sqrt(S)[..., None] * vt)
             # eigen value cutoff, maybe use k-1,k-1 matrices ?
-            invsqrtV = u @ (np.divide(1, sqrtS, where=S > 1e-8)[..., None] * vt)
+            invsqrtV = u @ (np.sqrt(1 / S)[..., None] * vt)
         sqrtW = fast_block_diag(sqrtV)
-        X_p = estimator.pseudo(estimator.add_bias(X))
-        H = sqrtW @ X_p @ np.linalg.inv(estimator.hessian(X, y)) @ X_p.T @ sqrtW.T
+        wXp = sqrtW @ estimator.pseudo(estimator.add_bias(X))
+        H = wXp @ np.linalg.inv(estimator.hessian(X, y)) @ wXp.T
         M = (sp.eye(H.shape[0]) if sp.issparse(H) else np.eye(H.shape[0])) - H
         r = invsqrtV @ estimator.grad_y(X, y)[..., None]
         n = X.shape[0]
@@ -64,7 +67,7 @@ class ApproximateLOO(Maximize):
         m = M.reshape(n, k, n, k).diagonal(axis1=0, axis2=2).transpose(2, 1, 0)
 
         return -(
-            r.transpose(0, 2, 1) @ np.linalg.inv(m) @ h @ np.linalg.inv(m) @ r
+            r.transpose(0, 2, 1) @ (minv := np.linalg.pinv(m)) @ h @ minv @ r
         ).squeeze((1, 2))
 
 

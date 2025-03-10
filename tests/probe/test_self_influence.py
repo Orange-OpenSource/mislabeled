@@ -24,6 +24,7 @@ from sklearn.linear_model import (
 )
 from sklearn.metrics import log_loss, mean_squared_error
 from sklearn.model_selection import LeaveOneOut
+from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import LabelBinarizer, StandardScaler
 from statsmodels.genmod import families
 from statsmodels.genmod.generalized_linear_model import GLM
@@ -75,7 +76,7 @@ def test_si_aloo_approximates_loo(model, num_classes):
                 )
     else:
         if num_classes > 2:
-            return True
+            return
         X, y = make_regression(
             n_samples=1000,
             n_features=2,
@@ -152,3 +153,22 @@ def test_aloo_against_statmodels(model, num_classes):
     np.testing.assert_allclose(
         linearize(model, X, y)[0].hessian(X, y), -res.model.hessian(res.params)
     )
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        MLPClassifier(
+            max_iter=10000, solver="lbfgs", alpha=1e-6, tol=1e-6, random_state=1
+        )
+    ],
+)
+@pytest.mark.parametrize("num_classes", [2, 5])
+def test_aloo_si_is_finite(model, num_classes):
+    X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
+    X = StandardScaler().fit_transform(X)
+
+    model.fit(X, y)
+
+    assert np.all(np.isfinite(ApproximateLOO()(model, X, y)))
+    assert np.all(np.isfinite(SelfInfluence()(model, X, y)))
