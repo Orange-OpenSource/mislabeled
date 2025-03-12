@@ -180,10 +180,38 @@ class LinearModel(NamedTuple):
             H = self.pseudo(H)
 
         elif self.loss == "log_loss":
-            X_p = self.pseudo(self.add_bias(X))
             V = self.variance(self.predict_proba(X))
-            W = fast_block_diag(V)
-            H = X_p.T @ W @ X_p
+
+            V = V.copy(order="F")
+            sumV = V.sum(axis=0)
+            P = (D := self.in_dim) + (1 if self.intercept is not None else 0)
+            K = self.out_dim
+            blocks = [[None] * K for _ in range(K)]
+            for j in range(K):
+                for k in range(j + 1):
+                    if sp.issparse(X):
+                        XtV = X.T.multiply(V[:, j, k][None, :])
+                    else:
+                        XtV = X.T * V[:, j, k]
+                    XtVX = XtV @ X
+                    # TODO : is this really not sparse ?
+                    if sp.issparse(X):
+                        XtVX = XtVX.toarray()
+                    block = np.empty((P, P), dtype=X.dtype)
+                    # weights
+                    block[:D, :D] = XtVX
+                    # weights and biases
+                    if self.intercept is not None:
+                        block[:D, -1] = XtV.sum(axis=1).ravel()
+                        block[-1, :D] = block[:D, -1]
+                        # biases
+                        block[-1, -1] = sumV[j, k]
+                    # do half the work
+                    blocks[j][k] = block
+                    if j != k:
+                        blocks[k][j] = block
+            H = np.block(blocks)
+            H = H.reshape(K, K, P, P).transpose(3, 0, 1, 2).reshape(P * K, P * K)
 
         else:
             raise NotImplementedError()

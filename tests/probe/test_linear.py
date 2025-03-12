@@ -23,9 +23,7 @@ from mislabeled.probe import ParamNorm2, linearize
 @pytest.mark.parametrize(
     "model",
     [
-        RidgeClassifier(
-            fit_intercept=False,
-        ),
+        RidgeClassifier(fit_intercept=False),
         RidgeClassifier(fit_intercept=False, alpha=1e4),
         RidgeClassifier(fit_intercept=False, alpha=1e-4),
         RidgeClassifier(fit_intercept=True),
@@ -41,7 +39,7 @@ from mislabeled.probe import ParamNorm2, linearize
         SGDClassifier(loss="log_loss", fit_intercept=True),
     ],
 )
-@pytest.mark.parametrize("num_classes", [2, 3])
+@pytest.mark.parametrize("num_classes", [2, 4])
 def test_grad_hess(model, num_classes):
     if is_classifier(model):
         X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
@@ -53,8 +51,8 @@ def test_grad_hess(model, num_classes):
             n_targets=num_classes - 1,
             random_state=1,
         )
-        if isinstance(model, SGDRegressor) and num_classes - 1 > 1:
-            return True
+    if isinstance(model, (SGDRegressor, SGDClassifier)) and num_classes > 2:
+        return True
     X = StandardScaler().fit_transform(X)
 
     model.fit(X, y)
