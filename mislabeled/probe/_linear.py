@@ -86,15 +86,15 @@ class LinearModel(NamedTuple):
     def grad_y(self, X, y):
         # gradients w.r.t. the output of the linear op, i.e. the logit
         # in the logistic model
-        y_linear = self.decision_function(X)
+        p = self.predict_proba(X)
         if self.loss == "l2":
-            dl_dy = 2 * (y - y_linear)
+            dl_dy = 2 * (y - p)
 
         elif self.loss == "log_loss":
             if self._is_binary():
-                dl_dy = y[:, None] - expit(y_linear)
+                dl_dy = y[:, None] - p
             else:
-                dl_dy = -softmax(y_linear, axis=1)
+                dl_dy = -p
                 dl_dy[np.arange(y.shape[0]), y] += 1
 
         else:
@@ -122,12 +122,14 @@ class LinearModel(NamedTuple):
         # gradients w.r.t. the parameters (weight, intercept)
         dl_dy = self.grad_y(X, y)
 
-        X_p = X if not sp.issparse(X) else X.toarray()
-        X_p = self.add_bias(X_p)
-
-        dl_dp = dl_dy[:, None, :] * X_p[:, :, None]
+        if sp.issparse(X):
+            X_p = self.add_bias(X.tocsc())
+            dl_dp = sp.hstack([X_p[:, j].multiply(dl_dy) for j in range(X_p.shape[1])])
+        else:
+            X_p = self.add_bias(X)
+            dl_dp = (dl_dy[:, None, :] * X_p[:, :, None]).reshape(X_p.shape[0], -1)
         # dl_dp -= 2 * self.packed_regul * self.packed_coef / X.shape[0]
-        return dl_dp.reshape(X_p.shape[0], -1)
+        return dl_dp
 
     def grad_X(self, X, y):
         # gradients w.r.t the input features
@@ -138,7 +140,9 @@ class LinearModel(NamedTuple):
     def add_bias(self, X):
         if self.intercept is not None:
             if sp.issparse(X):
-                return sp.hstack((X, np.ones((X.shape[0], 1))))
+                bias = np.ones((X.shape[0], 1))
+                bias = sp.csr_matrix(bias) if X.format == "csr" else sp.csc_matrix(bias)
+                return sp.hstack((X, bias), format=X.format)
             else:
                 return np.hstack((X, np.ones((X.shape[0], 1))))
         return X
@@ -146,7 +150,7 @@ class LinearModel(NamedTuple):
     def pseudo(self, X):
         if (k := self.out_dim) > 1:
             if sp.issparse(X):
-                return sp.kron(X, sp.eye(k))
+                return sp.kron(X, sp.eye(k), format="coo")
             else:
                 return np.kron(X, np.eye(k))
         return X
@@ -165,8 +169,14 @@ class LinearModel(NamedTuple):
 
     def hessian(self, X, y):
         if self.loss == "l2":
-            X_p = self.add_bias(X)
-            H = 2.0 * (X_p.T @ X_p)
+            H = X.T @ X
+            if self.intercept is not None:
+                if sp.issparse(H):
+                    H.resize(H.shape[0] + 1, H.shape[1] + 1)
+                else:
+                    H = np.pad(H, (0, 1))
+                H[-1, -1] = X.shape[0]
+            H *= 2
             H = self.pseudo(H)
 
         elif self.loss == "log_loss":
@@ -178,11 +188,12 @@ class LinearModel(NamedTuple):
         else:
             raise NotImplementedError()
 
-        H = H.toarray() if sp.issparse(H) else H
-
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
-        H[np.diag_indices(H.shape[0])] += 2 * self.packed_regul.ravel()
+        if sp.issparse(H):
+            H.setdiag(H.diagonal() + 2 * self.packed_regul.ravel())
+        else:
+            H[np.diag_indices_from(H)] += 2 * self.packed_regul.ravel()
 
         return H
 
