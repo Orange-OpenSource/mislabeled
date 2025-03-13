@@ -26,13 +26,16 @@ class SelfInfluence(Maximize):
 
     @linear
     def __call__(self, estimator, X, y):
-        grads = estimator.grad_p(X, y)
+        G = estimator.grad_p(X, y)
         H = estimator.hessian(X, y)
-        H_inv = np.linalg.inv(H)
 
-        self_influence = -np.einsum(
-            "ij,jk,ik->i", grads, H_inv, grads, optimize="greedy"
-        )
+        if sp.issparse(G):
+            H = sp.csc_matrix(H)
+            HinvGt = sp.linalg.spsolve(H, G.T)
+            self_influence = -G.multiply(HinvGt.T).sum(axis=1)
+        else:
+            HinvGt = np.linalg.solve(H, G.T)
+            self_influence = -np.vecdot(G, HinvGt.T)
 
         return self_influence
 
@@ -58,7 +61,12 @@ class ApproximateLOO(Maximize):
             invsqrtV = u @ (np.sqrt(1 / S)[..., None] * vt)
         sqrtW = fast_block_diag(sqrtV)
         wXp = sqrtW @ estimator.pseudo(estimator.add_bias(X))
-        H = wXp @ np.linalg.inv(estimator.hessian(X, y)) @ wXp.T
+        if sp.issparse(wXp):
+            H = wXp @ sp.linalg.spsolve(sp.csc_array(estimator.hessian(X, y)), wXp.T)
+            H = H.toarray()
+        else:
+            H = wXp @ np.linalg.solve(estimator.hessian(X, y), wXp.T)
+
         M = (sp.eye(H.shape[0]) if sp.issparse(H) else np.eye(H.shape[0])) - H
         r = invsqrtV @ estimator.grad_y(X, y)[..., None]
         n = X.shape[0]

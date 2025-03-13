@@ -40,7 +40,8 @@ from mislabeled.probe import ParamNorm2, linearize
     ],
 )
 @pytest.mark.parametrize("num_classes", [2, 4])
-def test_grad_hess(model, num_classes):
+@pytest.mark.parametrize("standardized", [True, False])
+def test_grad_hess(model, num_classes, standardized):
     if is_classifier(model):
         X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
     else:
@@ -52,8 +53,9 @@ def test_grad_hess(model, num_classes):
             random_state=1,
         )
     if isinstance(model, (SGDRegressor, SGDClassifier)) and num_classes > 2:
-        return True
-    X = StandardScaler().fit_transform(X)
+        return
+    if standardized:
+        X = StandardScaler().fit_transform(X)
 
     model.fit(X, y)
     linearized, X, y = linearize(model, X, y)
@@ -149,10 +151,13 @@ def test_grad_hess_sparse(model, num_classes):
 
     sp_linearized, sp_XX, yy = linearize(model, sp.csr_matrix(X), y)
     sp_H = sp_linearized.hessian(sp_XX, yy)
+    if sp.issparse(sp_H):
+        sp_H = sp_H.todense()
     sp_G = sp_linearized.grad_p(sp_XX, yy)
-
-    np.testing.assert_allclose(H, sp_H.todense(), atol=1e-14, strict=True)
-    np.testing.assert_allclose(G, sp_G.todense(), atol=1e-13, strict=True)
+    if sp.issparse(sp_G):
+        sp_G = sp_G.todense()
+    np.testing.assert_allclose(H, sp_H, atol=1e-14, strict=True)
+    np.testing.assert_allclose(G, sp_G, atol=1e-13, strict=True)
 
 
 @pytest.mark.parametrize("num_samples", [100, 1_000])

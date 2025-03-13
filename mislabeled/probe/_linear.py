@@ -41,8 +41,6 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
 
-from mislabeled.utils import fast_block_diag
-
 
 class LinearModel(NamedTuple):
     coef: np.ndarray
@@ -123,8 +121,11 @@ class LinearModel(NamedTuple):
         dl_dy = self.grad_y(X, y)
 
         if sp.issparse(X):
-            X_p = self.add_bias(X.tocsc())
-            dl_dp = sp.hstack([X_p[:, j].multiply(dl_dy) for j in range(X_p.shape[1])])
+            X = X.tocsc()
+            dl_dp = [X[:, j].multiply(dl_dy) for j in range(X.shape[1])]
+            if self.intercept is not None:
+                dl_dp.append(dl_dy)
+            dl_dp = sp.hstack(dl_dp).tocsr()
         else:
             X_p = self.add_bias(X)
             dl_dp = (dl_dy[:, None, :] * X_p[:, :, None]).reshape(X_p.shape[0], -1)
@@ -168,25 +169,32 @@ class LinearModel(NamedTuple):
             raise NotImplementedError()
 
     def hessian(self, X, y):
+        P = (D := self.in_dim) + (1 if self.intercept is not None else 0)
+        K = self.out_dim
+
         if self.loss == "l2":
-            H = X.T @ X
+            H = np.zeros((P * K, P * K), dtype=X.dtype)
+            block = np.empty((P, P), dtype=X.dtype)
+
+            XtX = X.T @ X
+            if sp.issparse(XtX):
+                XtX = XtX.toarray()
+            block[:D, :D] = XtX
             if self.intercept is not None:
-                if sp.issparse(H):
-                    H.resize(H.shape[0] + 1, H.shape[1] + 1)
-                else:
-                    H = np.pad(H, (0, 1))
-                H[-1, -1] = X.shape[0]
-            H *= 2
-            H = self.pseudo(H)
+                block[:D, -1] = X.sum(axis=0)
+                block[-1, :D] = block[:D, -1]
+                block[-1, -1] = X.shape[0]
+            block *= 2
+            for j in range(K):
+                H[j::K, j::K] = block
 
         elif self.loss == "log_loss":
-            V = self.variance(self.predict_proba(X))
+            H = np.zeros((P * K, P * K), dtype=X.dtype)
+            block = np.empty((P, P), dtype=X.dtype)
 
-            V = V.copy(order="F")
-            sumV = V.sum(axis=0)
-            P = (D := self.in_dim) + (1 if self.intercept is not None else 0)
-            K = self.out_dim
-            blocks = [[None] * K for _ in range(K)]
+            V = self.variance(self.predict_proba(X))
+            VtI = V.sum(axis=0)
+
             for j in range(K):
                 for k in range(j + 1):
                     if sp.issparse(X):
@@ -194,34 +202,31 @@ class LinearModel(NamedTuple):
                     else:
                         XtV = X.T * V[:, j, k]
                     XtVX = XtV @ X
-                    # TODO : is this really not sparse ?
+                    XtVI = XtV.sum(axis=1)
                     if sp.issparse(X):
                         XtVX = XtVX.toarray()
-                    block = np.empty((P, P), dtype=X.dtype)
+                        XtVI = XtVI.ravel()
                     # weights
                     block[:D, :D] = XtVX
                     # weights and biases
                     if self.intercept is not None:
-                        block[:D, -1] = XtV.sum(axis=1).ravel()
+                        block[:D, -1] = XtVI
                         block[-1, :D] = block[:D, -1]
                         # biases
-                        block[-1, -1] = sumV[j, k]
+                        block[-1, -1] = VtI[j, k]
                     # do half the work
-                    blocks[j][k] = block
+                    # TODO : this assignement is super slow
+                    # because of :K at the end of slice
+                    H[j::K, k::K] = block
                     if j != k:
-                        blocks[k][j] = block
-            H = np.block(blocks)
-            H = H.reshape(K, K, P, P).transpose(3, 0, 1, 2).reshape(P * K, P * K)
+                        H[k::K, j::K] = block
 
         else:
             raise NotImplementedError()
 
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
-        if sp.issparse(H):
-            H.setdiag(H.diagonal() + 2 * self.packed_regul.ravel())
-        else:
-            H[np.diag_indices_from(H)] += 2 * self.packed_regul.ravel()
+        H[np.diag_indices_from(H)] += 2 * self.packed_regul.ravel()
 
         return H
 

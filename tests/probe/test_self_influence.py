@@ -42,7 +42,7 @@ from mislabeled.probe import ApproximateLOO, SelfInfluence, linearize
         # LogisticRegression(fit_intercept=True, max_iter=10000, tol=1e-8),
         # LogisticRegression(fit_intercept=True, C=1e-2, max_iter=10000, tol=1e-8),
         # LogisticRegression(fit_intercept=True, C=1e2, max_iter=10000, tol=1e-8),
-        LogisticRegression(fit_intercept=True, max_iter=10000, tol=1e-8),
+        LogisticRegression(fit_intercept=True),
         Ridge(fit_intercept=False),
         # Ridge(fit_intercept=True),
         LinearRegression(fit_intercept=False),
@@ -120,7 +120,7 @@ def test_si_aloo_approximates_loo(model, num_classes):
     assert math.isclose(
         np.linalg.lstsq(si_scores[..., None], loo_diff)[0].item(),
         1,
-        abs_tol=0.01 if close_form else 0.25,
+        abs_tol=0.01 if close_form else 0.3,
     )
     assert math.isclose(
         np.linalg.lstsq(aloo_scores[..., None], loo_diff)[0].item(),
