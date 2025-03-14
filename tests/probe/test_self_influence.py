@@ -11,6 +11,7 @@ import math
 
 import numpy as np
 import pytest
+import statsmodels.api as sm
 from joblib import Parallel, delayed
 from scipy.stats import pearsonr
 from sklearn import clone
@@ -39,10 +40,9 @@ from mislabeled.probe import ApproximateLOO, SelfInfluence, linearize
         RidgeClassifier(fit_intercept=False, alpha=1e2),
         RidgeClassifier(fit_intercept=False),
         RidgeClassifier(fit_intercept=True),
-        # LogisticRegression(fit_intercept=True, max_iter=10000, tol=1e-8),
         # LogisticRegression(fit_intercept=True, C=1e-2, max_iter=10000, tol=1e-8),
-        # LogisticRegression(fit_intercept=True, C=1e2, max_iter=10000, tol=1e-8),
-        LogisticRegression(fit_intercept=True),
+        # LogisticRegression(fit_intercept=False, max_iter=10000, tol=1e-8),
+        LogisticRegression(fit_intercept=True, max_iter=10000, tol=1e-8),
         Ridge(fit_intercept=False),
         # Ridge(fit_intercept=True),
         LinearRegression(fit_intercept=False),
@@ -120,7 +120,7 @@ def test_si_aloo_approximates_loo(model, num_classes):
     assert math.isclose(
         np.linalg.lstsq(si_scores[..., None], loo_diff)[0].item(),
         1,
-        abs_tol=0.01 if close_form else 0.3,
+        abs_tol=0.01 if close_form else 0.25,
     )
     assert math.isclose(
         np.linalg.lstsq(aloo_scores[..., None], loo_diff)[0].item(),
@@ -129,13 +129,27 @@ def test_si_aloo_approximates_loo(model, num_classes):
     )
 
 
+@pytest.mark.parametrize("model", [LinearRegression(fit_intercept=False)])
+def test_aloo_l2_loss_against_statmodels(model):
+    X, y = make_regression(n_samples=30, n_features=2)
+    X = StandardScaler().fit_transform(X)
+
+    model.fit(X, y)
+
+    ols = sm.OLS(y, X, hasconst=False).fit()
+    model.coef_ = ols.params
+
+    np.testing.assert_allclose(
+        linearize(model, X, y)[0].hessian(X, y),
+        -2 * ols.model.hessian(ols.params, scale=1),
+    )
+
+
 @pytest.mark.parametrize(
     "model", [LogisticRegression(fit_intercept=False, penalty=None)]
 )
-@pytest.mark.parametrize("num_classes", [2])
-def test_aloo_against_statmodels(model, num_classes):
-    X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
-
+def test_aloo_log_loss_against_statmodels(model):
+    X, y = make_blobs(n_samples=30, random_state=1, centers=2)
     X = StandardScaler().fit_transform(X)
 
     model.fit(X, y)
@@ -143,15 +157,14 @@ def test_aloo_against_statmodels(model, num_classes):
     aloo = ApproximateLOO()
 
     res = GLM(y, X, family=families.Binomial()).fit()
-    model.coef_ = res.params.reshape(1, -1)
+    model.coef_ = res.params
 
     aloo_scores = aloo(model, X, y)
 
+    np.testing.assert_allclose(aloo_scores, -2 * res.get_influence().cooks_distance[0])
     np.testing.assert_allclose(
-        aloo_scores, -2 * res.get_influence(observed=True).cooks_distance[0]
-    )
-    np.testing.assert_allclose(
-        linearize(model, X, y)[0].hessian(X, y), -res.model.hessian(res.params)
+        linearize(model, X, y)[0].hessian(X, y),
+        -res.model.hessian(res.params),
     )
 
 

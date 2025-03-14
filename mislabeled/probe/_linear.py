@@ -127,8 +127,9 @@ class LinearModel(NamedTuple):
                 dl_dp.append(dl_dy)
             dl_dp = sp.hstack(dl_dp).tocsr()
         else:
+            # TODO: find something faster ?
             if self.intercept is not None:
-                X = np.concatenate([X, np.ones((X.shape[0], 1), dtype=X.dtype)])
+                X = np.hstack([X, np.ones((X.shape[0], 1), dtype=X.dtype)])
             dl_dp = (dl_dy[:, None, :] * X[:, :, None]).reshape(X.shape[0], -1)
         # dl_dp -= 2 * self.packed_regul * self.packed_coef / X.shape[0]
         return dl_dp
@@ -198,7 +199,7 @@ class LinearModel(NamedTuple):
                         # biases
                         block[-1, -1] = VtI[j, k]
                     # do half the work
-                    # TODO : this assignement is super slow
+                    # TODO: this assignement is super slow
                     # because of :K at the end of slice
                     H[j::K, k::K] = block
                     if j != k:
