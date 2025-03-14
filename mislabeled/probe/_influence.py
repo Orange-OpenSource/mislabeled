@@ -44,6 +44,24 @@ class ApproximateLOO(Maximize):
     def __init__(self):
         pass
 
+    def add_bias(self, X):
+        if self.intercept is not None:
+            if sp.issparse(X):
+                bias = np.ones((X.shape[0], 1))
+                bias = sp.csr_matrix(bias) if X.format == "csr" else sp.csc_matrix(bias)
+                return sp.hstack((X, bias), format=X.format)
+            else:
+                return np.hstack((X, np.ones((X.shape[0], 1))))
+        return X
+
+    def pseudo(self, X):
+        if (k := self.out_dim) > 1:
+            if sp.issparse(X):
+                return sp.kron(X, sp.eye(k), format="coo")
+            else:
+                return np.kron(X, np.eye(k))
+        return X
+
     @linear
     def __call__(self, estimator, X, y):
         p = estimator.predict_proba(X)
@@ -60,7 +78,7 @@ class ApproximateLOO(Maximize):
             # eigen value cutoff, maybe use k-1,k-1 matrices ?
             invsqrtV = u @ (np.sqrt(1 / S)[..., None] * vt)
         sqrtW = fast_block_diag(sqrtV)
-        wXp = sqrtW @ estimator.pseudo(estimator.add_bias(X))
+        wXp = sqrtW @ self.pseudo(self.add_bias(X))
         if sp.issparse(wXp):
             H = wXp @ sp.linalg.spsolve(sp.csc_array(estimator.hessian(X, y)), wXp.T)
             H = H.toarray()

@@ -127,8 +127,9 @@ class LinearModel(NamedTuple):
                 dl_dp.append(dl_dy)
             dl_dp = sp.hstack(dl_dp).tocsr()
         else:
-            X_p = self.add_bias(X)
-            dl_dp = (dl_dy[:, None, :] * X_p[:, :, None]).reshape(X_p.shape[0], -1)
+            if self.intercept is not None:
+                X = np.concatenate([X, np.ones((X.shape[0], 1), dtype=X.dtype)])
+            dl_dp = (dl_dy[:, None, :] * X[:, :, None]).reshape(X.shape[0], -1)
         # dl_dp -= 2 * self.packed_regul * self.packed_coef / X.shape[0]
         return dl_dp
 
@@ -137,24 +138,6 @@ class LinearModel(NamedTuple):
         dl_dy = self.grad_y(X, y)
         dy_dX = self.coef.T
         return dl_dy @ dy_dX
-
-    def add_bias(self, X):
-        if self.intercept is not None:
-            if sp.issparse(X):
-                bias = np.ones((X.shape[0], 1))
-                bias = sp.csr_matrix(bias) if X.format == "csr" else sp.csc_matrix(bias)
-                return sp.hstack((X, bias), format=X.format)
-            else:
-                return np.hstack((X, np.ones((X.shape[0], 1))))
-        return X
-
-    def pseudo(self, X):
-        if (k := self.out_dim) > 1:
-            if sp.issparse(X):
-                return sp.kron(X, sp.eye(k), format="coo")
-            else:
-                return np.kron(X, np.eye(k))
-        return X
 
     def variance(self, p):
         # variance of the GLM link function
