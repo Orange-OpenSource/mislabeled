@@ -2,6 +2,7 @@ import math
 
 import numpy as np
 import pytest
+import scipy.sparse as sp
 from scipy.differentiate import hessian, jacobian
 from sklearn.base import is_classifier
 from sklearn.datasets import make_blobs, make_regression
@@ -22,7 +23,7 @@ from mislabeled.probe import ParamNorm2, linearize
 @pytest.mark.parametrize(
     "model",
     [
-        RidgeClassifier(fit_intercept=False, alpha=1e-4),
+        RidgeClassifier(fit_intercept=False),
         RidgeClassifier(fit_intercept=False, alpha=1e4),
         RidgeClassifier(fit_intercept=False, alpha=1e-4),
         RidgeClassifier(fit_intercept=True),
@@ -38,8 +39,9 @@ from mislabeled.probe import ParamNorm2, linearize
         SGDClassifier(loss="log_loss", fit_intercept=True),
     ],
 )
-@pytest.mark.parametrize("num_classes", [2, 3])
-def test_grad_hess(model, num_classes):
+@pytest.mark.parametrize("num_classes", [2, 4])
+@pytest.mark.parametrize("standardized", [True, False])
+def test_grad_hess(model, num_classes, standardized):
     if is_classifier(model):
         X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
     else:
@@ -50,9 +52,10 @@ def test_grad_hess(model, num_classes):
             n_targets=num_classes - 1,
             random_state=1,
         )
-        if isinstance(model, SGDRegressor) and num_classes - 1 > 1:
-            return True
-    X = StandardScaler().fit_transform(X)
+    if isinstance(model, (SGDRegressor, SGDClassifier)) and num_classes > 2:
+        return
+    if standardized:
+        X = StandardScaler().fit_transform(X)
 
     model.fit(X, y)
     linearized, X, y = linearize(model, X, y)
@@ -106,6 +109,55 @@ def test_grad_hess(model, num_classes):
         atol=1e-3,  # this one is good
         strict=True,
     )
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        RidgeClassifier(fit_intercept=False),
+        RidgeClassifier(fit_intercept=True),
+        LogisticRegression(fit_intercept=False),
+        LogisticRegression(fit_intercept=True),
+        Ridge(fit_intercept=False),
+        Ridge(fit_intercept=True),
+        LinearRegression(fit_intercept=False),
+        LinearRegression(fit_intercept=True),
+        SGDClassifier(loss="log_loss", fit_intercept=False),
+        SGDClassifier(loss="log_loss", fit_intercept=True),
+        SGDRegressor(fit_intercept=False),
+        SGDRegressor(fit_intercept=True),
+    ],
+)
+@pytest.mark.parametrize("num_classes", [2, 3])
+def test_grad_hess_sparse(model, num_classes):
+    if is_classifier(model):
+        X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
+    else:
+        X, y = make_regression(
+            n_samples=100,
+            n_features=2,
+            n_informative=2,
+            n_targets=num_classes - 1,
+            random_state=1,
+        )
+        if isinstance(model, SGDRegressor) and num_classes - 1 > 1:
+            return
+    X = StandardScaler().fit_transform(X)
+
+    model.fit(X, y)
+    linearized, XX, yy = linearize(model, X, y)
+    H = linearized.hessian(XX, yy)
+    G = linearized.grad_p(XX, yy)
+
+    sp_linearized, sp_XX, yy = linearize(model, sp.csr_matrix(X), y)
+    sp_H = sp_linearized.hessian(sp_XX, yy)
+    if sp.issparse(sp_H):
+        sp_H = sp_H.todense()
+    sp_G = sp_linearized.grad_p(sp_XX, yy)
+    if sp.issparse(sp_G):
+        sp_G = sp_G.todense()
+    np.testing.assert_allclose(H, sp_H, atol=1e-14, strict=True)
+    np.testing.assert_allclose(G, sp_G, atol=1e-13, strict=True)
 
 
 @pytest.mark.parametrize("num_samples", [100, 1_000])

@@ -3,6 +3,7 @@ import pytest
 import scipy.sparse as sp
 from sklearn.datasets import make_regression
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
+from sklearn.preprocessing import StandardScaler
 
 from mislabeled.probe import linearize
 
@@ -32,14 +33,14 @@ from mislabeled.probe import linearize
     "num_features",
     [
         10,
-        100,
+        1000,
     ],
 )
 @pytest.mark.parametrize(
     "num_samples",
     [
-        1_000,
-        100_000,
+        100,
+        10_000,
     ],
 )
 @pytest.mark.parametrize(
@@ -55,8 +56,9 @@ def test_grad_hess(
     X, y = make_regression(
         n_samples=num_samples, n_features=num_features, random_state=1
     )
+    X = StandardScaler().fit_transform(X)
     if sparse:
-        sparsity = 0.1
+        sparsity = 0.01
         percentile = np.quantile(np.abs(X), 1 - sparsity)
         X[np.abs(X) < percentile] = 0
         X = sp.csr_matrix(X)
