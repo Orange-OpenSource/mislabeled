@@ -7,7 +7,7 @@
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
 from functools import singledispatch, wraps
-from typing import NamedTuple
+from typing import Callable, NamedTuple
 
 import numpy as np
 import scipy.sparse as sp
@@ -414,6 +414,95 @@ def linearize_mlp(estimator, X, y):
     return linear, activation, y
 
 
+class KernelModel:
+    X: np.ndarray | sp.spmatrix | sp.sparray
+    dual_coef: np.ndarray
+    kernel: Callable[[np.ndarray, np.ndarray], np.ndarray]
+    loss: str
+    regul: float
+
+    def decision_function(self, X):
+        y_linear = self.kernel(X, self.X) @ self.dual_coef
+        if y_linear.ndim == 1:
+            y_linear = y_linear[:, None]
+        return y_linear
+
+    ##########################
+    # same than linear model #
+    ##########################
+    def predict_proba(self, X):
+        y_linear = self.decision_function(X)
+        if self.loss == "l2":
+            return y_linear
+        elif self.loss == "log_loss":
+            if self._is_binary():
+                return expit(y_linear)
+            else:
+                return softmax(y_linear, axis=1)
+        else:
+            raise NotImplementedError()
+
+    ##########################
+    # same than linear model #
+    ##########################
+    def objective(self, X, y):
+        if self.loss == "l2":
+            objective = ((y - self.predict_proba(X)) ** 2).sum(axis=0).sum(axis=0)
+        elif self.loss == "log_loss":
+            objective = log_loss(y, self.predict_proba(X), normalize=False)
+        else:
+            raise NotImplementedError()
+
+        if self.regul is not None:
+            objective += self.regul * np.linalg.norm(self.coef) ** 2
+
+        return objective
+
+    ##########################
+    # same than linear model #
+    ##########################
+    def grad_y(self, X, y):
+        # gradients w.r.t. the output of the linear op, i.e. the logit
+        # in the logistic model
+        y_linear = self.decision_function(X)
+        if self.loss == "l2":
+            dl_dy = 2 * (y - y_linear)
+
+        elif self.loss == "log_loss":
+            if self._is_binary():
+                dl_dy = y[:, None] - expit(y_linear)
+            else:
+                dl_dy = -softmax(y_linear, axis=1)
+                dl_dy[np.arange(y.shape[0]), y] += 1
+
+        else:
+            raise NotImplementedError()
+        return dl_dy
+
+    def hessian(self, X, y):
+        P = self.in_dim + (1 if self.intercept is not None else 0)
+        K = self.out_dim
+
+        if self.loss == "l2":
+            H = np.zeros((P * K, P * K), dtype=X.dtype)
+
+            K = self.kernel(X, X)
+            if sp.issparse(K):
+                K = K.toarray()
+            K *= 2
+            for j in range(K):
+                H[j::K, j::K] = K
+
+        else:
+            raise NotImplementedError()
+
+        # only regularize coefficients corresponding to weight
+        # parameters, excluding intercept
+        H[np.diag_indices_from(H)] += 2 * self.regul
+
+        return H
+
+
 @linearize.register(KernelRidge)
 @linearize.register(KernelRidgeClassifier)
 def linearize_linear_model_kernelridge(estimator, X, y):
@@ -421,11 +510,12 @@ def linearize_linear_model_kernelridge(estimator, X, y):
         Y = estimator._label_binarizer.transform(y)
     else:
         Y = y.reshape(-1, 1) if y.ndim == 1 else y
-    K = estimator._get_kernel(X, estimator.X_fit_)
-    coef = estimator.dual_coef_
-    coef = coef.reshape(-1, 1) if coef.ndim == 1 else coef
-    linear = LinearModel(coef, None, loss="l2", regul=estimator.alpha)
-    return linear, K, Y
+    X_fit = estimator.X_fit_
+    dual_coef = estimator.dual_coef_
+    dual_coef = dual_coef.reshape(-1, 1) if dual_coef.ndim == 1 else dual_coef
+    K = estimator._get_kernel
+    kernel = KernelModel(X_fit, dual_coef, K, loss="l2", regul=estimator.alpha)
+    return kernel, X, Y
 
 
 def linear(probe):
