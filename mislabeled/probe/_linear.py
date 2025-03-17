@@ -99,22 +99,22 @@ class LinearModel(NamedTuple):
             raise NotImplementedError()
         return dl_dy
 
-    @property
-    def packed_coef(self):
-        packed = self.coef
-        if self.intercept is not None:
-            packed = np.concatenate((packed, self.intercept[None, :]))
-        return packed
+    # @property
+    # def packed_coef(self):
+    #     packed = self.coef
+    #     if self.intercept is not None:
+    #         packed = np.concatenate((packed, self.intercept[None, :]))
+    #     return packed
 
-    @property
-    def packed_regul(self):
-        if self.regul is None:
-            return np.zeros_like(self.packed_coef)
+    # @property
+    # def packed_regul(self):
+    #     if self.regul is None:
+    #         return np.zeros_like(self.packed_coef)
 
-        packed = np.full_like(self.coef, self.regul)
-        if self.intercept is not None:
-            packed = np.concatenate((packed, np.zeros_like(self.intercept[None, :])))
-        return packed
+    #     packed = np.full_like(self.coef, self.regul)
+    #     if self.intercept is not None:
+    #         packed = np.concatenate((packed, np.zeros_like(self.intercept[None, :])))
+    #     return packed
 
     def grad_p(self, X, y):
         # gradients w.r.t. the parameters (weight, intercept)
@@ -149,6 +149,27 @@ class LinearModel(NamedTuple):
                 return (p * (1.0 - p))[:, :, None]
             else:
                 return p[:, :, None] * (np.eye(k)[None, :, :] - p[:, None, :])
+        else:
+            raise NotImplementedError()
+
+    def inverse_variance(self, p):
+        # generalized inverse of the GLM link function
+        if self.loss == "l2":
+            return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
+        elif self.loss == "log_loss":
+            eps = np.finfo(p.dtype).eps
+            # clipping for p=1 or p=0
+            p = np.clip(p, eps, 1 - eps)
+            if (k := self.out_dim) == 1:
+                # Element-wise inverse
+                return 1 / (p * (1.0 - p))[:, :, None]
+            else:
+                # See for multinomial: Tanabe, Kunio, and Masahiko Sagae.
+                # "An exact Cholesky decomposition and the generalized inverse
+                # of the variance–covariance matrix of the multinomial distribution,
+                # with applications.",
+                # Journal of the Royal Statistical Society: 1992.
+                return (1 / p)[:, :, None] * np.eye(k)[None, :, :]
         else:
             raise NotImplementedError()
 
@@ -210,7 +231,8 @@ class LinearModel(NamedTuple):
 
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
-        H[np.diag_indices_from(H)] += 2 * self.packed_regul.ravel()
+        if self.regul is not None:
+            H[np.diag_indices(D * K)] += 2 * self.regul
 
         return H
 

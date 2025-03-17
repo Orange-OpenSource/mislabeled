@@ -317,3 +317,30 @@ def test_l2_regul_reg(num_samples, alpha):
     norms = [ParamNorm2()(model, X, y).item() for model in models]
 
     assert math.isclose(min(norms), max(norms), rel_tol=0.001)
+
+
+@pytest.mark.parametrize("num_classes", [2, 10, 100])
+def test_inverse_variance(num_classes):
+    X, y = make_blobs(
+        n_samples=100,
+        n_features=2,
+        cluster_std=0.1,
+        centers=num_classes,
+        random_state=1,
+    )
+    lr = LogisticRegression(max_iter=10000).fit(X, y)
+    lr, X, y = linearize(lr, X, y)
+    p = lr.predict_proba(X)
+    invV = lr.inverse_variance(p)
+    V = lr.variance(p)
+    np.testing.assert_allclose(V, V @ invV @ V, atol=1e-16)
+
+    # test extreme values
+    p = np.zeros((1000, num_classes))
+    p[np.arange(p.shape[0]), np.random.randint(0, num_classes, p.shape[0])] = 1
+    if num_classes == 2:
+        p = p[:, 1][:, None]
+    print(p)
+    invV = lr.inverse_variance(p)
+    V = lr.variance(p)
+    np.testing.assert_allclose(V, V @ invV @ V, atol=1e-16)
