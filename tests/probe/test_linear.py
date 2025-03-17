@@ -38,11 +38,13 @@ from mislabeled.probe import ParamNorm2, linearize
         LinearRegression(fit_intercept=True),
         SGDClassifier(loss="log_loss", fit_intercept=False),
         SGDClassifier(loss="log_loss", fit_intercept=True),
+        SGDRegressor(loss="squared_error", fit_intercept=False),
+        SGDRegressor(loss="squared_error", fit_intercept=True),
     ],
 )
 @pytest.mark.parametrize("num_classes", [2, 4])
-@pytest.mark.parametrize("standardized", [True])
-def test_grad_hess(model, num_classes, standardized):
+@pytest.mark.parametrize("standardized", [True, False])
+def test_grad_hess_jac(model, num_classes, standardized):
     if is_classifier(model):
         X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
     else:
@@ -86,32 +88,31 @@ def test_grad_hess(model, num_classes, standardized):
 
         return np.apply_along_axis(f, axis=0, arr=packed_raveled_coef)
 
-    with np.printoptions(precision=3, suppress=True):
+    def vectorized_predict_proba(packed_raveled_coef):
+        def f(prc):
+            c, i = unpack_unravel(prc, d, k, fit_intercept)
+            return linearized._replace(coef=c, intercept=i).predict_proba(X).sum(axis=0)
+
+        return np.apply_along_axis(f, axis=0, arr=packed_raveled_coef)
+
+    with np.printoptions(precision=4, suppress=True):
         print(H := linearized.hessian(X, y))
         print(H_ddf := hessian(vectorized_objective, packed_raveled_coef).ddf)
 
-        print(J := linearized.grad_p(X, y).sum(axis=0))
+        print(G := linearized.grad_p(X, y).sum(axis=0))
         print(
-            J_df := jacobian(
+            G_df := jacobian(
                 partial(vectorized_objective, apply_regul=False),
                 packed_raveled_coef,
             ).df
         )
 
-    np.testing.assert_allclose(
-        H,
-        H_ddf,
-        rtol=1e-3,
-        atol=1e-3,  # this one is good
-        strict=True,
-    )
-    np.testing.assert_allclose(
-        J,
-        J_df,
-        rtol=1e-3,
-        atol=1e-3,
-        strict=True,
-    )
+        print(J := linearized.jacobian(X, y).sum(axis=0).T)
+        print(J_df := jacobian(vectorized_predict_proba, packed_raveled_coef).df)
+
+    np.testing.assert_allclose(H, H_ddf, atol=1e-3, strict=True)
+    np.testing.assert_allclose(G, G_df, atol=1e-8, strict=True)
+    np.testing.assert_allclose(J, J_df, atol=1e-9, strict=True)
 
 
 @pytest.mark.parametrize(
@@ -322,28 +323,131 @@ def test_l2_regul_reg(num_samples, alpha):
     assert math.isclose(min(norms), max(norms), rel_tol=0.001)
 
 
-@pytest.mark.parametrize("num_classes", [2, 10, 100])
-def test_inverse_variance(num_classes):
-    X, y = make_blobs(
-        n_samples=100,
-        n_features=2,
-        cluster_std=0.1,
-        centers=num_classes,
-        random_state=1,
-    )
-    lr = LogisticRegression(max_iter=10000).fit(X, y)
-    lr, X, y = linearize(lr, X, y)
-    p = lr.predict_proba(X)
-    invV = lr.inverse_variance(p)
-    V = lr.variance(p)
-    np.testing.assert_allclose(V, V @ invV @ V, atol=1e-16)
+@pytest.mark.parametrize(
+    "model",
+    [
+        RidgeClassifier(),
+        LogisticRegression(),
+        LogisticRegression(penalty=None),
+        Ridge(),
+        LinearRegression(),
+    ],
+)
+@pytest.mark.parametrize("num_classes", [2, 10])
+@pytest.mark.parametrize("standardized", [True, False])
+def test_inverse_variance(model, num_classes, standardized):
+    if is_classifier(model):
+        X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
+    else:
+        X, y = make_regression(
+            n_samples=30,
+            n_features=2,
+            n_informative=2,
+            n_targets=num_classes - 1,
+            random_state=1,
+        )
+    if isinstance(model, (SGDRegressor, SGDClassifier)) and num_classes > 2:
+        return
+    if standardized:
+        X = StandardScaler().fit_transform(X)
+
+    model.fit(X, y)
+    linearized, X, y = linearize(model, X, y)
+    p = linearized.predict_proba(X)
+    invV = linearized.inverse_variance(p)
+    V = linearized.variance(p)
+    np.testing.assert_allclose(V, V @ invV @ V, atol=1e-15)
 
     # test extreme values
-    p = np.zeros((1000, num_classes))
-    p[np.arange(p.shape[0]), np.random.randint(0, num_classes, p.shape[0])] = 1
-    if num_classes == 2:
-        p = p[:, 1][:, None]
-    print(p)
-    invV = lr.inverse_variance(p)
-    V = lr.variance(p)
-    np.testing.assert_allclose(V, V @ invV @ V, atol=1e-16)
+    if is_classifier(model):
+        p = np.zeros((X.shape[0], num_classes))
+        p[np.arange(p.shape[0]), np.random.randint(0, num_classes, p.shape[0])] = 1
+        if num_classes == 2:
+            p = p[:, 1][:, None]
+        invV = linearized.inverse_variance(p)
+        V = linearized.variance(p)
+        np.testing.assert_allclose(V, V @ invV @ V, atol=1e-15)
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        RidgeClassifier(fit_intercept=False),
+        RidgeClassifier(fit_intercept=True),
+        LogisticRegression(fit_intercept=False),
+        LogisticRegression(fit_intercept=True),
+        LogisticRegression(fit_intercept=False, penalty=None),
+        LogisticRegression(fit_intercept=True, penalty=None),
+        Ridge(fit_intercept=False),
+        Ridge(fit_intercept=True),
+        LinearRegression(fit_intercept=False),
+        LinearRegression(fit_intercept=True),
+    ],
+)
+@pytest.mark.parametrize("num_classes", [2, 4])
+@pytest.mark.parametrize("standardized", [True, False])
+def test_hessian_fisher(model, num_classes, standardized):
+    if is_classifier(model):
+        X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
+    else:
+        X, y = make_regression(
+            n_samples=30,
+            n_features=2,
+            n_informative=2,
+            n_targets=num_classes - 1,
+            random_state=1,
+        )
+    if isinstance(model, (SGDRegressor, SGDClassifier)) and num_classes > 2:
+        return
+    if standardized:
+        X = StandardScaler().fit_transform(X)
+    model.fit(X, y)
+    linearized, X, y = linearize(model, X, y)
+    J = linearized.jacobian(X, y)
+    invV = linearized.inverse_variance(linearized.predict_proba(X))
+    H = linearized.hessian(X, y)
+    F = (J @ invV @ J.transpose(0, 2, 1)).sum(axis=0)
+    λ = linearized.regul if linearized.regul is not None else 0
+    F[np.diag_indices(J.shape[2] * 2)] += 2 * λ
+    np.testing.assert_allclose(H, F, atol=1e-14)
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        RidgeClassifier(fit_intercept=False),
+        RidgeClassifier(fit_intercept=True),
+        LogisticRegression(fit_intercept=False),
+        LogisticRegression(fit_intercept=True),
+        LogisticRegression(fit_intercept=False, penalty=None),
+        LogisticRegression(fit_intercept=True, penalty=None),
+        Ridge(fit_intercept=False),
+        Ridge(fit_intercept=True),
+        LinearRegression(fit_intercept=False),
+        LinearRegression(fit_intercept=True),
+    ],
+)
+@pytest.mark.parametrize("num_classes", [2, 4])
+@pytest.mark.parametrize("standardized", [True, False])
+def test_diag_hat_matrix(model, num_classes, standardized):
+    if is_classifier(model):
+        X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
+    else:
+        X, y = make_regression(
+            n_samples=30,
+            n_features=2,
+            n_informative=2,
+            n_targets=num_classes - 1,
+            random_state=1,
+        )
+    if isinstance(model, (SGDRegressor, SGDClassifier)) and num_classes > 2:
+        return
+    if standardized:
+        X = StandardScaler().fit_transform(X)
+    model.fit(X, y)
+    linearized, X, y = linearize(model, X, y)
+    assert linearized.diag_hat_matrix(X, y).shape == (
+        X.shape[0],
+        linearized.out_dim,
+        linearized.out_dim,
+    )

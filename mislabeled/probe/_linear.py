@@ -99,23 +99,6 @@ class LinearModel(NamedTuple):
             raise NotImplementedError()
         return dl_dy
 
-    # @property
-    # def packed_coef(self):
-    #     packed = self.coef
-    #     if self.intercept is not None:
-    #         packed = np.concatenate((packed, self.intercept[None, :]))
-    #     return packed
-
-    # @property
-    # def packed_regul(self):
-    #     if self.regul is None:
-    #         return np.zeros_like(self.packed_coef)
-
-    #     packed = np.full_like(self.coef, self.regul)
-    #     if self.intercept is not None:
-    #         packed = np.concatenate((packed, np.zeros_like(self.intercept[None, :])))
-    #     return packed
-
     def grad_p(self, X, y):
         # gradients w.r.t. the parameters (weight, intercept)
         dl_dy = self.grad_y(X, y)
@@ -143,7 +126,11 @@ class LinearModel(NamedTuple):
     def variance(self, p):
         # variance of the GLM link function
         if self.loss == "l2":
-            return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
+            return (
+                0.5
+                * np.eye(self.out_dim)[None, :, :]
+                * np.ones(p.shape[0])[:, None, None]
+            )
         elif self.loss == "log_loss":
             if (k := self.out_dim) == 1:
                 return (p * (1.0 - p))[:, :, None]
@@ -155,7 +142,11 @@ class LinearModel(NamedTuple):
     def inverse_variance(self, p):
         # generalized inverse of the GLM link function
         if self.loss == "l2":
-            return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
+            return (
+                2
+                * np.eye(self.out_dim)[None, :, :]
+                * np.ones(p.shape[0])[:, None, None]
+            )
         elif self.loss == "log_loss":
             eps = np.finfo(p.dtype).eps
             # clipping for p=1 or p=0
@@ -172,6 +163,34 @@ class LinearModel(NamedTuple):
                 return (1 / p)[:, :, None] * np.eye(k)[None, :, :]
         else:
             raise NotImplementedError()
+
+    def jacobian(self, X, y):
+        # derivative of the link function with respect
+        # to the parameters
+        P = (D := self.in_dim) + (1 if self.intercept is not None else 0)
+        K = self.out_dim
+        N = X.shape[0]
+        J = np.zeros((N, P * K, K))
+        if self.loss == "l2":
+            for k in range(K):
+                J[:, k : D * K : K, k : D * K : K] = X[..., None]
+            if self.intercept is not None:
+                J[:, np.arange(-K, 0), np.arange(K)] = 1
+        elif self.loss == "log_loss":
+            p = self.predict_proba(X)
+            V = self.variance(p)
+            for k in range(K):
+                for j in range(k + 1):
+                    J[:, j : D * K : K, k : D * K : K] = (
+                        X[..., None] * V[:, j, k][:, None, None]
+                    )
+                    if j != k:
+                        J[:, k::K, j::K] = J[:, j::K, k::K]
+            if self.intercept is not None:
+                J[:, -K:, -K:] = V
+        else:
+            raise NotImplementedError()
+        return J
 
     def hessian(self, X, y):
         P = (D := self.in_dim) + (1 if self.intercept is not None else 0)
@@ -235,6 +254,12 @@ class LinearModel(NamedTuple):
             H[np.diag_indices(D * K)] += 2 * self.regul
 
         return H
+
+    def diag_hat_matrix(self, X, y):
+        invsqrtV = np.sqrt(self.inverse_variance(self.predict_proba(X)))
+        J = self.jacobian(X, y)
+        H = self.hessian(X, y)
+        return invsqrtV @ J.transpose(0, 2, 1) @ np.linalg.inv(H) @ J @ invsqrtV
 
     def _is_binary(self):
         return self.out_dim == 1

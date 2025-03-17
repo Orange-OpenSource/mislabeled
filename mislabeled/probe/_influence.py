@@ -11,7 +11,6 @@ import scipy.sparse as sp
 
 from mislabeled.probe._linear import linear
 from mislabeled.probe._minmax import Maximize, Minimize
-from mislabeled.utils import fast_block_diag
 
 
 def norm2(x, axis=1):
@@ -40,61 +39,25 @@ class SelfInfluence(Maximize):
         return self_influence
 
 
-class ApproximateLOO(Maximize):
-    def __init__(self):
-        pass
-
-    def add_bias(self, X):
-        if sp.issparse(X):
-            bias = np.ones((X.shape[0], 1))
-            bias = sp.csr_matrix(bias) if X.format == "csr" else sp.csc_matrix(bias)
-            return sp.hstack((X, bias), format=X.format)
-        else:
-            return np.hstack((X, np.ones((X.shape[0], 1))))
-
-    def pseudo(self, X, K):
-        if K > 1:
-            if sp.issparse(X):
-                return sp.kron(X, sp.eye(K), format="coo")
-            else:
-                return np.kron(X, np.eye(K))
-        return X
+class ApproximateLOO(Minimize):
+    def __init__(self, bar=False):
+        self.bar = bar
 
     @linear
     def __call__(self, estimator, X, y):
-        p = estimator.predict_proba(X)
-        eps = np.finfo(p.dtype).eps
-        np.clip(p, eps, 1 - eps, out=p)
-        V = estimator.variance(p)
-        if (k := estimator.out_dim) == 1:
-            sqrtV = np.sqrt(V)
-            invsqrtV = np.sqrt(1 / V)
-        else:
-            # V is block diagonal (with k,k block) of shape n,k,k
-            u, S, vt = np.linalg.svd(V, hermitian=True)
-            sqrtV = u @ (np.sqrt(S)[..., None] * vt)
-            # eigen value cutoff, maybe use k-1,k-1 matrices ?
-            invsqrtV = u @ (np.sqrt(np.divide(1, S, where=S > 1e-8))[..., None] * vt)
-        sqrtW = fast_block_diag(sqrtV)
-        wXp = sqrtW @ self.pseudo(
-            self.add_bias(X) if estimator.intercept is not None else X, k
+        H = estimator.diag_hat_matrix(X, y)
+        M = np.eye(estimator.out_dim)[None, :, :] - H
+        invM = np.linalg.inv(M)
+        r = (
+            np.sqrt(estimator.inverse_variance(estimator.predict_proba(X)))
+            @ estimator.grad_y(X, y)[:, :, None]
         )
-        if sp.issparse(wXp):
-            H = wXp @ sp.linalg.spsolve(sp.csc_array(estimator.hessian(X, y)), wXp.T)
-            H = H.toarray()
+        P = estimator.in_dim + (1 if estimator.intercept is not None else 0)
+
+        if self.bar:
+            return (r.transpose(0, 2, 1) @ invM @ H @ r).squeeze((1, 2)) / P
         else:
-            H = wXp @ np.linalg.solve(estimator.hessian(X, y), wXp.T)
-
-        M = (sp.eye(H.shape[0]) if sp.issparse(H) else np.eye(H.shape[0])) - H
-        r = invsqrtV @ estimator.grad_y(X, y)[..., None]
-        n = X.shape[0]
-        # slice diagonal blocks (with k,k block) from a nk,nk matrix into a n,k,k matrix
-        h = H.reshape(n, k, n, k).diagonal(axis1=0, axis2=2).transpose(2, 1, 0)
-        m = M.reshape(n, k, n, k).diagonal(axis1=0, axis2=2).transpose(2, 1, 0)
-
-        return -(
-            r.transpose(0, 2, 1) @ (minv := np.linalg.pinv(m)) @ h @ minv @ r
-        ).squeeze((1, 2))
+            return (r.transpose(0, 2, 1) @ invM @ H @ invM @ r).squeeze((1, 2)) / P
 
 
 class GradNorm2(Minimize):
