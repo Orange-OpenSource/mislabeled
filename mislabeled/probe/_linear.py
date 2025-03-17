@@ -86,14 +86,14 @@ class LinearModel(NamedTuple):
         # in the logistic model
         p = self.predict_proba(X)
         if self.loss == "l2":
-            dl_dy = 2 * (y - p)
+            dl_dy = 2 * (p - y)
 
         elif self.loss == "log_loss":
             if self._is_binary():
-                dl_dy = y[:, None] - p
+                dl_dy = p - y[:, None]
             else:
-                dl_dy = -p
-                dl_dy[np.arange(y.shape[0]), y] += 1
+                dl_dy = p
+                dl_dy[np.arange(y.shape[0]), y] -= 1
 
         else:
             raise NotImplementedError()

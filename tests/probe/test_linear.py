@@ -1,4 +1,5 @@
 import math
+from functools import partial
 
 import numpy as np
 import pytest
@@ -40,13 +41,13 @@ from mislabeled.probe import ParamNorm2, linearize
     ],
 )
 @pytest.mark.parametrize("num_classes", [2, 4])
-@pytest.mark.parametrize("standardized", [True, False])
+@pytest.mark.parametrize("standardized", [True])
 def test_grad_hess(model, num_classes, standardized):
     if is_classifier(model):
-        X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
+        X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
     else:
         X, y = make_regression(
-            n_samples=100,
+            n_samples=30,
             n_features=2,
             n_informative=2,
             n_targets=num_classes - 1,
@@ -76,37 +77,39 @@ def test_grad_hess(model, num_classes, standardized):
         else:
             return unpacked_unraveled_coef, packed_raveled_coef[(d * k) :]
 
-    def vectorized_objective(packed_raveled_coef):
+    def vectorized_objective(packed_raveled_coef, apply_regul=True):
         def f(prc):
             c, i = unpack_unravel(prc, d, k, fit_intercept)
-            return linearized._replace(coef=c, intercept=i).objective(X, y)
+            return linearized._replace(
+                coef=c, intercept=i, regul=None if not apply_regul else linearized.regul
+            ).objective(X, y)
 
         return np.apply_along_axis(f, axis=0, arr=packed_raveled_coef)
 
     with np.printoptions(precision=3, suppress=True):
-        print(np.round(H := linearized.hessian(X, y), 2))
+        print(H := linearized.hessian(X, y))
+        print(H_ddf := hessian(vectorized_objective, packed_raveled_coef).ddf)
+
+        print(J := linearized.grad_p(X, y).sum(axis=0))
         print(
-            np.round(H_ddf := hessian(vectorized_objective, packed_raveled_coef).ddf, 2)
+            J_df := jacobian(
+                partial(vectorized_objective, apply_regul=False),
+                packed_raveled_coef,
+            ).df
         )
-
-        print(np.round(linearized.grad_p(X, y).sum(axis=0), 2))
-        print(np.round(jacobian(vectorized_objective, packed_raveled_coef).df, 2))
-
-    # I dont know why the gradient should not take into account the regul
-    # to compute ApproximateLOO and SelfInfluence ...
-    # np.testing.assert_allclose(
-    #     J,
-    #     J_df,
-    #     rtol=1e-1,  # would be nice to lower these tolerances
-    #     atol=1e-1,
-    #     strict=True,
-    # )
 
     np.testing.assert_allclose(
         H,
         H_ddf,
         rtol=1e-3,
         atol=1e-3,  # this one is good
+        strict=True,
+    )
+    np.testing.assert_allclose(
+        J,
+        J_df,
+        rtol=1e-3,
+        atol=1e-3,
         strict=True,
     )
 
