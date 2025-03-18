@@ -23,6 +23,7 @@ from mislabeled.ensemble import (
 from mislabeled.probe import (
     ApproximateLOO,
     Confidence,
+    CookDistance,
     CrossEntropy,
     FiniteDiffSensitivity,
     GradNorm2,
@@ -70,8 +71,28 @@ class SelfInfluenceDetector(ModelProbingDetector):
         )
 
 
+class CookDistanceDetector(ModelProbingDetector):
+    """Detector based on Cook Distance for GLM models.
+
+    References
+    ----------
+    .. [1] Cook, "Detection of Influential Observations in Linear Regression",
+        Technometrics, (1977).
+    .. [2] Pregibon, "Logistic regression diagnostics", The annals of statistics (1981).
+    .. [3] Giugliano, "Diagnostic Measures for Multinomial Distance Model", (2014).
+    """
+
+    def __init__(self, base_model):
+        super().__init__(
+            base_model=base_model,
+            ensemble=NoEnsemble(),
+            probe=CookDistance(),
+            aggregate="sum",
+        )
+
+
 class ApproximateLOODetector(ModelProbingDetector):
-    """Detector based on Approximate LeaveOneOut for GLM models.
+    """Detector based on Approximate LOO for GLM models.
 
     References
     ----------

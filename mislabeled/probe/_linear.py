@@ -11,7 +11,7 @@ from typing import NamedTuple
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.special import expit, softmax
+from scipy.special import expit, log_expit, log_softmax, softmax
 from sklearn.base import is_classifier, is_regressor
 from sklearn.ensemble import (
     ExtraTreesClassifier,
@@ -32,7 +32,6 @@ from sklearn.linear_model import (
     SGDClassifier,
     SGDRegressor,
 )
-from sklearn.metrics import log_loss
 from sklearn.naive_bayes import LabelBinarizer
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.neural_network._base import ACTIVATIONS
@@ -70,14 +69,23 @@ class LinearModel(NamedTuple):
 
     def objective(self, X, y):
         if self.loss == "l2":
-            objective = ((y - self.predict_proba(X)) ** 2).sum(axis=0).sum(axis=0)
+            objective = 0.5 * ((y - self.decision_function(X)) ** 2).sum(axis=0).sum(
+                axis=0
+            )
         elif self.loss == "log_loss":
-            objective = log_loss(y, self.predict_proba(X), normalize=False)
+            logits = self.decision_function(X)
+            if self._is_binary():
+                y = y[..., None]
+                objective = -(
+                    y * log_expit(logits) + (1 - y) * log_expit(-logits)
+                ).sum()
+            else:
+                objective = -log_softmax(logits, axis=1)[np.arange(y.shape[0]), y].sum()
         else:
             raise NotImplementedError()
 
         if self.regul is not None:
-            objective += self.regul * np.linalg.norm(self.coef) ** 2
+            objective += 0.5 * self.regul * np.linalg.norm(self.coef) ** 2
 
         return objective
 
@@ -86,7 +94,7 @@ class LinearModel(NamedTuple):
         # in the logistic model
         p = self.predict_proba(X)
         if self.loss == "l2":
-            dl_dy = 2 * (p - y)
+            dl_dy = p - y
 
         elif self.loss == "log_loss":
             if self._is_binary():
@@ -126,11 +134,7 @@ class LinearModel(NamedTuple):
     def variance(self, p):
         # variance of the GLM link function
         if self.loss == "l2":
-            return (
-                0.5
-                * np.eye(self.out_dim)[None, :, :]
-                * np.ones(p.shape[0])[:, None, None]
-            )
+            return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
         elif self.loss == "log_loss":
             if (k := self.out_dim) == 1:
                 return (p * (1.0 - p))[:, :, None]
@@ -142,11 +146,7 @@ class LinearModel(NamedTuple):
     def inverse_variance(self, p):
         # generalized inverse of the GLM link function
         if self.loss == "l2":
-            return (
-                2
-                * np.eye(self.out_dim)[None, :, :]
-                * np.ones(p.shape[0])[:, None, None]
-            )
+            return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
         elif self.loss == "log_loss":
             eps = np.finfo(p.dtype).eps
             # clipping for p=1 or p=0
@@ -208,7 +208,7 @@ class LinearModel(NamedTuple):
                 block[:D, -1] = X.sum(axis=0)
                 block[-1, :D] = block[:D, -1]
                 block[-1, -1] = X.shape[0]
-            block *= 2
+            # block *= 2
             for j in range(K):
                 H[j::K, j::K] = block
 
@@ -251,7 +251,7 @@ class LinearModel(NamedTuple):
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
         if self.regul is not None:
-            H[np.diag_indices(D * K)] += 2 * self.regul
+            H[np.diag_indices(D * K)] += self.regul
 
         return H
 
@@ -305,7 +305,7 @@ def linearize_linear_model_ridge(estimator, X, y):
     intercept = estimator.intercept_ if estimator.fit_intercept else None
     if is_classifier(estimator):
         lb = LabelBinarizer(pos_label=1, neg_label=-1)
-        y = lb.fit_transform(y)
+        y = lb.fit(estimator.classes_).transform(y)
     else:
         if y.ndim == 1:
             y = y.reshape(-1, 1)
@@ -343,7 +343,7 @@ def linearize_linear_model_sgd(estimator, X, y):
 
     if is_classifier(estimator) and estimator.loss == "squared_error":
         lb = LabelBinarizer(pos_label=1, neg_label=-1)
-        y = lb.fit_transform(y)
+        y = lb.fit(estimator.classes_).transform(y)
 
     if is_regressor(estimator):
         if y.ndim == 1:

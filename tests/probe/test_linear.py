@@ -408,7 +408,7 @@ def test_hessian_fisher(model, num_classes, standardized):
     H = linearized.hessian(X, y)
     F = (J @ invV @ J.transpose(0, 2, 1)).sum(axis=0)
     λ = linearized.regul if linearized.regul is not None else 0
-    F[np.diag_indices(J.shape[2] * 2)] += 2 * λ
+    F[np.diag_indices(J.shape[2] * 2)] += λ
     np.testing.assert_allclose(H, F, atol=1e-14)
 
 
@@ -427,8 +427,8 @@ def test_hessian_fisher(model, num_classes, standardized):
         LinearRegression(fit_intercept=True),
     ],
 )
-@pytest.mark.parametrize("num_classes", [2, 4])
-@pytest.mark.parametrize("standardized", [True, False])
+@pytest.mark.parametrize("num_classes", [2])
+@pytest.mark.parametrize("standardized", [False, True])
 def test_diag_hat_matrix(model, num_classes, standardized):
     if is_classifier(model):
         X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
@@ -446,8 +446,18 @@ def test_diag_hat_matrix(model, num_classes, standardized):
         X = StandardScaler().fit_transform(X)
     model.fit(X, y)
     linearized, X, y = linearize(model, X, y)
-    assert linearized.diag_hat_matrix(X, y).shape == (
-        X.shape[0],
-        linearized.out_dim,
-        linearized.out_dim,
+    diag_H = linearized.diag_hat_matrix(X, y)
+    assert diag_H.shape == (X.shape[0], linearized.out_dim, linearized.out_dim)
+    X_p = (
+        np.concatenate([X, np.ones((X.shape[0], 1))], axis=1)
+        if linearized.intercept is not None
+        else X
+    )
+    V = linearized.variance(linearized.predict_proba(X))
+    np.testing.assert_allclose(
+        diag_H.flatten(),
+        np.diag(
+            (np.sqrt(V[:, :, 0]) * X_p)
+            @ np.linalg.solve(linearized.hessian(X, y), (X_p * np.sqrt(V[:, :, 0])).T)
+        ),
     )

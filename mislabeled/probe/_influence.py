@@ -32,6 +32,7 @@ class SelfInfluence(Maximize):
             H = sp.csc_matrix(H)
             HinvGt = sp.linalg.spsolve(H, G.T)
             self_influence = -G.multiply(HinvGt.T).sum(axis=1)
+            self_influence = np.asarray(self_influence).reshape(-1)
         else:
             HinvGt = np.linalg.solve(H, G.T)
             self_influence = -np.vecdot(G, HinvGt.T)
@@ -39,7 +40,7 @@ class SelfInfluence(Maximize):
         return self_influence
 
 
-class ApproximateLOO(Minimize):
+class CookDistance(Minimize):
     def __init__(self, bar=False):
         self.bar = bar
 
@@ -58,6 +59,23 @@ class ApproximateLOO(Minimize):
             return (r.transpose(0, 2, 1) @ invM @ H @ r).squeeze((1, 2)) / P
         else:
             return (r.transpose(0, 2, 1) @ invM @ H @ invM @ r).squeeze((1, 2)) / P
+
+
+class ApproximateLOO(Maximize):
+    @linear
+    def __call__(self, estimator, X, y):
+        H = estimator.diag_hat_matrix(X, y)
+        M = np.eye(estimator.out_dim)[None, :, :] - H
+        invM = np.linalg.inv(M)
+        r = (
+            np.sqrt(estimator.inverse_variance(estimator.predict_proba(X)))
+            @ estimator.grad_y(X, y)[:, :, None]
+        )
+
+        return -0.5 * (
+            r.transpose(0, 2, 1) @ invM @ H @ H @ invM @ r
+            + 2 * r.transpose(0, 2, 1) @ H @ invM @ r
+        ).squeeze((1, 2))
 
 
 class GradNorm2(Minimize):

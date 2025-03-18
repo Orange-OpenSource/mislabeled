@@ -17,6 +17,7 @@ from ._complexity import ParameterCount, ParamNorm2
 from ._grads import GradSimilarity
 from ._influence import (
     ApproximateLOO,
+    CookDistance,
     GradNorm2,
     Representer,
     SelfInfluence,
@@ -47,6 +48,7 @@ __all__ = [
     "ParameterCount",
     "ParamNorm2",
     "SelfInfluence",
+    "CookDistance",
     "ApproximateLOO",
     "Representer",
     "GradNorm2",
