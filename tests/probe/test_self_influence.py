@@ -164,11 +164,12 @@ def test_cd_log_loss_against_statmodels(model):
     ],
 )
 @pytest.mark.parametrize("num_classes", [2, 5])
-def test_cd_si_is_finite(model, num_classes):
+def test_cd_aloo_si_is_finite(model, num_classes):
     X, y = make_blobs(n_samples=30, random_state=1, centers=num_classes)
     X = StandardScaler().fit_transform(X)
 
     model.fit(X, y)
 
     assert np.all(np.isfinite(CookDistance()(model, X, y)))
+    assert np.all(np.isfinite(ApproximateLOO()(model, X, y)))
     assert np.all(np.isfinite(SelfInfluence()(model, X, y)))

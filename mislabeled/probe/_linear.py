@@ -287,14 +287,14 @@ class LinearModel(NamedTuple):
     def diag_hat_matrix(self, X, y):
         invsqrtV = np.sqrt(self.inverse_variance(self.predict_proba(X)))
         J = self.jacobian(X, y)
-        H = self.hessian(X, y)
+        invH = np.linalg.inv(self.hessian(X, y))
         N, K = X.shape[0], self.out_dim
         diag_hat = np.zeros((N, K, K))
         for k in range(K):
             for kk in range(k + 1):
                 diag_hat[:, k, kk] = (
                     invsqrtV[:, k, k]
-                    * (J[k] * np.linalg.solve(H, J[kk].T).T).sum(axis=1)
+                    * (J[k] * (invH @ J[kk].T).T).sum(axis=1)
                     * invsqrtV[:, kk, kk]
                 )
                 if k != kk:

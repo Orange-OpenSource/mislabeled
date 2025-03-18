@@ -35,7 +35,7 @@ class SelfInfluence(Maximize):
             self_influence = np.asarray(self_influence).reshape(-1)
         else:
             HinvGt = np.linalg.solve(H, G.T)
-            self_influence = -np.vecdot(G, HinvGt.T)
+            self_influence = -(G * HinvGt.T).sum(axis=1)
 
         return self_influence
 
