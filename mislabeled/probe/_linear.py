@@ -167,27 +167,57 @@ class LinearModel(NamedTuple):
     def jacobian(self, X, y):
         # derivative of the link function with respect
         # to the parameters
+        # returns a list of size out_dim of numpy arrays of shape n_samples, n_params
+        # TODO: as in hessian, exploit symmetry
         P = (D := self.in_dim) + (1 if self.intercept is not None else 0)
         K = self.out_dim
         N = X.shape[0]
-        J = np.zeros((N, P * K, K))
+
         if self.loss == "l2":
-            for k in range(K):
-                J[:, k : D * K : K, k : D * K : K] = X[..., None]
-            if self.intercept is not None:
-                J[:, np.arange(-K, 0), np.arange(K)] = 1
+            if sp.issparse(X):
+                X = X.tocoo()
+                data = X.data
+                row, col = X.row, X.col
+                col = K * col
+
+                if self.intercept is not None:
+                    data = np.concatenate([data, np.ones(N)])
+                    row = np.concatenate([row, np.arange(N)])
+                    col = np.concatenate([col, ((P * K) - K) * np.ones(N, dtype=int)])
+
+                J = [
+                    sp.coo_matrix((data, (row, col + k)), shape=(N, P * K)).tocsr()
+                    for k in range(K)
+                ]
+
+            else:
+                J = []
+                for k in range(K):
+                    j = np.zeros((N, P * K))
+                    j[:, k : D * K : K] = X
+                    if self.intercept is not None:
+                        j[:, -K + k] = 1
+                    J.append(j)
         elif self.loss == "log_loss":
             p = self.predict_proba(X)
             V = self.variance(p)
+            J = []
+
+            if sp.issparse(X):
+                X = X.tocsc()
+
+            if self.intercept is not None and not sp.issparse(X):
+                X = np.concatenate([X, np.ones((N, 1))], axis=1)
+
             for k in range(K):
-                for j in range(k + 1):
-                    J[:, j : D * K : K, k : D * K : K] = (
-                        X[..., None] * V[:, j, k][:, None, None]
-                    )
-                    if j != k:
-                        J[:, k::K, j::K] = J[:, j::K, k::K]
-            if self.intercept is not None:
-                J[:, -K:, -K:] = V
+                if sp.issparse(X):
+                    j = [X[:, j].multiply(V[:, :, k]) for j in range(X.shape[1])]
+                    if self.intercept is not None:
+                        j.append(V[:, :, k])
+                    j = sp.hstack(j).tocsr()
+                else:
+                    j = (X[..., None] * V[:, :, k][:, None, :]).reshape(N, -1)
+                J.append(j)
         else:
             raise NotImplementedError()
         return J
@@ -208,7 +238,6 @@ class LinearModel(NamedTuple):
                 block[:D, -1] = X.sum(axis=0)
                 block[-1, :D] = block[:D, -1]
                 block[-1, -1] = X.shape[0]
-            # block *= 2
             for j in range(K):
                 H[j::K, j::K] = block
 
@@ -259,7 +288,18 @@ class LinearModel(NamedTuple):
         invsqrtV = np.sqrt(self.inverse_variance(self.predict_proba(X)))
         J = self.jacobian(X, y)
         H = self.hessian(X, y)
-        return invsqrtV @ J.transpose(0, 2, 1) @ np.linalg.inv(H) @ J @ invsqrtV
+        N, K = X.shape[0], self.out_dim
+        diag_hat = np.zeros((N, K, K))
+        for k in range(K):
+            for kk in range(k + 1):
+                diag_hat[:, k, kk] = (
+                    invsqrtV[:, k, k]
+                    * (J[k] * np.linalg.solve(H, J[kk].T).T).sum(axis=1)
+                    * invsqrtV[:, kk, kk]
+                )
+                if k != kk:
+                    diag_hat[:, kk, k] = diag_hat[:, k, kk]
+        return diag_hat
 
     def _is_binary(self):
         return self.out_dim == 1

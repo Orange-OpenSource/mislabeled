@@ -68,4 +68,4 @@ def test_grad_hess(
     model.set_params(fit_intercept=intercept)
     model.fit(X, y)
     linearized, X, y = linearize(model, X, y)
-    benchmark(linearized.hessian, X, y)
+    benchmark(linearized.jacobian, X, y)

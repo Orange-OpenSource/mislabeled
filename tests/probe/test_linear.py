@@ -107,7 +107,7 @@ def test_grad_hess_jac(model, num_classes, standardized):
             ).df
         )
 
-        print(J := linearized.jacobian(X, y).sum(axis=0).T)
+        print(J := np.stack(linearized.jacobian(X, y), axis=-1).sum(axis=0).T)
         print(J_df := jacobian(vectorized_predict_proba, packed_raveled_coef).df)
 
     np.testing.assert_allclose(H, H_ddf, atol=1e-3, strict=True)
@@ -133,7 +133,7 @@ def test_grad_hess_jac(model, num_classes, standardized):
     ],
 )
 @pytest.mark.parametrize("num_classes", [2, 3])
-def test_grad_hess_sparse(model, num_classes):
+def test_grad_hess_jac_sparse(model, num_classes):
     if is_classifier(model):
         X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
     else:
@@ -152,6 +152,7 @@ def test_grad_hess_sparse(model, num_classes):
     linearized, XX, yy = linearize(model, X, y)
     H = linearized.hessian(XX, yy)
     G = linearized.grad_p(XX, yy)
+    J = np.stack(linearized.jacobian(XX, yy), axis=-1)
 
     sp_linearized, sp_XX, yy = linearize(model, sp.csr_matrix(X), y)
     sp_H = sp_linearized.hessian(sp_XX, yy)
@@ -160,8 +161,12 @@ def test_grad_hess_sparse(model, num_classes):
     sp_G = sp_linearized.grad_p(sp_XX, yy)
     if sp.issparse(sp_G):
         sp_G = sp_G.todense()
+    sp_J = sp_linearized.jacobian(sp_XX, yy)
+    if sp.issparse(sp_J[0]):
+        sp_J = np.stack([sp_j.toarray() for sp_j in sp_J], axis=-1)
     np.testing.assert_allclose(H, sp_H, atol=1e-14, strict=True)
     np.testing.assert_allclose(G, sp_G, atol=1e-13, strict=True)
+    np.testing.assert_allclose(J, sp_J, atol=1e-13, strict=True)
 
 
 @pytest.mark.parametrize("num_samples", [100, 1_000])
@@ -427,7 +432,7 @@ def test_hessian_fisher(model, num_classes, standardized):
         LinearRegression(fit_intercept=True),
     ],
 )
-@pytest.mark.parametrize("num_classes", [2])
+@pytest.mark.parametrize("num_classes", [2, 4])
 @pytest.mark.parametrize("standardized", [False, True])
 def test_diag_hat_matrix(model, num_classes, standardized):
     if is_classifier(model):
@@ -446,18 +451,38 @@ def test_diag_hat_matrix(model, num_classes, standardized):
         X = StandardScaler().fit_transform(X)
     model.fit(X, y)
     linearized, X, y = linearize(model, X, y)
-    diag_H = linearized.diag_hat_matrix(X, y)
-    assert diag_H.shape == (X.shape[0], linearized.out_dim, linearized.out_dim)
-    X_p = (
-        np.concatenate([X, np.ones((X.shape[0], 1))], axis=1)
-        if linearized.intercept is not None
-        else X
-    )
-    V = linearized.variance(linearized.predict_proba(X))
-    np.testing.assert_allclose(
-        diag_H.flatten(),
-        np.diag(
-            (np.sqrt(V[:, :, 0]) * X_p)
-            @ np.linalg.solve(linearized.hessian(X, y), (X_p * np.sqrt(V[:, :, 0])).T)
-        ),
-    )
+    diat_hat = linearized.diag_hat_matrix(X, y)
+    assert diat_hat.shape == (X.shape[0], linearized.out_dim, linearized.out_dim)
+
+    if linearized.out_dim == 1:
+        X_p = (
+            np.concatenate([X, np.ones((X.shape[0], 1))], axis=1)
+            if linearized.intercept is not None
+            else X
+        )
+        V = linearized.variance(linearized.predict_proba(X))
+        np.testing.assert_allclose(
+            diat_hat.flatten(),
+            np.diag(
+                (np.sqrt(V[:, :, 0]) * X_p)
+                @ np.linalg.solve(
+                    linearized.hessian(X, y), (X_p * np.sqrt(V[:, :, 0])).T
+                )
+            ),
+        )
+
+    if standardized and (
+        linearized.regul is not None and isinstance(model, LogisticRegression)
+    ):
+        # check class wise vs stacking for dense matrices
+        invsqrtV = np.sqrt(linearized.inverse_variance(linearized.predict_proba(X)))
+        J = linearized.jacobian(X, y)
+        H = linearized.hessian(X, y)
+        J = np.stack(J, axis=-1)
+        np.testing.assert_allclose(
+            diat_hat.sum(axis=0),
+            (invsqrtV @ J.transpose(0, 2, 1) @ np.linalg.pinv(H) @ J @ invsqrtV).sum(
+                axis=0
+            ),
+            atol=1e-13,
+        )
