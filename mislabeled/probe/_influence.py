@@ -53,7 +53,7 @@ class CookDistance(Minimize):
             np.sqrt(estimator.inverse_variance(estimator.predict_proba(X)))
             @ estimator.grad_y(X, y)[:, :, None]
         )
-        P = estimator.in_dim + (1 if estimator.intercept is not None else 0)
+        P = estimator.dof[0]
 
         if self.bar:
             return (r.transpose(0, 2, 1) @ invM @ H @ r).squeeze((1, 2)) / P

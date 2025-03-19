@@ -11,6 +11,7 @@ from typing import NamedTuple
 
 import numpy as np
 import scipy.sparse as sp
+from scipy.linalg import lu_factor, lu_solve
 from scipy.special import expit, log_expit, log_softmax, softmax
 from sklearn.base import is_classifier, is_regressor
 from sklearn.ensemble import (
@@ -92,6 +93,7 @@ class LinearModel(NamedTuple):
     def grad_y(self, X, y):
         # gradients w.r.t. the output of the linear op, i.e. the logit
         # in the logistic model
+        N = X.shape[0]
         p = self.predict_proba(X)
         if self.loss == "l2":
             dl_dy = p - y
@@ -101,7 +103,7 @@ class LinearModel(NamedTuple):
                 dl_dy = p - y[:, None]
             else:
                 dl_dy = p
-                dl_dy[np.arange(y.shape[0]), y] -= 1
+                dl_dy[np.arange(N), y] -= 1
 
         else:
             raise NotImplementedError()
@@ -109,20 +111,37 @@ class LinearModel(NamedTuple):
 
     def grad_p(self, X, y):
         # gradients w.r.t. the parameters (weight, intercept)
-        dl_dy = self.grad_y(X, y)
+        N = X.shape[0]
+        K = self.dof[1]
+        dl_dy = self.grad_y(X, y)[:, :K]
 
         if sp.issparse(X):
-            X = X.tocsc()
-            dl_dp = [X[:, j].multiply(dl_dy) for j in range(X.shape[1])]
+            P = self.dof[0]
+
+            # TODO: refactor ?
+            X = X.tocoo()
+            data, row, col = X.data, X.row, X.col
+            data = data[:, None]
+            row = row.repeat(K)
+            col = (K * col[:, None] + np.arange(K)[None, :]).reshape(-1)
+
             if self.intercept is not None:
-                dl_dp.append(dl_dy)
-            dl_dp = sp.hstack(dl_dp).tocsr()
+                row = np.concatenate([row, np.repeat(np.arange(N), K)])
+                col = np.concatenate([col, np.tile(np.arange(K * P - K, K * P), N)])
+
+            data = (data * dl_dy[X.row, :]).reshape(-1)
+
+            if self.intercept is not None:
+                data = np.concatenate([data, dl_dy.reshape(-1)])
+
+            dl_dp = sp.coo_matrix((data, (row, col)), shape=(N, P * K)).tocsr()
+
         else:
             # TODO: find something faster ?
             if self.intercept is not None:
-                X = np.hstack([X, np.ones((X.shape[0], 1), dtype=X.dtype)])
-            dl_dp = (dl_dy[:, None, :] * X[:, :, None]).reshape(X.shape[0], -1)
-        # dl_dp -= 2 * self.packed_regul * self.packed_coef / X.shape[0]
+                X = np.hstack([X, np.ones((N, 1), dtype=X.dtype)])
+            dl_dp = (dl_dy[:, None, :] * X[:, :, None]).reshape(N, -1)
+
         return dl_dp
 
     def grad_X(self, X, y):
@@ -133,25 +152,29 @@ class LinearModel(NamedTuple):
 
     def variance(self, p):
         # variance of the GLM link function
+        N = p.shape[0]
+        C = self.out_dim
         if self.loss == "l2":
-            return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
+            return np.eye(C)[None, :, :] * np.ones(N)[:, None, None]
         elif self.loss == "log_loss":
-            if (k := self.out_dim) == 1:
+            if self.dof[1] == 1:
                 return (p * (1.0 - p))[:, :, None]
             else:
-                return p[:, :, None] * (np.eye(k)[None, :, :] - p[:, None, :])
+                return p[:, :, None] * (np.eye(C)[None, :, :] - p[:, None, :])
         else:
             raise NotImplementedError()
 
     def inverse_variance(self, p):
         # generalized inverse of the GLM link function
+        N = p.shape[0]
+        C = self.out_dim
         if self.loss == "l2":
-            return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
+            return np.eye(C)[None, :, :] * np.ones(N)[:, None, None]
         elif self.loss == "log_loss":
             eps = np.finfo(p.dtype).eps
             # clipping for p=1 or p=0
             p = np.clip(p, eps, 1 - eps)
-            if (k := self.out_dim) == 1:
+            if self.dof[1] == 1:
                 # Element-wise inverse
                 return 1 / (p * (1.0 - p))[:, :, None]
             else:
@@ -160,7 +183,7 @@ class LinearModel(NamedTuple):
                 # of the variance–covariance matrix of the multinomial distribution,
                 # with applications.",
                 # Journal of the Royal Statistical Society: 1992.
-                return (1 / p)[:, :, None] * np.eye(k)[None, :, :]
+                return (1 / p)[:, :, None] * np.eye(C)[None, :, :]
         else:
             raise NotImplementedError()
 
@@ -169,8 +192,8 @@ class LinearModel(NamedTuple):
         # to the parameters
         # returns a list of size out_dim of numpy arrays of shape n_samples, n_params
         # TODO: as in hessian, exploit symmetry
-        P = (D := self.in_dim) + (1 if self.intercept is not None else 0)
-        K = self.out_dim
+        P, K = self.dof
+        D, C = self.in_dim, self.out_dim
         N = X.shape[0]
 
         if self.loss == "l2":
@@ -186,17 +209,17 @@ class LinearModel(NamedTuple):
                     col = np.concatenate([col, ((P * K) - K) * np.ones(N, dtype=int)])
 
                 J = [
-                    sp.coo_matrix((data, (row, col + k)), shape=(N, P * K)).tocsr()
-                    for k in range(K)
+                    sp.coo_matrix((data, (row, col + c)), shape=(N, P * K)).tocsr()
+                    for c in range(C)
                 ]
 
             else:
                 J = []
-                for k in range(K):
+                for c in range(C):
                     j = np.zeros((N, P * K))
-                    j[:, k : D * K : K] = X
+                    j[:, c : D * K : K] = X
                     if self.intercept is not None:
-                        j[:, -K + k] = 1
+                        j[:, -K + c] = 1
                     J.append(j)
         elif self.loss == "log_loss":
             p = self.predict_proba(X)
@@ -204,27 +227,37 @@ class LinearModel(NamedTuple):
             J = []
 
             if sp.issparse(X):
-                X = X.tocsc()
+                X = X.tocoo()
+                data, row, col = X.data, X.row, X.col
+                data = data[:, None]
+                row = row.repeat(K)
+                col = (K * col[:, None] + np.arange(K)[None, :]).reshape(-1)
 
-            if self.intercept is not None and not sp.issparse(X):
-                X = np.concatenate([X, np.ones((N, 1))], axis=1)
+                if self.intercept is not None:
+                    row = np.concatenate([row, np.repeat(np.arange(N), K)])
+                    col = np.concatenate([col, np.tile(np.arange(K * P - K, K * P), N)])
 
-            for k in range(K):
-                if sp.issparse(X):
-                    j = [X[:, j].multiply(V[:, :, k]) for j in range(X.shape[1])]
+                for c in range(C):
+                    datak = (data * V[X.row, :K, c]).reshape(-1)
                     if self.intercept is not None:
-                        j.append(V[:, :, k])
-                    j = sp.hstack(j).tocsr()
-                else:
-                    j = (X[..., None] * V[:, :, k][:, None, :]).reshape(N, -1)
-                J.append(j)
+                        datak = np.concatenate([datak, V[:, :K, c].reshape(-1)])
+
+                    j = sp.coo_matrix((datak, (row, col)), shape=(N, P * K)).tocsr()
+                    J.append(j)
+            else:
+                if self.intercept is not None and not sp.issparse(X):
+                    X = np.concatenate([X, np.ones((N, 1))], axis=1)
+
+                for c in range(C):
+                    j = (X[..., None] * V[:, :K, c][:, None, :]).reshape(N, -1)
+                    J.append(j)
         else:
             raise NotImplementedError()
         return J
 
     def hessian(self, X, y):
-        P = (D := self.in_dim) + (1 if self.intercept is not None else 0)
-        K = self.out_dim
+        P, K = self.dof
+        D = self.in_dim
 
         if self.loss == "l2":
             H = np.zeros((P * K, P * K), dtype=X.dtype)
@@ -238,8 +271,9 @@ class LinearModel(NamedTuple):
                 block[:D, -1] = X.sum(axis=0)
                 block[-1, :D] = block[:D, -1]
                 block[-1, -1] = X.shape[0]
-            for j in range(K):
-                H[j::K, j::K] = block
+
+            for k in range(K):
+                H[k::K, k::K] = block
 
         elif self.loss == "log_loss":
             H = np.zeros((P * K, P * K), dtype=X.dtype)
@@ -248,12 +282,12 @@ class LinearModel(NamedTuple):
             V = self.variance(self.predict_proba(X))
             VtI = V.sum(axis=0)
 
-            for j in range(K):
-                for k in range(j + 1):
+            for k in range(K):
+                for kk in range(k + 1):
                     if sp.issparse(X):
-                        XtV = X.T.multiply(V[:, j, k][None, :])
+                        XtV = X.T.multiply(V[:, k, kk][None, :])
                     else:
-                        XtV = X.T * V[:, j, k]
+                        XtV = X.T * V[:, k, kk]
                     XtVX = XtV @ X
                     XtVI = XtV.sum(axis=1)
                     if sp.issparse(X):
@@ -266,13 +300,13 @@ class LinearModel(NamedTuple):
                         block[:D, -1] = XtVI
                         block[-1, :D] = block[:D, -1]
                         # biases
-                        block[-1, -1] = VtI[j, k]
+                        block[-1, -1] = VtI[k, kk]
                     # do half the work
                     # TODO: this assignement is super slow
                     # because of :K at the end of slice
-                    H[j::K, k::K] = block
-                    if j != k:
-                        H[k::K, j::K] = block
+                    H[k::K, kk::K] = block
+                    if k != kk:
+                        H[kk::K, k::K] = block
 
         else:
             raise NotImplementedError()
@@ -285,20 +319,26 @@ class LinearModel(NamedTuple):
         return H
 
     def diag_hat_matrix(self, X, y):
+        # see Lesaffre, E., & Albert, A.
+        # "Multiple-Group Logistic Regression Diagnostics."
+        # Journal of the Royal Statistical Society.1989
         invsqrtV = np.sqrt(self.inverse_variance(self.predict_proba(X)))
         J = self.jacobian(X, y)
-        invH = np.linalg.inv(self.hessian(X, y))
-        N, K = X.shape[0], self.out_dim
-        diag_hat = np.zeros((N, K, K))
-        for k in range(K):
-            for kk in range(k + 1):
-                diag_hat[:, k, kk] = (
-                    invsqrtV[:, k, k]
-                    * (J[k] * (invH @ J[kk].T).T).sum(axis=1)
-                    * invsqrtV[:, kk, kk]
-                )
-                if k != kk:
-                    diag_hat[:, kk, k] = diag_hat[:, k, kk]
+        H = self.hessian(X, y)
+        if sp.issparse(X):
+            # TODO
+            raise NotImplementedError()
+        LU_H = lu_factor(H)
+
+        N, C = X.shape[0], self.out_dim
+        diag_hat = np.empty((N, C, C))
+        for c in range(C):
+            for cc in range(c + 1):
+                diag_hat[:, c, cc] = (J[c] * (lu_solve(LU_H, J[cc].T).T)).sum(axis=1)
+                diag_hat[:, c, cc] *= invsqrtV[:, c, c]
+                diag_hat[:, c, cc] *= invsqrtV[:, cc, cc]
+                if c != cc:
+                    diag_hat[:, cc, c] = diag_hat[:, c, cc]
         return diag_hat
 
     def _is_binary(self):
@@ -311,6 +351,13 @@ class LinearModel(NamedTuple):
     @property
     def in_dim(self):
         return self.coef.shape[0]
+
+    @property
+    def dof(self):
+        in_dof = self.in_dim + (1 if self.intercept is not None else 0)
+        # take the last class as reference for multiclass log loss
+        out_dof = (K := self.out_dim) - (1 if self.loss == "log_loss" and K > 1 else 0)
+        return (in_dof, out_dof)
 
 
 @singledispatch

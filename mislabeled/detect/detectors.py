@@ -79,7 +79,8 @@ class CookDistanceDetector(ModelProbingDetector):
     .. [1] Cook, "Detection of Influential Observations in Linear Regression",
         Technometrics, (1977).
     .. [2] Pregibon, "Logistic regression diagnostics", The annals of statistics (1981).
-    .. [3] Giugliano, "Diagnostic Measures for Multinomial Distance Model", (2014).
+    .. [3] Lesaffre, E., & Albert, A, "Multiple-Group Logistic Regression Diagnostics."
+        Journal of the Royal Statistical Society (1989).
     """
 
     def __init__(self, base_model):
@@ -99,7 +100,8 @@ class ApproximateLOODetector(ModelProbingDetector):
     .. [1] Cook, "Detection of Influential Observations in Linear Regression",
         Technometrics, (1977).
     .. [2] Pregibon, "Logistic regression diagnostics", The annals of statistics (1981).
-    .. [3] Giugliano, "Diagnostic Measures for Multinomial Distance Model", (2014).
+    .. [3] Lesaffre, E., & Albert, A, "Multiple-Group Logistic Regression Diagnostics."
+        Journal of the Royal Statistical Society (1989).
     """
 
     def __init__(self, base_model):

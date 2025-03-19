@@ -110,30 +110,29 @@ def test_grad_hess_jac(model, num_classes, standardized):
         print(J := np.stack(linearized.jacobian(X, y), axis=-1).sum(axis=0).T)
         print(J_df := jacobian(vectorized_predict_proba, packed_raveled_coef).df)
 
-    np.testing.assert_allclose(H, H_ddf, atol=1e-3, strict=True)
-    np.testing.assert_allclose(G, G_df, atol=1e-8, strict=True)
-    np.testing.assert_allclose(J, J_df, atol=1e-9, strict=True)
+    mask = np.ones(H_ddf.shape[0], dtype=bool)
+    if linearized.out_dim == linearized.dof[1] + 1 and linearized.loss == "log_loss":
+        mask[linearized.out_dim - 1 :: linearized.out_dim] = 0
+
+    np.testing.assert_allclose(H, H_ddf[mask, :][:, mask], atol=1e-3, strict=True)
+    np.testing.assert_allclose(G, G_df[mask], atol=1e-8, strict=True)
+    np.testing.assert_allclose(J, J_df[:, mask], atol=1e-9, strict=True)
 
 
 @pytest.mark.parametrize(
     "model",
     [
-        RidgeClassifier(fit_intercept=False),
-        RidgeClassifier(fit_intercept=True),
-        LogisticRegression(fit_intercept=False),
-        LogisticRegression(fit_intercept=True),
-        Ridge(fit_intercept=False),
-        Ridge(fit_intercept=True),
-        LinearRegression(fit_intercept=False),
-        LinearRegression(fit_intercept=True),
-        SGDClassifier(loss="log_loss", fit_intercept=False),
-        SGDClassifier(loss="log_loss", fit_intercept=True),
-        SGDRegressor(fit_intercept=False),
-        SGDRegressor(fit_intercept=True),
+        RidgeClassifier(),
+        LogisticRegression(),
+        Ridge(),
+        LinearRegression(),
+        SGDClassifier(loss="log_loss"),
+        SGDRegressor(),
     ],
 )
 @pytest.mark.parametrize("num_classes", [2, 3])
-def test_grad_hess_jac_sparse(model, num_classes):
+@pytest.mark.parametrize("fit_intercept", [False, True])
+def test_grad_hess_jac_sparse(model, num_classes, fit_intercept):
     if is_classifier(model):
         X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
     else:
@@ -147,7 +146,11 @@ def test_grad_hess_jac_sparse(model, num_classes):
         if isinstance(model, SGDRegressor) and num_classes - 1 > 1:
             return
     X = StandardScaler().fit_transform(X)
+    sparsity = 0.1
+    percentile = np.quantile(np.abs(X), 1 - sparsity)
+    X[np.abs(X) < percentile] = 0
 
+    model.set_params(fit_intercept=fit_intercept)
     model.fit(X, y)
     linearized, XX, yy = linearize(model, X, y)
     H = linearized.hessian(XX, yy)
@@ -408,12 +411,12 @@ def test_hessian_fisher(model, num_classes, standardized):
         X = StandardScaler().fit_transform(X)
     model.fit(X, y)
     linearized, X, y = linearize(model, X, y)
-    J = linearized.jacobian(X, y)
+    J = np.stack(linearized.jacobian(X, y), axis=-1)
     invV = linearized.inverse_variance(linearized.predict_proba(X))
     H = linearized.hessian(X, y)
     F = (J @ invV @ J.transpose(0, 2, 1)).sum(axis=0)
     λ = linearized.regul if linearized.regul is not None else 0
-    F[np.diag_indices(J.shape[2] * 2)] += λ
+    F[np.diag_indices(linearized.dof[1] * 2)] += λ
     np.testing.assert_allclose(H, F, atol=1e-14)
 
 

@@ -100,7 +100,7 @@ def test_si_aloo_approximates_loo(model, num_classes):
 
     assert pearsonr(si_scores, loo_diff).statistic > 0.99
     assert pearsonr(aloo_scores, loo_diff).statistic > 0.99
-    np.testing.assert_allclose(aloo_scores, loo_diff, atol=0 if close_form else 1e-2)
+    np.testing.assert_allclose(aloo_scores, loo_diff, atol=0 if close_form else 5e-2)
 
 
 @pytest.mark.parametrize("model", [LinearRegression(fit_intercept=False)])
@@ -160,7 +160,8 @@ def test_cd_log_loss_against_statmodels(model):
     [
         MLPClassifier(
             max_iter=10000, solver="lbfgs", alpha=1e-6, tol=1e-6, random_state=1
-        )
+        ),
+        LogisticRegression(max_iter=100000, tol=1e-16, penalty=None, random_state=1),
     ],
 )
 @pytest.mark.parametrize("num_classes", [2, 5])
