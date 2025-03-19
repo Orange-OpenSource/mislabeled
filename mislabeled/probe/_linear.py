@@ -6,6 +6,7 @@
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
+import operator
 from functools import singledispatch, wraps
 from typing import NamedTuple
 
@@ -134,7 +135,7 @@ class LinearModel(NamedTuple):
             if self.intercept is not None:
                 data = np.concatenate([data, dl_dy.reshape(-1)])
 
-            dl_dp = sp.coo_matrix((data, (row, col)), shape=(N, P * K)).tocsr()
+            dl_dp = sp.coo_array((data, (row, col)), shape=(N, P * K)).tocsr()
 
         else:
             # TODO: find something faster ?
@@ -209,7 +210,7 @@ class LinearModel(NamedTuple):
                     col = np.concatenate([col, ((P * K) - K) * np.ones(N, dtype=int)])
 
                 J = [
-                    sp.coo_matrix((data, (row, col + c)), shape=(N, P * K)).tocsr()
+                    sp.coo_array((data, (row, col + c)), shape=(N, P * K)).tocsr()
                     for c in range(C)
                 ]
 
@@ -242,7 +243,7 @@ class LinearModel(NamedTuple):
                     if self.intercept is not None:
                         datak = np.concatenate([datak, V[:, :K, c].reshape(-1)])
 
-                    j = sp.coo_matrix((datak, (row, col)), shape=(N, P * K)).tocsr()
+                    j = sp.coo_array((datak, (row, col)), shape=(N, P * K)).tocsr()
                     J.append(j)
             else:
                 if self.intercept is not None and not sp.issparse(X):
@@ -326,15 +327,15 @@ class LinearModel(NamedTuple):
         J = self.jacobian(X, y)
         H = self.hessian(X, y)
         if sp.issparse(X):
-            # TODO
-            raise NotImplementedError()
-        LU_H = lu_factor(H)
+            H, solve = np.linalg.inv(H), operator.matmul
+        else:
+            H, solve = lu_factor(H), lu_solve
 
         N, C = X.shape[0], self.out_dim
         diag_hat = np.empty((N, C, C))
         for c in range(C):
             for cc in range(c + 1):
-                diag_hat[:, c, cc] = (J[c] * (lu_solve(LU_H, J[cc].T).T)).sum(axis=1)
+                diag_hat[:, c, cc] = (J[c] * solve(H, J[cc].T).T).sum(axis=1)
                 diag_hat[:, c, cc] *= invsqrtV[:, c, c]
                 diag_hat[:, c, cc] *= invsqrtV[:, cc, cc]
                 if c != cc:

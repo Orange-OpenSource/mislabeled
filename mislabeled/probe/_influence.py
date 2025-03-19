@@ -29,9 +29,10 @@ class SelfInfluence(Maximize):
         H = estimator.hessian(X, y)
 
         if sp.issparse(G):
-            H = sp.csc_matrix(H)
-            HinvGt = sp.linalg.spsolve(H, G.T)
-            self_influence = -G.multiply(HinvGt.T).sum(axis=1)
+            # TODO: no way to solve Ax=b with A dense and b sparse ?
+            # spsolve is sometimes very slow
+            HinvGt = np.linalg.inv(H) @ G.T
+            self_influence = -(G * HinvGt.T).sum(axis=1)
             self_influence = np.asarray(self_influence).reshape(-1)
         else:
             HinvGt = np.linalg.solve(H, G.T)
