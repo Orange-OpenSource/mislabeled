@@ -68,8 +68,9 @@ def test_si_aloo_approximates_loo(model, num_classes):
         )
 
     def loss_fn(model, X, y):
-        linerized, X, y = linearize(model, X, y)
-        return linerized._replace(regul=None).objective(X, y)
+        linearized, X, y = linearize(model, X, y)
+        linearized.regul = None
+        return linearized.objective(X, y)
 
     X = StandardScaler().fit_transform(X)
 

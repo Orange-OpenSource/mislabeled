@@ -18,7 +18,7 @@ from sklearn.linear_model import (
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
-from mislabeled.probe import ParamNorm2, linearize
+from mislabeled.probe import LinearModel, ParamNorm2, linearize
 
 
 @pytest.mark.parametrize(
@@ -82,8 +82,8 @@ def test_grad_hess_jac(model, num_classes, standardized):
     def vectorized_objective(packed_raveled_coef, apply_regul=True):
         def f(prc):
             c, i = unpack_unravel(prc, d, k, fit_intercept)
-            return linearized._replace(
-                coef=c, intercept=i, regul=None if not apply_regul else linearized.regul
+            return LinearModel(
+                c, i, linearized.loss, None if not apply_regul else linearized.regul
             ).objective(X, y)
 
         return np.apply_along_axis(f, axis=0, arr=packed_raveled_coef)
@@ -91,7 +91,11 @@ def test_grad_hess_jac(model, num_classes, standardized):
     def vectorized_predict_proba(packed_raveled_coef):
         def f(prc):
             c, i = unpack_unravel(prc, d, k, fit_intercept)
-            return linearized._replace(coef=c, intercept=i).predict_proba(X).sum(axis=0)
+            return (
+                LinearModel(c, i, linearized.loss, linearized.regul)
+                .predict_proba(X)
+                .sum(axis=0)
+            )
 
         return np.apply_along_axis(f, axis=0, arr=packed_raveled_coef)
 

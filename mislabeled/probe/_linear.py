@@ -8,7 +8,6 @@
 
 import operator
 from functools import singledispatch, wraps
-from typing import NamedTuple
 
 import numpy as np
 import scipy.sparse as sp
@@ -43,11 +42,12 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
 
 
-class LinearModel(NamedTuple):
-    coef: np.ndarray
-    intercept: np.ndarray
-    loss: str
-    regul: float
+class LinearModel:
+    def __init__(self, coef, intercept, loss, regul):
+        self.coef = coef
+        self.intercept = intercept
+        self.loss = loss
+        self.regul = regul
 
     def decision_function(self, X):
         y_linear = X @ self.coef
