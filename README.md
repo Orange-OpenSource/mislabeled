@@ -49,6 +49,8 @@ var_representer_values = detector.trust_scores(X, y)
 | - | - | - |
 | Area Under the Margin (AUM) | [NeurIPS 2020](https://proceedings.neurips.cc/paper/2020/file/c6102b3727b2a7d8b1bb6981147081ef-Paper.pdf) | `import AreaUnderMargin` |
 | Influence | [Paper 1974](https://www.tandfonline.com/doi/abs/10.1080/01621459.1974.10482962) | `import InfluenceDetector` |
+| Cook's Distance | [Paper 1977](https://www.jstor.org/stable/1268249) | `import CookDistanceDetector` |
+| Approximate Leave-One-Out | [Paper 1981](https://www.jstor.org/stable/2240841) | `import ApproximateLOODetector` |
 | Representer | [Paper 1972](https://www.jstor.org/stable/2240067) | `import RepresenterDetector` |
 | TracIn | [NeurIPS 2020](https://proceedings.neurips.cc/paper_files/paper/2020/file/e6385d39ec9394f2f3a354d9d2b88eec-Paper.pdf) | `import TracIn` |
 | Forget Scores | [ICLR 2019](https://openreview.net/pdf?id=BJlxm30cKm) | `import ForgetScores` |
@@ -59,6 +61,8 @@ var_representer_values = detector.trust_scores(X, y)
 | AGRA | [ECML 2023](https://dl.acm.org/doi/10.1007/978-3-031-43412-9_14) | `import AGRA` |
 
 and other limitless combinations by using `ModelProbingDetector` with any `probe` and `Ensembles` from the library.
+
+Most of these detectors work for both regression and classification diagnostics.
 
 ## Tutorials
 
