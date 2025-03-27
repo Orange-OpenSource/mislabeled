@@ -9,6 +9,7 @@
 """A detector zoo of techniques found in the litterature."""
 
 import numpy as np
+from sklearn.base import is_classifier
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 from mislabeled.aggregate import forget, fromnumpy, mean, oob, sum, var
@@ -434,13 +435,13 @@ class VoLG(ModelProbingDetector):
 
 
 class SmallLoss(ModelProbingDetector):
-    """Detector based on cross-entropy loss between predicted probabilities
-    and one-hot observed target."""
+    """Detector based on the loss between predictions
+    and the observed target."""
 
     def __init__(self, base_model):
         super().__init__(
             base_model=base_model,
             ensemble=NoEnsemble(),
-            probe="cross_entropy",
+            probe="cross_entropy" if is_classifier(base_model) else "l2",
             aggregate="sum",
         )
