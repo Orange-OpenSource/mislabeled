@@ -4,7 +4,7 @@ import scipy.sparse as sp
 from sklearn.datasets import make_regression
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
 
-from mislabeled.probe import linearize
+from mislabeled.probe import ApproximateLOO
 
 
 @pytest.mark.parametrize(
@@ -38,8 +38,8 @@ from mislabeled.probe import linearize
 @pytest.mark.parametrize(
     "num_samples",
     [
-        1_000,
-        100_000,
+        1000,
+        10000,
     ],
 )
 @pytest.mark.parametrize(
@@ -56,7 +56,7 @@ def test_grad_hess(
         n_samples=num_samples, n_features=num_features, random_state=1
     )
     if sparse:
-        sparsity = 0.1
+        sparsity = 0.01
         percentile = np.quantile(np.abs(X), 1 - sparsity)
         X[np.abs(X) < percentile] = 0
         X = sp.csr_matrix(X)
@@ -65,5 +65,6 @@ def test_grad_hess(
 
     model.set_params(fit_intercept=intercept)
     model.fit(X, y)
-    linearized, X, y = linearize(model, X, y)
-    benchmark(linearized.hessian, X, y)
+    # linearized, X, y = linearize(model, X, y)
+    aloo = ApproximateLOO()
+    benchmark(aloo, model, X, y)

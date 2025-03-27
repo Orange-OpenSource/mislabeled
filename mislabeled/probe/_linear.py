@@ -6,12 +6,13 @@
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
+import operator
 from functools import singledispatch, wraps
-from typing import NamedTuple
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.special import expit, softmax
+from scipy.linalg import lu_factor, lu_solve
+from scipy.special import expit, log_expit, log_softmax, softmax
 from sklearn.base import is_classifier, is_regressor
 from sklearn.ensemble import (
     ExtraTreesClassifier,
@@ -32,7 +33,6 @@ from sklearn.linear_model import (
     SGDClassifier,
     SGDRegressor,
 )
-from sklearn.metrics import log_loss
 from sklearn.naive_bayes import LabelBinarizer
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.neural_network._base import ACTIVATIONS
@@ -41,14 +41,13 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
 
-from mislabeled.utils import fast_block_diag
 
-
-class LinearModel(NamedTuple):
-    coef: np.ndarray
-    intercept: np.ndarray
-    loss: str
-    regul: float
+class LinearModel:
+    def __init__(self, coef, intercept, loss, regul):
+        self.coef = coef
+        self.intercept = intercept
+        self.loss = loss
+        self.regul = regul
 
     def decision_function(self, X):
         y_linear = X @ self.coef
@@ -72,62 +71,79 @@ class LinearModel(NamedTuple):
 
     def objective(self, X, y):
         if self.loss == "l2":
-            objective = ((y - self.predict_proba(X)) ** 2).sum(axis=0).sum(axis=0)
+            objective = 0.5 * ((y - self.decision_function(X)) ** 2).sum(axis=0).sum(
+                axis=0
+            )
         elif self.loss == "log_loss":
-            objective = log_loss(y, self.predict_proba(X), normalize=False)
+            logits = self.decision_function(X)
+            if self._is_binary():
+                y = y[..., None]
+                objective = -(
+                    y * log_expit(logits) + (1 - y) * log_expit(-logits)
+                ).sum()
+            else:
+                objective = -log_softmax(logits, axis=1)[np.arange(y.shape[0]), y].sum()
         else:
             raise NotImplementedError()
 
         if self.regul is not None:
-            objective += self.regul * np.linalg.norm(self.coef) ** 2
+            objective += 0.5 * self.regul * np.linalg.norm(self.coef) ** 2
 
         return objective
 
     def grad_y(self, X, y):
         # gradients w.r.t. the output of the linear op, i.e. the logit
         # in the logistic model
-        y_linear = self.decision_function(X)
+        N = X.shape[0]
+        p = self.predict_proba(X)
         if self.loss == "l2":
-            dl_dy = 2 * (y - y_linear)
+            dl_dy = p - y
 
         elif self.loss == "log_loss":
             if self._is_binary():
-                dl_dy = y[:, None] - expit(y_linear)
+                dl_dy = p - y[:, None]
             else:
-                dl_dy = -softmax(y_linear, axis=1)
-                dl_dy[np.arange(y.shape[0]), y] += 1
+                dl_dy = p
+                dl_dy[np.arange(N), y] -= 1
 
         else:
             raise NotImplementedError()
         return dl_dy
 
-    @property
-    def packed_coef(self):
-        packed = self.coef
-        if self.intercept is not None:
-            packed = np.concatenate((packed, self.intercept[None, :]))
-        return packed
-
-    @property
-    def packed_regul(self):
-        if self.regul is None:
-            return np.zeros_like(self.packed_coef)
-
-        packed = np.full_like(self.coef, self.regul)
-        if self.intercept is not None:
-            packed = np.concatenate((packed, np.zeros_like(self.intercept[None, :])))
-        return packed
-
     def grad_p(self, X, y):
         # gradients w.r.t. the parameters (weight, intercept)
-        dl_dy = self.grad_y(X, y)
+        N = X.shape[0]
+        K = self.dof[1]
+        dl_dy = self.grad_y(X, y)[:, :K]
 
-        X_p = X if not sp.issparse(X) else X.toarray()
-        X_p = self.add_bias(X_p)
+        if sp.issparse(X):
+            P = self.dof[0]
 
-        dl_dp = dl_dy[:, None, :] * X_p[:, :, None]
-        # dl_dp -= 2 * self.packed_regul * self.packed_coef / X.shape[0]
-        return dl_dp.reshape(X_p.shape[0], -1)
+            # TODO: refactor ?
+            X = X.tocoo()
+            data, row, col = X.data, X.row, X.col
+            data = data[:, None]
+            row = row.repeat(K)
+            col = (K * col[:, None] + np.arange(K)[None, :]).reshape(-1)
+
+            if self.intercept is not None:
+                row = np.concatenate([row, np.repeat(np.arange(N), K)])
+                col = np.concatenate([col, np.tile(np.arange(K * P - K, K * P), N)])
+
+            data = (data * dl_dy[X.row, :]).reshape(-1)
+
+            if self.intercept is not None:
+                data = np.concatenate([data, dl_dy.reshape(-1)])
+
+            dl_dp = sp.coo_array((data, (row, col)), shape=(N, P * K)).tocsr()
+
+        else:
+            # TODO: find something faster ?
+            if self.intercept is not None:
+                X = np.hstack([X, np.ones((N, 1), dtype=X.dtype)])
+            dl_dp = (dl_dy[:, None, :] * X[:, :, None]).reshape(N, -1)
+
+        return dl_dp
 
     def grad_X(self, X, y):
         # gradients w.r.t the input features
@@ -135,56 +151,196 @@ class LinearModel(NamedTuple):
         dy_dX = self.coef.T
         return dl_dy @ dy_dX
 
-    def add_bias(self, X):
-        if self.intercept is not None:
-            if sp.issparse(X):
-                return sp.hstack((X, np.ones((X.shape[0], 1))))
-            else:
-                return np.hstack((X, np.ones((X.shape[0], 1))))
-        return X
-
-    def pseudo(self, X):
-        if (k := self.out_dim) > 1:
-            if sp.issparse(X):
-                return sp.kron(X, sp.eye(k))
-            else:
-                return np.kron(X, np.eye(k))
-        return X
-
     def variance(self, p):
         # variance of the GLM link function
+        N = p.shape[0]
+        C = self.out_dim
         if self.loss == "l2":
-            return np.eye(self.out_dim)[None, :, :] * np.ones(p.shape[0])[:, None, None]
+            return np.eye(C)[None, :, :] * np.ones(N)[:, None, None]
         elif self.loss == "log_loss":
-            if (k := self.out_dim) == 1:
+            if self.dof[1] == 1:
                 return (p * (1.0 - p))[:, :, None]
             else:
-                return p[:, :, None] * (np.eye(k)[None, :, :] - p[:, None, :])
+                return p[:, :, None] * (np.eye(C)[None, :, :] - p[:, None, :])
         else:
             raise NotImplementedError()
+
+    def inverse_variance(self, p):
+        # generalized inverse of the GLM link function
+        N = p.shape[0]
+        C = self.out_dim
+        if self.loss == "l2":
+            return np.eye(C)[None, :, :] * np.ones(N)[:, None, None]
+        elif self.loss == "log_loss":
+            eps = np.finfo(p.dtype).eps
+            # clipping for p=1 or p=0
+            p = np.clip(p, eps, 1 - eps)
+            if self.dof[1] == 1:
+                # Element-wise inverse
+                return 1 / (p * (1.0 - p))[:, :, None]
+            else:
+                # See for multinomial: Tanabe, Kunio, and Masahiko Sagae.
+                # "An exact Cholesky decomposition and the generalized inverse
+                # of the variance–covariance matrix of the multinomial distribution,
+                # with applications.",
+                # Journal of the Royal Statistical Society: 1992.
+                return (1 / p)[:, :, None] * np.eye(C)[None, :, :]
+        else:
+            raise NotImplementedError()
+
+    def jacobian(self, X, y):
+        # derivative of the link function with respect
+        # to the parameters
+        # returns a list of size out_dim of numpy arrays of shape n_samples, n_params
+        # TODO: as in hessian, exploit symmetry
+        P, K = self.dof
+        D, C = self.in_dim, self.out_dim
+        N = X.shape[0]
+
+        if self.loss == "l2":
+            if sp.issparse(X):
+                X = X.tocoo()
+                data = X.data
+                row, col = X.row, X.col
+                col = K * col
+
+                if self.intercept is not None:
+                    data = np.concatenate([data, np.ones(N)])
+                    row = np.concatenate([row, np.arange(N)])
+                    col = np.concatenate([col, ((P * K) - K) * np.ones(N, dtype=int)])
+
+                J = [
+                    sp.coo_array((data, (row, col + c)), shape=(N, P * K)).tocsr()
+                    for c in range(C)
+                ]
+
+            else:
+                J = []
+                for c in range(C):
+                    j = np.zeros((N, P * K))
+                    j[:, c : D * K : K] = X
+                    if self.intercept is not None:
+                        j[:, -K + c] = 1
+                    J.append(j)
+        elif self.loss == "log_loss":
+            p = self.predict_proba(X)
+            V = self.variance(p)
+            J = []
+
+            if sp.issparse(X):
+                X = X.tocoo()
+                data, row, col = X.data, X.row, X.col
+                data = data[:, None]
+                row = row.repeat(K)
+                col = (K * col[:, None] + np.arange(K)[None, :]).reshape(-1)
+
+                if self.intercept is not None:
+                    row = np.concatenate([row, np.repeat(np.arange(N), K)])
+                    col = np.concatenate([col, np.tile(np.arange(K * P - K, K * P), N)])
+
+                for c in range(C):
+                    datak = (data * V[X.row, :K, c]).reshape(-1)
+                    if self.intercept is not None:
+                        datak = np.concatenate([datak, V[:, :K, c].reshape(-1)])
+
+                    j = sp.coo_array((datak, (row, col)), shape=(N, P * K)).tocsr()
+                    J.append(j)
+            else:
+                if self.intercept is not None and not sp.issparse(X):
+                    X = np.concatenate([X, np.ones((N, 1))], axis=1)
+
+                for c in range(C):
+                    j = (X[..., None] * V[:, :K, c][:, None, :]).reshape(N, -1)
+                    J.append(j)
+        else:
+            raise NotImplementedError()
+        return J
 
     def hessian(self, X, y):
+        P, K = self.dof
+        D = self.in_dim
+
         if self.loss == "l2":
-            X_p = self.add_bias(X)
-            H = 2.0 * (X_p.T @ X_p)
-            H = self.pseudo(H)
+            H = np.zeros((P * K, P * K), dtype=X.dtype)
+            block = np.empty((P, P), dtype=X.dtype)
+
+            XtX = X.T @ X
+            if sp.issparse(XtX):
+                XtX = XtX.toarray()
+            block[:D, :D] = XtX
+            if self.intercept is not None:
+                block[:D, -1] = X.sum(axis=0)
+                block[-1, :D] = block[:D, -1]
+                block[-1, -1] = X.shape[0]
+
+            for k in range(K):
+                H[k::K, k::K] = block
 
         elif self.loss == "log_loss":
-            X_p = self.pseudo(self.add_bias(X))
+            H = np.zeros((P * K, P * K), dtype=X.dtype)
+            block = np.empty((P, P), dtype=X.dtype)
+
             V = self.variance(self.predict_proba(X))
-            W = fast_block_diag(V)
-            H = X_p.T @ W @ X_p
+            VtI = V.sum(axis=0)
+
+            for k in range(K):
+                for kk in range(k + 1):
+                    if sp.issparse(X):
+                        XtV = X.T.multiply(V[:, k, kk][None, :])
+                    else:
+                        XtV = X.T * V[:, k, kk]
+                    XtVX = XtV @ X
+                    XtVI = XtV.sum(axis=1)
+                    if sp.issparse(X):
+                        XtVX = XtVX.toarray()
+                        XtVI = XtVI.ravel()
+                    # weights
+                    block[:D, :D] = XtVX
+                    # weights and biases
+                    if self.intercept is not None:
+                        block[:D, -1] = XtVI
+                        block[-1, :D] = block[:D, -1]
+                        # biases
+                        block[-1, -1] = VtI[k, kk]
+                    # do half the work
+                    # TODO: this assignement is super slow
+                    # because of :K at the end of slice
+                    H[k::K, kk::K] = block
+                    if k != kk:
+                        H[kk::K, k::K] = block
 
         else:
             raise NotImplementedError()
-
-        H = H.toarray() if sp.issparse(H) else H
 
         # only regularize coefficients corresponding to weight
         # parameters, excluding intercept
-        H[np.diag_indices(H.shape[0])] += 2 * self.packed_regul.ravel()
+        if self.regul is not None:
+            H[np.diag_indices(D * K)] += self.regul
 
         return H
+
+    def diag_hat_matrix(self, X, y):
+        # see Lesaffre, E., & Albert, A.
+        # "Multiple-Group Logistic Regression Diagnostics."
+        # Journal of the Royal Statistical Society.1989
+        invsqrtV = np.sqrt(self.inverse_variance(self.predict_proba(X)))
+        J = self.jacobian(X, y)
+        H = self.hessian(X, y)
+        if sp.issparse(X):
+            H, solve = np.linalg.inv(H), operator.matmul
+        else:
+            H, solve = lu_factor(H), lu_solve
+
+        N, C = X.shape[0], self.out_dim
+        diag_hat = np.empty((N, C, C))
+        for c in range(C):
+            for cc in range(c + 1):
+                diag_hat[:, c, cc] = (J[c] * solve(H, J[cc].T).T).sum(axis=1)
+                diag_hat[:, c, cc] *= invsqrtV[:, c, c]
+                diag_hat[:, c, cc] *= invsqrtV[:, cc, cc]
+                if c != cc:
+                    diag_hat[:, cc, c] = diag_hat[:, c, cc]
+        return diag_hat
 
     def _is_binary(self):
         return self.out_dim == 1
@@ -196,6 +352,13 @@ class LinearModel(NamedTuple):
     @property
     def in_dim(self):
         return self.coef.shape[0]
+
+    @property
+    def dof(self):
+        in_dof = self.in_dim + (1 if self.intercept is not None else 0)
+        # take the last class as reference for multiclass log loss
+        out_dof = (K := self.out_dim) - (1 if self.loss == "log_loss" and K > 1 else 0)
+        return (in_dof, out_dof)
 
 
 @singledispatch
@@ -230,7 +393,7 @@ def linearize_linear_model_ridge(estimator, X, y):
     intercept = estimator.intercept_ if estimator.fit_intercept else None
     if is_classifier(estimator):
         lb = LabelBinarizer(pos_label=1, neg_label=-1)
-        y = lb.fit_transform(y)
+        y = lb.fit(estimator.classes_).transform(y)
     else:
         if y.ndim == 1:
             y = y.reshape(-1, 1)
@@ -268,7 +431,7 @@ def linearize_linear_model_sgd(estimator, X, y):
 
     if is_classifier(estimator) and estimator.loss == "squared_error":
         lb = LabelBinarizer(pos_label=1, neg_label=-1)
-        y = lb.fit_transform(y)
+        y = lb.fit(estimator.classes_).transform(y)
 
     if is_regressor(estimator):
         if y.ndim == 1:

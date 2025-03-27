@@ -17,11 +17,12 @@ from ._complexity import ParameterCount, ParamNorm2
 from ._grads import GradSimilarity
 from ._influence import (
     ApproximateLOO,
+    CookDistance,
     GradNorm2,
     Representer,
     SelfInfluence,
 )
-from ._linear import linear, linearize
+from ._linear import LinearModel, linear, linearize
 from ._minmax import Maximize, Minimize
 from ._peer import CORE, Peer
 from ._sensitivity import FiniteDiffSensitivity, Sensitivity
@@ -47,6 +48,7 @@ __all__ = [
     "ParameterCount",
     "ParamNorm2",
     "SelfInfluence",
+    "CookDistance",
     "ApproximateLOO",
     "Representer",
     "GradNorm2",
@@ -55,6 +57,7 @@ __all__ = [
     "CORE",
     "linear",
     "linearize",
+    "LinearModel",
 ]
 
 

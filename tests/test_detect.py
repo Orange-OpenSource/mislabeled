@@ -27,6 +27,7 @@ from mislabeled.detect.detectors import (
     Classifier,
     ConfidentLearning,
     ConsensusConsistency,
+    CookDistanceDetector,
     DecisionTreeComplexity,
     FiniteDiffComplexity,
     FiniteDiffVoLG,
@@ -166,6 +167,12 @@ detectors = [
         )
     ),
     VoLG(MLPClassifier(random_state=seed)),
+    CookDistanceDetector(
+        make_pipeline(
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
+            LogisticRegression(random_state=seed, C=10),
+        )
+    ),
     ApproximateLOODetector(
         make_pipeline(
             Nystroem(gamma=0.1, n_components=100, random_state=seed),
