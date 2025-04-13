@@ -1,18 +1,19 @@
-from functools import singledispatch, partial
-from itertools import chain
+from functools import singledispatch
+
+import numpy as np
+from scipy.linalg import lu_factor, lu_solve
 from sklearn.base import is_classifier
-from sklearn.preprocessing import LabelBinarizer
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.neural_network._multilayer_perceptron import DERIVATIVES
-import numpy as np
-from scipy.linalg import lu_solve, lu_factor
-from mislabeled.probe import LinearModel
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.utils import gen_batches
 
+from mislabeled.probe import LinearModel
 
 type MLP = MLPClassifier | MLPRegressor
 
 
-def jacobian(mlp: MLP, X: np.ndarray, block=False):
+def jacobian_layerwise(mlp: MLP, X: np.ndarray):
     n_samples, n_features = X.shape
     n_outputs = mlp.n_outputs_
 
@@ -43,6 +44,7 @@ def jacobian(mlp: MLP, X: np.ndarray, block=False):
         deltas[-1][:, :, None, :] * activations[-2][:, None, :, None]
     ).reshape(n_samples, n_outputs, -1)
     intercept_grads[-1] = deltas[-1]
+    yield np.concatenate([coef_grads[-1], intercept_grads[-1]], axis=-1)
 
     inplace_derivative = DERIVATIVES[mlp.activation]
     # Iterate over the hidden layers
@@ -56,26 +58,44 @@ def jacobian(mlp: MLP, X: np.ndarray, block=False):
             deltas[i][:, :, None, :] * activations[i - 1][:, None, :, None]
         ).reshape(n_samples, n_outputs, -1)
         intercept_grads[i - 1] = deltas[i]
+        yield np.concatenate([coef_grads[i - 1], intercept_grads[i - 1]], axis=-1)
 
-    if block:
-        return list(
-            map(partial(np.concatenate, axis=-1), zip(coef_grads, intercept_grads))
-        )
+
+def jacobian(mlp: MLP, X: np.ndarray):
+    return np.concatenate(list(jacobian_layerwise(mlp, X))[::-1], axis=-1)
+
+
+@singledispatch
+def diag_var(mlp: MLP, X: np.ndarray) -> np.ndarray:
+    raise NotImplementedError()
+
+
+@diag_var.register(MLPClassifier)
+def diag_var_clf(mlp: MLPClassifier, X: np.ndarray) -> np.ndarray:
+    p = forward(mlp, X, raw=False)
+    eps = np.finfo(p.dtype).eps
+    np.clip(p, eps, 1 - eps, out=p)
+    if p.shape[1] > 2:
+        return p
     else:
-        return np.concatenate(
-            list(chain(*zip(coef_grads, intercept_grads))), axis=-1, dtype=X.dtype
-        )
+        return p * (1 - p)
 
 
-def fisher(mlp: MLP, X: np.ndarray):
+@diag_var.register(MLPRegressor)
+def diag_var_reg(mlp: MLPRegressor, X: np.ndarray) -> np.ndarray:
+    p = forward(mlp, X, raw=False)
+    return np.ones_like(p)
+
+
+def fisher(mlp: MLP, X: np.ndarray) -> np.ndarray:
     J = jacobian(mlp, X)
     diagΣ = diag_var(mlp, X)
-    F = np.einsum("ijk, ij, ijl -> kl", J, 1 / diagΣ, J, optimize="optimal")
+    F = np.einsum("ijk, ij, ijl -> kl", J, 1 / diagΣ, J, optimize=True)
     return F
 
 
 def block_fisher(mlp: MLP, X: np.ndarray) -> list[np.ndarray]:
-    J = jacobian(mlp, X, block=True)
+    J = jacobian_layerwise(mlp, X)
     diagΣ = diag_var(mlp, X)
     F = [np.einsum("ijk, ij, ijl -> kl", j, 1 / diagΣ, j, optimize=True) for j in J]
     return F
@@ -91,9 +111,21 @@ def forward(mlp: MLP, X: np.ndarray, raw=True):
     return predictions
 
 
+def num_params(mlp: MLP) -> int:
+    return sum([coef.size for coef in mlp.coefs_]) + sum(
+        [intercept.size for intercept in mlp.intercepts_]
+    )
+
+
+def num_blocks(mlp: MLP) -> int:
+    return len(mlp.coefs_)
+
+
 class MLPLinearModel(LinearModel):
-    def __init__(self, mlp, loss, regul):
+    # TODO implement block_hessian and block_hat_mat
+    def __init__(self, mlp, loss, regul, batch_size=None):
         self.mlp = mlp
+        self.batch_size = batch_size
         super().__init__(True, True, loss, regul)
 
     def decision_function(self, X):
@@ -103,7 +135,9 @@ class MLPLinearModel(LinearModel):
         return forward(self.mlp, X, raw=False)
 
     def hessian(self, X, y):
-        F = fisher(self.mlp, X)
+        F = np.zeros((num_params(self.mlp), num_params(self.mlp)), dtype=X.dtype)
+        for batch in gen_batches(X.shape[0], self.batch_size):
+            F += fisher(self.mlp, X[batch])
         F[np.diag_indices_from(F)] += self.regul
         return F
 
@@ -111,12 +145,19 @@ class MLPLinearModel(LinearModel):
         return jacobian(self.mlp, X)
 
     def diag_hat_matrix(self, X, y):
-        Σinv = np.sqrt(1 / diag_var(self.mlp, X))
-        J = self.jacobian(X, y)
+        sqrtVinv = np.sqrt(self.inverse_variance(self.predict_proba(X)))
         F = self.hessian(X, y)
-        J = Σinv[..., None] * J
         F_LU = lu_factor(F)
-        return J @ lu_solve(F_LU, J.transpose(2, 0, 1)).transpose(1, 0, 2)
+        hat_matrix = []
+        for batch in gen_batches(X.shape[0], self.batch_size):
+            J = self.jacobian(X[batch], y[batch])
+            ΣinvJ = sqrtVinv[batch] @ J
+            hat_matrix.append(
+                ΣinvJ @ lu_solve(F_LU, ΣinvJ.transpose(2, 0, 1)).transpose(1, 0, 2)
+            )
+        return (
+            np.concatenate(hat_matrix, axis=0) if len(hat_matrix) > 1 else hat_matrix[0]
+        )
 
     def grad_p(self, X, y):
         Vinv = self.inverse_variance(self.predict_proba(X))
@@ -157,7 +198,7 @@ def linearize_mlp_fisher(estimator, X, y):
     else:
         regul = estimator.alpha
 
-    return MLPLinearModel(estimator, loss, regul), X, y
+    return MLPLinearModel(estimator, loss, regul, batch_size=batch_size), X, y
 
 
 def ntf(mlp: MLP, X: np.ndarray):

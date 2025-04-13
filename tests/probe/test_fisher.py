@@ -1,21 +1,23 @@
 from itertools import chain
-from sklearn.neural_network import MLPClassifier, MLPRegressor
-from sklearn.datasets import make_regression, make_classification, make_blobs
-from sklearn.preprocessing import StandardScaler
-from sklearn.base import is_classifier
-from scipy import differentiate
+
 import numpy as np
 import pytest
-from deepgnostics.ntk import (
+from scipy import differentiate
+from sklearn.base import is_classifier
+from sklearn.datasets import make_blobs, make_classification, make_regression
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.preprocessing import StandardScaler
+
+from mislabeled.probe import linearize
+from mislabeled.probe._fisher import (
+    MLP,
     MLPLinearModel,
     fisher,
+    jacobian,
     linearize_mlp_fisher,
     ntk,
-    MLP,
-    jacobian,
     num_params,
 )
-from mislabeled.probe import linearize
 from mislabeled.probe._linear import linearize_mlp
 
 
@@ -116,24 +118,24 @@ def test_fisher_linearization(mlp: MLP, outputs):
 @pytest.mark.parametrize(
     "mlp",
     [
-        MLPRegressor(hidden_layer_sizes=[], alpha=1),
-        MLPClassifier(hidden_layer_sizes=[], alpha=1),
+        MLPRegressor(hidden_layer_sizes=[], alpha=1e-12),
+        MLPClassifier(hidden_layer_sizes=[], alpha=1e-12),
     ],
 )
-@pytest.mark.parametrize("outputs", [1, 4])
+@pytest.mark.parametrize("outputs", [1, 3])
 def test_fisher_equals_hessian_last_layer_for_depth0(mlp: MLP, outputs):
     if is_classifier(mlp):
         if outputs > 2:
             return
-        X, y = make_blobs(centers=max(2, outputs))
+        X, y = make_blobs(centers=outputs)
     else:
         X, y = make_regression(n_features=20, n_targets=outputs)
     X = StandardScaler().fit_transform(X)
     mlp.fit(X, y)
     linearize.register(type(mlp), linearize_mlp)
-    elinearized, Xe, ye = linearize(mlp, X, y)
+    elinearized, Xe, ye = linearize(mlp, np.copy(X), np.copy(y))
     linearize.register(type(mlp), linearize_mlp_fisher)
-    flinearized, Xf, yf = linearize(mlp, X, y)
+    flinearized, Xf, yf = linearize(mlp, np.copy(X), np.copy(y))
     eh = elinearized.hessian(Xe, ye)
     for i in range(1, outputs + 1):
         eh[-i, -i] += elinearized.regul
@@ -142,8 +144,10 @@ def test_fisher_equals_hessian_last_layer_for_depth0(mlp: MLP, outputs):
         elinearized.diag_hat_matrix(Xe, ye),
         flinearized.diag_hat_matrix(Xf, yf),
         strict=True,
-        atol=1e-2,
-    )  # TODO: why is this different ?
+    )
+    # np.testing.assert_allclose(
+    #     elinearized.jacobian(Xe, ye), flinearized.jacobian(Xf, yf), strict=True
+    # ) # TODO change jacobian MLP format
     np.testing.assert_allclose(
         elinearized.grad_p(Xe, ye), flinearized.grad_p(Xf, yf), strict=True
     )
