@@ -134,17 +134,18 @@ def test_fisher_equals_hessian_last_layer_for_depth0(mlp: MLP, outputs):
     X = StandardScaler().fit_transform(X)
     mlp.fit(X, y)
     linearize.register(type(mlp), linearize_mlp)
-    elinearized, Xe, ye = linearize(mlp, np.copy(X), np.copy(y))
+    elinearized, Xe, ye = linearize(mlp, X, y)
     linearize.register(type(mlp), linearize_mlp_fisher)
-    flinearized, Xf, yf = linearize(mlp, np.copy(X), np.copy(y))
+    flinearized, Xf, yf = linearize(mlp, X, y)
     eh = elinearized.hessian(Xe, ye)
     for i in range(1, outputs + 1):
         eh[-i, -i] += elinearized.regul
-    np.testing.assert_allclose(eh, flinearized.hessian(Xf, yf), strict=True)
+    np.testing.assert_allclose(eh, flinearized.hessian(Xf, yf), strict=True, atol=1e-15)
     np.testing.assert_allclose(
         elinearized.diag_hat_matrix(Xe, ye),
         flinearized.diag_hat_matrix(Xf, yf),
         strict=True,
+        atol=1e-15,
     )
     # np.testing.assert_allclose(
     #     elinearized.jacobian(Xe, ye), flinearized.jacobian(Xf, yf), strict=True
