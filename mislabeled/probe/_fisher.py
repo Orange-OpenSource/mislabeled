@@ -90,15 +90,15 @@ def diag_var_reg(mlp: MLPRegressor, X: np.ndarray) -> np.ndarray:
 
 def fisher(mlp: MLP, X: np.ndarray) -> np.ndarray:
     J = jacobian(mlp, X)
-    diagΣ = diag_var(mlp, X)
-    F = np.einsum("ijk, ij, ijl -> kl", J, 1 / diagΣ, J, optimize=True)
+    diagV = diag_var(mlp, X)
+    F = np.einsum("ijk, ij, ijl -> kl", J, 1 / diagV, J, optimize=True)
     return F
 
 
 def block_fisher(mlp: MLP, X: np.ndarray) -> list[np.ndarray]:
     J = jacobian_layerwise(mlp, X)
-    diagΣ = diag_var(mlp, X)
-    F = [np.einsum("ijk, ij, ijl -> kl", j, 1 / diagΣ, j, optimize=True) for j in J]
+    diagV = diag_var(mlp, X)
+    F = [np.einsum("ijk, ij, ijl -> kl", j, 1 / diagV, j, optimize=True) for j in J]
     return F
 
 
@@ -152,9 +152,9 @@ class MLPLinearModel(LinearModel):
         hat_matrix = []
         for batch in gen_batches(X.shape[0], self.batch_size):
             J = self.jacobian(X[batch], y[batch])
-            ΣinvJ = sqrtVinv[batch] @ J
+            VinvJ = sqrtVinv[batch] @ J
             hat_matrix.append(
-                ΣinvJ @ lu_solve(F_LU, ΣinvJ.transpose(2, 0, 1)).transpose(1, 0, 2)
+                VinvJ @ lu_solve(F_LU, VinvJ.transpose(2, 0, 1)).transpose(1, 0, 2)
             )
         return (
             np.concatenate(hat_matrix, axis=0) if len(hat_matrix) > 1 else hat_matrix[0]
