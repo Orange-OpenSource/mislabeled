@@ -113,6 +113,7 @@ def test_fisher_linearization(mlp: MLP, outputs):
     assert linearized.hessian(X_lin, y_lin).shape == (num_params(mlp), num_params(mlp))
     assert linearized.grad_y(X_lin, y_lin).shape == (X.shape[0], linearized.out_dim)
     assert linearized.grad_p(X_lin, y_lin).shape == (X.shape[0], num_params(mlp))
+    linearize.register(type(mlp), linearize_mlp)
 
 
 @pytest.mark.parametrize(
@@ -154,6 +155,7 @@ def test_fisher_equals_hessian_last_layer_for_depth0(mlp: MLP, outputs):
     np.testing.assert_allclose(
         elinearized.grad_y(Xe, ye), flinearized.grad_y(Xf, yf), strict=True
     )
+    linearize.register(type(mlp), linearize_mlp)
 
 
 @pytest.mark.parametrize(
