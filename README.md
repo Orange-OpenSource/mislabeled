@@ -82,7 +82,7 @@ If you use this library in a research project, please consider citing the corres
       note={}
     }
 
-## Development 
+## Development
 
 Formatting and linting is done with ruff as a [pre-commit](https://pre-commit.com/):
 - install: ```pre-commit install```, 
