@@ -1,4 +1,5 @@
 from functools import singledispatch
+from typing import Union
 
 import numpy as np
 from scipy.linalg import lu_factor, lu_solve
@@ -10,7 +11,7 @@ from sklearn.utils import gen_batches
 
 from mislabeled.probe import LinearModel
 
-type MLP = MLPClassifier | MLPRegressor
+MLP = Union[MLPClassifier, MLPRegressor]
 
 
 def jacobian_layerwise(mlp: MLP, X: np.ndarray):
