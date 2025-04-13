@@ -137,7 +137,8 @@ class MLPLinearModel(LinearModel):
 
     def hessian(self, X, y):
         F = np.zeros((num_params(self.mlp), num_params(self.mlp)), dtype=X.dtype)
-        for batch in gen_batches(X.shape[0], self.batch_size):
+        batch_size = self.batch_size if self.batch_size is not None else X.shape[0]
+        for batch in gen_batches(X.shape[0], batch_size):
             F += fisher(self.mlp, X[batch])
         F[np.diag_indices_from(F)] += self.regul
         return F
@@ -150,7 +151,8 @@ class MLPLinearModel(LinearModel):
         F = self.hessian(X, y)
         F_LU = lu_factor(F)
         hat_matrix = []
-        for batch in gen_batches(X.shape[0], self.batch_size):
+        batch_size = self.batch_size if self.batch_size is not None else X.shape[0]
+        for batch in gen_batches(X.shape[0], batch_size):
             J = self.jacobian(X[batch], y[batch])
             VinvJ = sqrtVinv[batch] @ J
             hat_matrix.append(
