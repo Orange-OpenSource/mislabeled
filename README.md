@@ -84,14 +84,8 @@ If you use this library in a research project, please consider citing the corres
 
 ## Development
 
-Install [hatch](https://hatch.pypa.io/latest/install/).
+Formatting and linting is done with ruff as a [pre-commit](https://pre-commit.com/):
+- install: ```pre-commit install```, 
+- format and lint: ```pre-commit run --all-files``` (automatically done before a commit).
 
-To format and lint:
-```console
-hatch fmt
-```
-
-To run tests:
-```console
-hatch test
-```
+Run tests with [uv](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer): ```uv run pytest```.
