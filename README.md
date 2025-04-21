@@ -48,7 +48,7 @@ var_representer_values = detector.trust_scores(X, y)
 | Detector | Paper | Code (`from mislabeled.detect.detectors`) |
 | - | - | - |
 | Area Under the Margin (AUM) | [NeurIPS 2020](https://proceedings.neurips.cc/paper/2020/file/c6102b3727b2a7d8b1bb6981147081ef-Paper.pdf) | `import AreaUnderMargin` |
-| Influence | [Paper 1974](https://www.tandfonline.com/doi/abs/10.1080/01621459.1974.10482962) | `import InfluenceDetector` |
+| Influence | [Paper 1974](https://www.tandfonline.com/doi/abs/10.1080/01621459.1974.10482962) | `import SelfInfluenceDetector` |
 | Cook's Distance | [Paper 1977](https://www.jstor.org/stable/1268249) | `import CookDistanceDetector` |
 | Approximate Leave-One-Out | [Paper 1981](https://www.jstor.org/stable/2240841) | `import ApproximateLOODetector` |
 | Representer | [Paper 1972](https://www.jstor.org/stable/2240067) | `import RepresenterDetector` |
