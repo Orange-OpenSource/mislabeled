@@ -356,8 +356,10 @@ class LinearModel:
     @property
     def dof(self):
         in_dof = self.in_dim + (1 if self.intercept is not None else 0)
-        # take the last class as reference for multiclass log loss
-        out_dof = (K := self.out_dim) - (1 if self.loss == "log_loss" and K > 1 else 0)
+        # # take the last class as reference for multiclass log loss
+        # K = self.out_dim
+        # out_dof = K - (1 if self.loss == "log_loss" and K > 1 else 0)
+        out_dof = self.out_dim
         return (in_dof, out_dof)
 
 

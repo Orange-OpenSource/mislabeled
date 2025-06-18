@@ -87,6 +87,12 @@ class ApproximateLOO(Maximize):
         ).squeeze((1, 2))
 
 
+class Leverage(Maximize):
+    @linear
+    def __call__(self, estimator, X, y):
+        return np.linalg.trace(estimator.diag_hat_matrix(X, y))
+
+
 class GradNorm2(Minimize):
     """The squared norm of individual gradients wrt parameters in a linear
     model. This is e.g. used (in the case of deep learning) in the TracIn paper [1]_.

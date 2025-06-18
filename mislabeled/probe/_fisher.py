@@ -1,4 +1,12 @@
-from functools import singledispatch
+# Software Name : mislabeled
+# SPDX-FileCopyrightText: Copyright (c) Orange Innovation
+# SPDX-License-Identifier: MIT
+#
+# This software is distributed under the MIT license,
+# see the "LICENSE.md" file for more details
+# or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
+
+
 from typing import Union
 
 import numpy as np
@@ -66,26 +74,17 @@ def jacobian(mlp: MLP, X: np.ndarray):
     return np.concatenate(list(jacobian_layerwise(mlp, X))[::-1], axis=-1)
 
 
-@singledispatch
 def diag_var(mlp: MLP, X: np.ndarray) -> np.ndarray:
-    raise NotImplementedError()
-
-
-@diag_var.register(MLPClassifier)
-def diag_var_clf(mlp: MLPClassifier, X: np.ndarray) -> np.ndarray:
     p = forward(mlp, X, raw=False)
-    eps = np.finfo(p.dtype).eps
-    np.clip(p, eps, 1 - eps, out=p)
-    if p.shape[1] > 2:
-        return p
+    if mlp.out_activation_ in ["softmax", "logistic"]:
+        eps = np.finfo(p.dtype).eps
+        np.clip(p, eps, 1 - eps, out=p)
+        if mlp.out_activation_ == "softmax":
+            return p
+        else:
+            return p * (1 - p)
     else:
-        return p * (1 - p)
-
-
-@diag_var.register(MLPRegressor)
-def diag_var_reg(mlp: MLPRegressor, X: np.ndarray) -> np.ndarray:
-    p = forward(mlp, X, raw=False)
-    return np.ones_like(p)
+        return np.ones_like(p)
 
 
 def fisher(mlp: MLP, X: np.ndarray) -> np.ndarray:
