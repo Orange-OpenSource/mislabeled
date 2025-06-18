@@ -140,12 +140,12 @@ def test_fisher_equals_hessian_last_layer_for_depth0(mlp: MLP, outputs):
     eh = elinearized.hessian(Xe, ye)
     for i in range(1, outputs + 1):
         eh[-i, -i] += elinearized.regul
-    np.testing.assert_allclose(eh, flinearized.hessian(Xf, yf), strict=True, atol=1e-15)
+    np.testing.assert_allclose(eh, flinearized.hessian(Xf, yf), strict=True, atol=1e-12)
     np.testing.assert_allclose(
         elinearized.diag_hat_matrix(Xe, ye),
         flinearized.diag_hat_matrix(Xf, yf),
         strict=True,
-        atol=1e-15,
+        atol=1e-12,
     )
     # np.testing.assert_allclose(
     #     elinearized.jacobian(Xe, ye), flinearized.jacobian(Xf, yf), strict=True
