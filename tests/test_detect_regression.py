@@ -19,6 +19,7 @@ from mislabeled.detect.detectors import (
     Regressor,
     RepresenterDetector,
     SelfInfluenceDetector,
+    SmallLoss,
     TracIn,
     VoLG,
 )
@@ -68,6 +69,12 @@ detectors = [
         )
     ),
     VoLG(MLPRegressor(random_state=seed, alpha=10)),
+    SmallLoss(
+        make_pipeline(
+            Nystroem(gamma=0.1, n_components=100, random_state=seed),
+            Ridge(),
+        )
+    ),
 ]
 
 

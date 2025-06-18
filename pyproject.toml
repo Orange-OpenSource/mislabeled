@@ -46,25 +46,27 @@ Source = "https://github.com/orange-opensource/mislabeled"
 [tool.hatch.version]
 source = "vcs"
 
-[tool.hatch.envs.hatch-test]
-extra-args =  [
-  "--ignore=tests/datasets", 
-  "--ignore=tests/test_cache.py", 
-  "--ignore=tests/probe/test_linear.py"
-]
-extra-dependencies = [
+[tool.pytest.ini_options]
+addopts = ["--ignore=tests/datasets", "--ignore=tests/test_cache.py"]
+
+[dependency-groups]
+dev=[
   "mislabeled[examples]",
+  "ipykernel",
+  "pytest", 
+  "pytest-cov", 
+  "pytest-xdist",
   "pytest-benchmark",
   "scipy>=1.15.0",
-  "statsmodels"
+  "statsmodels",
 ]
 
 [tool.coverage.run]
 omit = ["tests"]
+source = ["mislabeled"]
 
 [tool.ruff]
-line-length = 88
-exclude = ["docs", "examples"]
+exclude = ["examples"]
 
 [tool.ruff.lint]
 preview = true

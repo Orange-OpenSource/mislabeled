@@ -48,7 +48,9 @@ var_representer_values = detector.trust_scores(X, y)
 | Detector | Paper | Code (`from mislabeled.detect.detectors`) |
 | - | - | - |
 | Area Under the Margin (AUM) | [NeurIPS 2020](https://proceedings.neurips.cc/paper/2020/file/c6102b3727b2a7d8b1bb6981147081ef-Paper.pdf) | `import AreaUnderMargin` |
-| Influence | [Paper 1974](https://www.tandfonline.com/doi/abs/10.1080/01621459.1974.10482962) | `import InfluenceDetector` |
+| Influence | [Paper 1974](https://www.tandfonline.com/doi/abs/10.1080/01621459.1974.10482962) | `import SelfInfluenceDetector` |
+| Cook's Distance | [Paper 1977](https://www.jstor.org/stable/1268249) | `import CookDistanceDetector` |
+| Approximate Leave-One-Out | [Paper 1981](https://www.jstor.org/stable/2240841) | `import ApproximateLOODetector` |
 | Representer | [Paper 1972](https://www.jstor.org/stable/2240067) | `import RepresenterDetector` |
 | TracIn | [NeurIPS 2020](https://proceedings.neurips.cc/paper_files/paper/2020/file/e6385d39ec9394f2f3a354d9d2b88eec-Paper.pdf) | `import TracIn` |
 | Forget Scores | [ICLR 2019](https://openreview.net/pdf?id=BJlxm30cKm) | `import ForgetScores` |
@@ -59,6 +61,8 @@ var_representer_values = detector.trust_scores(X, y)
 | AGRA | [ECML 2023](https://dl.acm.org/doi/10.1007/978-3-031-43412-9_14) | `import AGRA` |
 
 and other limitless combinations by using `ModelProbingDetector` with any `probe` and `Ensembles` from the library.
+
+Most of these detectors work for both regression and classification diagnostics.
 
 ## Tutorials
 
@@ -80,14 +84,8 @@ If you use this library in a research project, please consider citing the corres
 
 ## Development
 
-Install [hatch](https://hatch.pypa.io/latest/install/).
+Formatting and linting is done with ruff as a [pre-commit](https://pre-commit.com/):
+- install: ```pre-commit install```, 
+- format and lint: ```pre-commit run --all-files``` (automatically done before a commit).
 
-To format and lint:
-```console
-hatch fmt
-```
-
-To run tests:
-```console
-hatch test
-```
+Run tests with [uv](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer): ```uv run pytest```.

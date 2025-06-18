@@ -186,3 +186,7 @@ catboost_info/
 
 # ruff
 .ruff_cache
+
+# uv
+uv.lock
+.venv
