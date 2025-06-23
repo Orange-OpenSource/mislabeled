@@ -7,9 +7,11 @@
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
 
+from itertools import batched
 from typing import Union
 
 import numpy as np
+import scipy.sparse as sp
 from scipy.linalg import lu_factor, lu_solve
 from sklearn.base import is_classifier
 from sklearn.neural_network import MLPClassifier, MLPRegressor
@@ -18,11 +20,12 @@ from sklearn.preprocessing import LabelBinarizer
 from sklearn.utils import gen_batches
 
 from mislabeled.probe import LinearModel
+from mislabeled.utils import flat_outer, sparse_flat_outer
 
 MLP = Union[MLPClassifier, MLPRegressor]
 
 
-def jacobian_layerwise(mlp: MLP, X: np.ndarray):
+def lazy_jacobian(mlp: MLP, X: np.ndarray, V: np.ndarray | None = None):
     n_samples, n_features = X.shape
     n_outputs = mlp.n_outputs_
 
@@ -31,8 +34,6 @@ def jacobian_layerwise(mlp: MLP, X: np.ndarray):
     # Initialize lists
     activations = [X] + [None] * (len(layer_units) - 1)
     deltas = [None] * len(activations)
-    coef_grads = [None] * (len(layer_units) - 1)
-    intercept_grads = [None] * (len(layer_units) - 1)
 
     # Forward
     activations = mlp._forward_pass(activations)
@@ -49,11 +50,19 @@ def jacobian_layerwise(mlp: MLP, X: np.ndarray):
             np.eye(n_outputs, dtype=X.dtype), (n_samples, n_outputs, n_outputs)
         )
 
-    coef_grads[-1] = (
-        deltas[-1][:, :, None, :] * activations[-2][:, None, :, None]
-    ).reshape(n_samples, n_outputs, -1)
-    intercept_grads[-1] = deltas[-1]
-    yield np.concatenate([coef_grads[-1], intercept_grads[-1]], axis=-1)
+    if V is not None:
+        deltas[-1] = V @ deltas[-1]
+        n_outputs = V.shape[1]
+
+    for o in range(n_outputs):
+        delta = deltas[-1][:, o, :]
+        intercept_grads = delta
+        if sp.issparse(activations[-2]):
+            coef_grads = sparse_flat_outer(activations[-2], delta)
+            yield sp.hstack([coef_grads, intercept_grads])
+        else:
+            coef_grads = flat_outer(activations[-2], delta)
+            yield np.concatenate([coef_grads, intercept_grads], axis=-1)
 
     inplace_derivative = DERIVATIVES[mlp.activation]
     # Iterate over the hidden layers
@@ -63,15 +72,25 @@ def jacobian_layerwise(mlp: MLP, X: np.ndarray):
             np.broadcast_to(activations[i][:, None, :], deltas[i].shape), deltas[i]
         )
 
-        coef_grads[i - 1] = (
-            deltas[i][:, :, None, :] * activations[i - 1][:, None, :, None]
-        ).reshape(n_samples, n_outputs, -1)
-        intercept_grads[i - 1] = deltas[i]
-        yield np.concatenate([coef_grads[i - 1], intercept_grads[i - 1]], axis=-1)
+        for o in range(n_outputs):
+            delta = deltas[i][:, o, :]
+            intercept_grads = delta
+            if sp.issparse(activations[i - 1]):
+                coef_grads = sparse_flat_outer(activations[i - 1], delta)
+                yield sp.hstack([coef_grads, intercept_grads])
+            else:
+                coef_grads = flat_outer(activations[i - 1], delta)
+                yield np.concatenate([coef_grads, intercept_grads], axis=-1)
 
 
-def jacobian(mlp: MLP, X: np.ndarray):
-    return np.concatenate(list(jacobian_layerwise(mlp, X))[::-1], axis=-1)
+def jacobian(mlp: MLP, X: np.ndarray, V: np.ndarray | None = None):
+    n_outputs = mlp.n_outputs_ if V is None else V.shape[1]
+    J = [[] for _ in range(n_outputs)]
+    for j in batched(lazy_jacobian(mlp, X, V), n_outputs):
+        for o, jo in enumerate(j):
+            J[o].append(jo)
+    J = [np.concatenate(j[::-1], axis=-1) for j in J]
+    return J
 
 
 def diag_var(mlp: MLP, X: np.ndarray) -> np.ndarray:
@@ -90,15 +109,15 @@ def diag_var(mlp: MLP, X: np.ndarray) -> np.ndarray:
 def fisher(mlp: MLP, X: np.ndarray) -> np.ndarray:
     J = jacobian(mlp, X)
     diagV = diag_var(mlp, X)
-    F = np.einsum("ijk, ij, ijl -> kl", J, 1 / diagV, J, optimize=True)
+    F = np.einsum("ijk, ji, ijl -> kl", J, 1 / diagV, J, optimize=True)
     return F
 
 
-def block_fisher(mlp: MLP, X: np.ndarray) -> list[np.ndarray]:
-    J = jacobian_layerwise(mlp, X)
-    diagV = diag_var(mlp, X)
-    F = [np.einsum("ijk, ij, ijl -> kl", j, 1 / diagV, j, optimize=True) for j in J]
-    return F
+# def block_fisher(mlp: MLP, X: np.ndarray) -> list[np.ndarray]:
+#     J = jacobian_layerwise(mlp, X)
+#     diagV = diag_var(mlp, X)
+#     F = [np.einsum("ijk, ij, ijl -> kl", j, 1 / diagV, j, optimize=True) for j in J]
+#     return F
 
 
 def forward(mlp: MLP, X: np.ndarray, raw=True):
@@ -164,8 +183,7 @@ class MLPLinearModel(LinearModel):
     def grad_p(self, X, y):
         Vinv = self.inverse_variance(self.predict_proba(X))
         r = self.grad_y(X, y)
-        J = self.jacobian(X, y)
-        return (r[:, None, :] @ Vinv @ J)[:, 0, :]
+        return jacobian(self.mlp, X, r[:, None, :] @ Vinv)[0]
 
     def grad_y(self, X, y):
         return self.predict_proba(X) - y
@@ -212,4 +230,4 @@ def ntk(mlp: MLP, X: np.ndarray, Y: np.ndarray | None = None):
     jac_X = jacobian(mlp, X)
     jac_Y = jac_X if Y is None else jacobian(mlp, Y)
 
-    return np.einsum("ikl, jkl->ij", jac_X, jac_Y, optimize=True)
+    return np.einsum("ijk, ilk->jl", jac_X, jac_Y, optimize=True)

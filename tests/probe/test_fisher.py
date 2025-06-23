@@ -70,7 +70,8 @@ def test_jacobian_size(mlp: MLP, outputs):
         X, y = make_regression(n_features=20, n_targets=outputs)
     X = StandardScaler().fit_transform(X)
     mlp.fit(X, y)
-    assert jacobian(mlp, X).shape == (X.shape[0], outputs, num_params(mlp))
+    assert len(jacobian(mlp, X)) == outputs
+    assert jacobian(mlp, X)[0].shape == (X.shape[0], num_params(mlp))
 
 
 @pytest.mark.parametrize(
@@ -147,9 +148,9 @@ def test_fisher_equals_hessian_last_layer_for_depth0(mlp: MLP, outputs):
         strict=True,
         atol=1e-12,
     )
-    # np.testing.assert_allclose(
-    #     elinearized.jacobian(Xe, ye), flinearized.jacobian(Xf, yf), strict=True
-    # ) # TODO change jacobian MLP format
+    np.testing.assert_allclose(
+        elinearized.jacobian(Xe, ye), flinearized.jacobian(Xf, yf), strict=True
+    )
     np.testing.assert_allclose(
         elinearized.grad_p(Xe, ye), flinearized.grad_p(Xf, yf), strict=True
     )
@@ -232,7 +233,7 @@ def test_jacobian_finite_diff(mlp, init, outputs):
         return np.apply_along_axis(f, axis=0, arr=packed_raveled_coef)
 
     with np.printoptions(precision=4, suppress=True):
-        print(empJ := jacobian(mlp, X).mean(axis=0))
+        print(empJ := np.stack(jacobian(mlp, X), axis=0).mean(axis=1))
         print(
             J := differentiate.jacobian(
                 vectorized_predict_proba, packed_raveled_coef
