@@ -159,21 +159,22 @@ def test_grad_hess_jac_sparse(model, num_classes, fit_intercept):
     linearized, XX, yy = linearize(model, X, y)
     H = linearized.hessian(XX, yy)
     G = linearized.grad_p(XX, yy)
-    J = np.stack(linearized.jacobian(XX, yy), axis=-1)
+    J = linearized.jacobian(XX, yy)
 
     sp_linearized, sp_XX, yy = linearize(model, sp.csr_matrix(X), y)
     sp_H = sp_linearized.hessian(sp_XX, yy)
     if sp.issparse(sp_H):
-        sp_H = sp_H.todense()
+        sp_H = sp_H.toarray()
     sp_G = sp_linearized.grad_p(sp_XX, yy)
     if sp.issparse(sp_G):
-        sp_G = sp_G.todense()
+        sp_G = sp_G.toarray()
     sp_J = sp_linearized.jacobian(sp_XX, yy)
-    if sp.issparse(sp_J[0]):
-        sp_J = np.stack([sp_j.toarray() for sp_j in sp_J], axis=-1)
     np.testing.assert_allclose(H, sp_H, atol=1e-14, strict=True)
     np.testing.assert_allclose(G, sp_G, atol=1e-13, strict=True)
-    np.testing.assert_allclose(J, sp_J, atol=1e-13, strict=True)
+    [
+        np.testing.assert_allclose(j, sp_j.toarray(), atol=1e-13, strict=True)
+        for j, sp_j in zip(J, sp_J)
+    ]
 
 
 @pytest.mark.parametrize("num_samples", [100, 1_000])

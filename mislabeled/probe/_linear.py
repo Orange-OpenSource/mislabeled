@@ -114,21 +114,15 @@ class LinearModel:
 
     def grad_p(self, X, y):
         # gradients w.r.t. the parameters (weight, intercept)
-        N = X.shape[0]
         K = self.dof[1]
         dl_dy = self.grad_y(X, y)[:, :K]
 
         if sp.issparse(X):
-            if self.intercept is not None:
-                X = sp.hstack([X, np.ones((N, 1), dtype=X.dtype)], format="coo")
-
-            dl_dp = sparse_flat_outer(X, dl_dy, format="csr")
-
+            dl_dp = sparse_flat_outer(
+                X, dl_dy, format="csr", intercept=self.intercept is not None
+            )
         else:
-            # TODO: find something faster ?
-            if self.intercept is not None:
-                X = np.hstack([X, np.ones((N, 1), dtype=X.dtype)])
-            dl_dp = flat_outer(X, dl_dy)
+            dl_dp = flat_outer(X, dl_dy, intercept=self.intercept is not None)
 
         return dl_dp
 
@@ -185,18 +179,23 @@ class LinearModel:
         N = X.shape[0]
 
         if self.loss == "l2":
+            # can we factorize this code ?
             J = []
 
             if sp.issparse(X):
-                if self.intercept is not None:
-                    X = sp.hstack([X, np.ones((N, 1), dtype=X.dtype)], format="coo")
-
                 X = X.tocoo(copy=False)
 
+                data = X.data
+                row, col = X.row, X.col
+                col = K * col
+
+                if self.intercept is not None:
+                    data = np.concatenate([data, np.ones(N)])
+                    row = np.concatenate([row, np.arange(N)])
+                    col = np.concatenate([col, ((P * K) - K) * np.ones(N, dtype=int)])
+
                 for c in range(C):
-                    j = sp.coo_array(
-                        (X.data, (X.row, K * X.col + c)), shape=(N, P * K)
-                    ).tocsr()
+                    j = sp.coo_array((data, (row, col + c)), shape=(N, P * K)).tocsr()
                     J.append(j)
 
             else:
@@ -213,18 +212,17 @@ class LinearModel:
             J = []
 
             if sp.issparse(X):
-                if self.intercept is not None:
-                    X = sp.hstack([X, np.ones((N, 1), dtype=X.dtype)], format="coo")
-
                 for c in range(C):
-                    j = sparse_flat_outer(X, V[:, :K, c], format="csr")
+                    j = sparse_flat_outer(
+                        X,
+                        V[:, :K, c],
+                        format="csr",
+                        intercept=self.intercept is not None,
+                    )
                     J.append(j)
             else:
-                if self.intercept is not None and not sp.issparse(X):
-                    X = np.concatenate([X, np.ones((N, 1))], axis=1)
-
                 for c in range(C):
-                    j = flat_outer(X, V[:, :K, c])
+                    j = flat_outer(X, V[:, :K, c], intercept=self.intercept is not None)
                     J.append(j)
         else:
             raise NotImplementedError()
