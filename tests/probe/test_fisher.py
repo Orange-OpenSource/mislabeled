@@ -1,6 +1,7 @@
 from itertools import chain
 
 import numpy as np
+import scipy.sparse as sp
 import pytest
 from scipy import differentiate
 from sklearn.base import is_classifier
@@ -13,6 +14,7 @@ from mislabeled.probe._fisher import (
     MLP,
     MLPLinearModel,
     fisher,
+    forward,
     jacobian,
     linearize_mlp_fisher,
     ntk,
@@ -185,7 +187,11 @@ def test_jacobian_finite_diff(mlp, init, outputs):
         y = y.reshape(1)
     if init:
         mlp.set_params(
-            max_iter=1, solver="sgd", learning_rate="constant", random_state=1
+            max_iter=1,
+            solver="sgd",
+            learning_rate="constant",
+            random_state=1,
+            learning_rate_init=1e-12,
         ).fit(X, y)
     else:
         mlp.set_params(random_state=1).fit(X, y)
@@ -222,13 +228,8 @@ def test_jacobian_finite_diff(mlp, init, outputs):
             coefs, intercepts = unpack_unravel(prc, layer_units)
             mlp.coefs_ = coefs
             mlp.intercepts_ = intercepts
-            if is_classifier(mlp):
-                if len(np.unique(y)) > 2:
-                    return mlp.predict_proba(X).sum(axis=0)
-                else:
-                    return mlp.predict_proba(X)[:, 1].sum(axis=0)
-            else:
-                return mlp.predict(X).sum(axis=0)
+            p = forward(mlp, X, raw=False)
+            return p.sum(axis=0)
 
         return np.apply_along_axis(f, axis=0, arr=packed_raveled_coef)
 
@@ -248,3 +249,48 @@ def test_jacobian_finite_diff(mlp, init, outputs):
         atol=1e-1,
         strict=True,
     )
+
+
+@pytest.mark.parametrize(
+    "mlp",
+    [MLPRegressor(hidden_layer_sizes=(10,)), MLPClassifier(hidden_layer_sizes=(10,))],
+)
+@pytest.mark.parametrize("num_classes", [2, 3])
+def test_grad_hess_jac_sparse(mlp, num_classes):
+    if is_classifier(mlp):
+        X, y = make_blobs(n_samples=100, random_state=1, centers=num_classes)
+    else:
+        X, y = make_regression(
+            n_samples=100,
+            n_features=2,
+            n_informative=2,
+            n_targets=num_classes - 1,
+            random_state=1,
+        )
+    X = StandardScaler().fit_transform(X)
+    sparsity = 0.1
+    percentile = np.quantile(np.abs(X), 1 - sparsity)
+    X[np.abs(X) < percentile] = 0
+
+    mlp.fit(X, y)
+    linearized, XX, yy = linearize_mlp_fisher(mlp, X, y)
+    H = linearized.hessian(XX, yy)
+    G = linearized.grad_p(XX, yy)
+    J = linearized.jacobian(XX, yy)
+
+    sp_linearized, sp_XX, yy = linearize_mlp_fisher(mlp, sp.csr_matrix(X), y)
+    sp_H = sp_linearized.hessian(sp_XX, yy)
+    if sp.issparse(sp_H):
+        sp_H = sp_H.toarray()
+    sp_G = sp_linearized.grad_p(sp_XX, yy)
+    if sp.issparse(sp_G):
+        sp_G = sp_G.toarray()
+    sp_J = sp_linearized.jacobian(sp_XX, yy)
+    if sp.issparse(sp_J[0]):
+        sp_J = [sp_j.toarray() for sp_j in sp_J]
+    np.testing.assert_allclose(H, sp_H, atol=1e-14, strict=True)
+    np.testing.assert_allclose(G, sp_G, atol=1e-13, strict=True)
+    [
+        np.testing.assert_allclose(j, sp_j, atol=1e-13, strict=True)
+        for j, sp_j in zip(J, sp_J)
+    ]

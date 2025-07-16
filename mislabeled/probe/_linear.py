@@ -44,6 +44,48 @@ from sklearn.utils import check_X_y
 from mislabeled.utils import flat_outer, sparse_flat_outer
 
 
+def binomial_variance(p):
+    return (p * (1.0 - p))[:, :, None]
+
+
+def binomial_inverse_variance(p):
+    eps = np.finfo(p.dtype).eps
+    # clipping for p=1 or p=0
+    p = np.clip(p, eps, 1 - eps)
+    # Element-wise inverse
+    return 1 / (p * (1.0 - p))[:, :, None]
+
+
+def multinomial_variance(p):
+    return p[:, :, None] * (
+        np.eye(p.shape[1], dtype=p.dtype)[None, :, :] - p[:, None, :]
+    )
+
+
+def multinomial_inverse_variance(p):
+    eps = np.finfo(p.dtype).eps
+    # clipping for p=1 or p=0
+    p = np.clip(p, eps, 1 - eps)
+    # See for multinomial: Tanabe, Kunio, and Masahiko Sagae.
+    # "An exact Cholesky decomposition and the generalized inverse
+    # of the variance–covariance matrix of the multinomial distribution,
+    # with applications.",
+    # Journal of the Royal Statistical Society: 1992.
+    return 1 / p[:, :, None] * np.eye(p.shape[1], dtype=p.dtype)[None, :, :]
+
+
+def gaussian_variance(p):
+    return np.broadcast_to(
+        np.eye(p.shape[1], dtype=p.dtype), (p.shape[0], p.shape[1], p.shape[1])
+    )
+
+
+def gaussian_inverse_variance(p):
+    return np.broadcast_to(
+        np.eye(p.shape[1], dtype=p.dtype), (p.shape[0], p.shape[1], p.shape[1])
+    )
+
+
 class LinearModel:
     def __init__(self, coef, intercept, loss, regul):
         self.coef = coef
@@ -134,38 +176,25 @@ class LinearModel:
 
     def variance(self, p):
         # variance of the GLM link function
-        N = p.shape[0]
-        C = self.out_dim
         if self.loss == "l2":
-            return np.eye(C)[None, :, :] * np.ones(N)[:, None, None]
+            return gaussian_variance(p)
         elif self.loss == "log_loss":
             if self.dof[1] == 1:
-                return (p * (1.0 - p))[:, :, None]
+                return binomial_variance(p)
             else:
-                return p[:, :, None] * (np.eye(C)[None, :, :] - p[:, None, :])
+                return multinomial_variance(p)
         else:
             raise NotImplementedError()
 
     def inverse_variance(self, p):
         # generalized inverse of the GLM link function
-        N = p.shape[0]
-        C = self.out_dim
         if self.loss == "l2":
-            return np.eye(C)[None, :, :] * np.ones(N)[:, None, None]
+            return gaussian_inverse_variance(p)
         elif self.loss == "log_loss":
-            eps = np.finfo(p.dtype).eps
-            # clipping for p=1 or p=0
-            p = np.clip(p, eps, 1 - eps)
             if self.dof[1] == 1:
-                # Element-wise inverse
-                return 1 / (p * (1.0 - p))[:, :, None]
+                return binomial_inverse_variance(p)
             else:
-                # See for multinomial: Tanabe, Kunio, and Masahiko Sagae.
-                # "An exact Cholesky decomposition and the generalized inverse
-                # of the variance–covariance matrix of the multinomial distribution,
-                # with applications.",
-                # Journal of the Royal Statistical Society: 1992.
-                return (1 / p)[:, :, None] * np.eye(C)[None, :, :]
+                return multinomial_inverse_variance(p)
         else:
             raise NotImplementedError()
 

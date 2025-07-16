@@ -19,7 +19,7 @@ def flat_outer(A, B, intercept=False):
     return C
 
 
-def sparse_flat_outer(A, B, format=None, copy=False, intercept=False):
+def sparse_flat_outer(A, B, intercept=False, format=None, copy=False):
     assert sp.issparse(A)
     assert A.ndim == 2 and B.ndim == 2
     assert A.shape[0] == B.shape[0]

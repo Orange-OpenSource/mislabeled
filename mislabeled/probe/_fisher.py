@@ -7,12 +7,14 @@
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
 
-from itertools import batched
-from typing import Union
+from itertools import batched, product
+from typing import Callable, Union
 
+from joblib import Parallel, delayed
 import numpy as np
 import scipy.sparse as sp
 from scipy.linalg import lu_factor, lu_solve
+from scipy.special import softmax
 from sklearn.base import is_classifier
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.neural_network._multilayer_perceptron import DERIVATIVES
@@ -21,96 +23,138 @@ from sklearn.utils import gen_batches
 
 from mislabeled.probe import LinearModel
 from mislabeled.utils import flat_outer, sparse_flat_outer
+from mislabeled.probe._linear import (
+    binomial_inverse_variance,
+    binomial_variance,
+    gaussian_inverse_variance,
+    gaussian_variance,
+    multinomial_inverse_variance,
+    multinomial_variance,
+)
 
-MLP = Union[MLPClassifier, MLPRegressor]
+MLP = MLPClassifier | MLPRegressor
 
 
-def lazy_jacobian(mlp: MLP, X: np.ndarray, V: np.ndarray | None = None):
-    n_samples, n_features = X.shape
-    n_outputs = mlp.n_outputs_
-
-    layer_units = [n_features] + list(mlp.hidden_layer_sizes) + [n_outputs]
-
-    # Initialize lists
-    activations = [X] + [None] * (len(layer_units) - 1)
-    deltas = [None] * len(activations)
-
-    # Forward
-    activations = mlp._forward_pass(activations)
-
-    # Backward
-    if mlp.out_activation_ == "softmax":
-        deltas[-1] = activations[-1][:, :, None] * (
-            np.eye(n_outputs, dtype=X.dtype)[None, ...] - activations[-1][:, None, :]
-        )
-    elif mlp.out_activation_ == "logistic":
-        deltas[-1] = (activations[-1] * (1 - activations[-1]))[..., None]
+def backprop(mlp: MLP, deltas: list, activations: list):
+    if sp.issparse(activations[-2]):
+        yield sparse_flat_outer(activations[-2], deltas[-1], intercept=True)
     else:
-        deltas[-1] = np.broadcast_to(
-            np.eye(n_outputs, dtype=X.dtype), (n_samples, n_outputs, n_outputs)
-        )
-
-    if V is not None:
-        deltas[-1] = V @ deltas[-1]
-        n_outputs = V.shape[1]
-
-    for o in range(n_outputs):
-        delta = deltas[-1][:, o, :]
-        intercept_grads = delta
-        if sp.issparse(activations[-2]):
-            coef_grads = sparse_flat_outer(activations[-2], delta)
-            yield sp.hstack([coef_grads, intercept_grads])
-        else:
-            coef_grads = flat_outer(activations[-2], delta)
-            yield np.concatenate([coef_grads, intercept_grads], axis=-1)
+        yield flat_outer(activations[-2], deltas[-1], intercept=True)
 
     inplace_derivative = DERIVATIVES[mlp.activation]
     # Iterate over the hidden layers
     for i in range(mlp.n_layers_ - 2, 0, -1):
-        deltas[i] = deltas[i + 1] @ mlp.coefs_[i].T[None, :, :]
-        inplace_derivative(
-            np.broadcast_to(activations[i][:, None, :], deltas[i].shape), deltas[i]
-        )
+        deltas[i] = deltas[i + 1] @ mlp.coefs_[i].T
+        inplace_derivative(activations[i], deltas[i])
 
-        for o in range(n_outputs):
-            delta = deltas[i][:, o, :]
-            intercept_grads = delta
-            if sp.issparse(activations[i - 1]):
-                coef_grads = sparse_flat_outer(activations[i - 1], delta)
-                yield sp.hstack([coef_grads, intercept_grads])
-            else:
-                coef_grads = flat_outer(activations[i - 1], delta)
-                yield np.concatenate([coef_grads, intercept_grads], axis=-1)
+        if sp.issparse(activations[i - 1]):
+            yield sparse_flat_outer(activations[i - 1], deltas[i], intercept=True)
+        else:
+            yield flat_outer(activations[i - 1], deltas[i], intercept=True)
 
 
-def jacobian(mlp: MLP, X: np.ndarray, V: np.ndarray | None = None):
-    n_outputs = mlp.n_outputs_ if V is None else V.shape[1]
-    J = [[] for _ in range(n_outputs)]
-    for j in batched(lazy_jacobian(mlp, X, V), n_outputs):
-        for o, jo in enumerate(j):
-            J[o].append(jo)
-    J = [np.concatenate(j[::-1], axis=-1) for j in J]
+def jacobian(
+    mlp: MLP,
+    X: np.ndarray,
+    V: Callable[[np.ndarray], np.ndarray] | np.ndarray | None = None,
+    lazy=False,
+):
+    n_outputs = mlp.n_outputs_
+
+    # Initialize lists
+    activations = [X] + [None] * (len(mlp.hidden_layer_sizes) + 1)
+
+    # Forward
+    activations = mlp._forward_pass(activations)
+    outputs = activations[-1]
+
+    # Backward
+    if mlp.out_activation_ == "softmax":
+        delta = multinomial_variance(outputs)
+    elif mlp.out_activation_ == "logistic":
+        delta = binomial_variance(outputs)
+    else:
+        delta = gaussian_variance(outputs)
+
+    if V is not None:
+        if hasattr(V, "__matmul__"):
+            delta = delta @ V
+        elif callable(V):
+            delta = delta @ V(outputs)
+        else:
+            raise ValueError(f"not supported V: {type(V)}.")
+
+    n_outputs = delta.shape[-1]
+
+    J = []
+    for o in range(n_outputs):
+        deltas = [None] * len(activations)
+        deltas[-1] = delta[:, :, o]
+        j = backprop(mlp, deltas, activations)
+        if not lazy:
+            j = list(j)[::-1]
+            j = sp.hstack(j) if sp.issparse(j[0]) else np.hstack(j)
+        J.append(j)
+
     return J
 
 
-def diag_var(mlp: MLP, X: np.ndarray) -> np.ndarray:
-    p = forward(mlp, X, raw=False)
-    if mlp.out_activation_ in ["softmax", "logistic"]:
-        eps = np.finfo(p.dtype).eps
-        np.clip(p, eps, 1 - eps, out=p)
-        if mlp.out_activation_ == "softmax":
-            return p
-        else:
-            return p * (1 - p)
+def loglikelihood(mlp):
+    if mlp.out_activation_ == "logistic":
+        f = binomial_inverse_variance
+
+    elif mlp.out_activation_ == "softmax":
+        f = multinomial_inverse_variance
+
     else:
-        return np.ones_like(p)
+        f = gaussian_inverse_variance
+
+    def sqrtf(outputs):
+        return np.sqrt(f(outputs))
+
+    return sqrtf
 
 
 def fisher(mlp: MLP, X: np.ndarray) -> np.ndarray:
-    J = jacobian(mlp, X)
-    diagV = diag_var(mlp, X)
-    F = np.einsum("ijk, ji, ijl -> kl", J, 1 / diagV, J, optimize=True)
+    J = jacobian(mlp, X, loglikelihood(mlp), lazy=True)
+    F = np.zeros((num_params(mlp), num_params(mlp)), dtype=X.dtype)
+    for j in J:
+        j = list(j)[::-1]
+        s1 = 0
+        for l1 in range(num_layers(mlp)):
+            s2 = 0
+            for l2 in range(l1, num_layers(mlp)):
+                e1, e2 = s1 + j[l1].shape[1], s2 + j[l2].shape[1]
+                F[s1:e1, s2:e2] += j[l1].T @ j[l2]
+                if l1 != l2:
+                    F[s2:e2, s1:e1] += F[s1:e1, s2:e2].T
+                s2 = e2
+            s1 = e1
     return F
+
+    # # block
+    # J = lazy_jacobian(mlp, X)
+    # p = num_params(mlp)
+    # F = np.zeros((p, p))
+    # for o in range(len(J)):
+    #     end = -1
+    #     for j in J[o]:
+    #         start = end - j.shape[-1]
+    #         F[start:end, start:end] += j.T @ j
+    #         end = start
+    # return F
+
+    # J = np.stack(jacobian(mlp, X, n_jobs=-1), axis=0)
+    # diagV = diag_var(mlp, X)
+    # F = np.einsum("ijk, ji, ijl -> kl", J, 1 / diagV, J, optimize=True)
+
+    # J = lazy_jacobian(mlp, X)
+    # diagV = diag_var(mlp, X)
+    # F = np.zeros((num_params(mlp), num_params(mlp)))
+    # bsizes = block_sizes(mlp)
+    # size = sum(bsizes)
+    # for (i, j1), (k, j2) in product(enumerate(J)):
+    #     F[bsizes[i]] = j1 @ j2
 
 
 # def block_fisher(mlp: MLP, X: np.ndarray) -> list[np.ndarray]:
@@ -136,8 +180,12 @@ def num_params(mlp: MLP) -> int:
     )
 
 
-def num_blocks(mlp: MLP) -> int:
+def num_layers(mlp: MLP) -> int:
     return len(mlp.coefs_)
+
+
+# def block_sizes(mlp: MLP):
+#     return [c.size + i.size for (c, i) in zip(mlp.coefs_, mlp.intercepts_)]
 
 
 class MLPLinearModel(LinearModel):
@@ -164,26 +212,29 @@ class MLPLinearModel(LinearModel):
     def jacobian(self, X, y):
         return jacobian(self.mlp, X)
 
-    def diag_hat_matrix(self, X, y):
-        sqrtVinv = np.sqrt(self.inverse_variance(self.predict_proba(X)))
-        F = self.hessian(X, y)
-        F_LU = lu_factor(F)
-        hat_matrix = []
-        batch_size = self.batch_size if self.batch_size is not None else X.shape[0]
-        for batch in gen_batches(X.shape[0], batch_size):
-            J = self.jacobian(X[batch], y[batch])
-            VinvJ = sqrtVinv[batch] @ J
-            hat_matrix.append(
-                VinvJ @ lu_solve(F_LU, VinvJ.transpose(2, 0, 1)).transpose(1, 0, 2)
-            )
-        return (
-            np.concatenate(hat_matrix, axis=0) if len(hat_matrix) > 1 else hat_matrix[0]
-        )
+    # def diag_hat_matrix(self, X, y):
+    #     sqrtVinv = np.sqrt(self.inverse_variance(self.predict_proba(X)))
+    #     F = self.hessian(X, y)
+    #     F_LU = lu_factor(F)
+    #     hat_matrix = []
+    #     batch_size = self.batch_size if self.batch_size is not None else X.shape[0]
+    #     for batch in gen_batches(X.shape[0], batch_size):
+    #         J = np.stack(self.jacobian(X[batch], y[batch]), axis=0)
+    #         VinvJ = sqrtVinv[batch] @ J
+    #         hat_matrix.append(
+    #             VinvJ @ lu_solve(F_LU, VinvJ.transpose(2, 0, 1)).transpose(1, 0, 2)
+    #         )
+    #     return (
+    #         np.concatenate(hat_matrix, axis=0) if len(hat_matrix) > 1 else hat_matrix[0]
+    #     )
 
     def grad_p(self, X, y):
-        Vinv = self.inverse_variance(self.predict_proba(X))
-        r = self.grad_y(X, y)
-        return jacobian(self.mlp, X, r[:, None, :] @ Vinv)[0]
+        def f(outputs):
+            r = outputs - y
+            Vinv = self.inverse_variance(outputs)
+            return Vinv @ r[..., None]
+
+        return jacobian(self.mlp, X, f)[0]
 
     def grad_y(self, X, y):
         return self.predict_proba(X) - y
@@ -203,8 +254,8 @@ def linearize_mlp_fisher(estimator, X, y):
         y = LabelBinarizer().fit(estimator.classes_).transform(y)
     else:
         loss = "l2"
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
+    if y.ndim == 1:
+        y = y.reshape(-1, 1)
 
     if estimator.solver == "lbfgs":
         batch_size = X.shape[0]

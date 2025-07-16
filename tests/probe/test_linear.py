@@ -169,10 +169,12 @@ def test_grad_hess_jac_sparse(model, num_classes, fit_intercept):
     if sp.issparse(sp_G):
         sp_G = sp_G.toarray()
     sp_J = sp_linearized.jacobian(sp_XX, yy)
+    if sp.issparse(sp_J[0]):
+        sp_J = [sp_j.toarray() for sp_j in sp_J]
     np.testing.assert_allclose(H, sp_H, atol=1e-14, strict=True)
     np.testing.assert_allclose(G, sp_G, atol=1e-13, strict=True)
     [
-        np.testing.assert_allclose(j, sp_j.toarray(), atol=1e-13, strict=True)
+        np.testing.assert_allclose(j, sp_j, atol=1e-13, strict=True)
         for j, sp_j in zip(J, sp_J)
     ]
 

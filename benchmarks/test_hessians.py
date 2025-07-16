@@ -1,4 +1,7 @@
 import numpy as np
+from sklearn.neural_network import MLPClassifier
+from mislabeled.probe._fisher import linearize_mlp_fisher
+from mislabeled.probe._linear import linearize
 import pytest
 import scipy.sparse as sp
 from sklearn.datasets import make_regression
@@ -10,15 +13,16 @@ from mislabeled.probe import ApproximateLOO
 @pytest.mark.parametrize(
     "model",
     [
-        RidgeClassifier(),
+        # RidgeClassifier(),
         LogisticRegression(),
+        MLPClassifier(hidden_layer_sizes=()),
     ],
 )
 @pytest.mark.parametrize(
     "intercept",
     [
         True,
-        False,
+        # False,
     ],
 )
 @pytest.mark.parametrize(
@@ -63,8 +67,14 @@ def test_grad_hess(
 
     y = np.digitize(y, np.quantile(y, np.arange(0, 1, 1 / num_classes))) - 1
 
-    model.set_params(fit_intercept=intercept)
     model.fit(X, y)
-    # linearized, X, y = linearize(model, X, y)
-    aloo = ApproximateLOO()
-    benchmark(aloo, model, X, y)
+
+    if hasattr(model, "batch_size"):
+        model.set_params(batch_size=num_samples)
+        # model.set_params(fit_intercept=intercept)
+        linearized, X, y = linearize_mlp_fisher(model, X, y)
+    else:
+        linearized, X, y = linearize(model, X, y)
+    benchmark(linearized.jacobian, X, y)
+    # aloo = ApproximateLOO()
+    # benchmark(aloo, model, X, y)
