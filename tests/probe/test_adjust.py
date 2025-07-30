@@ -8,21 +8,32 @@
 
 import math
 
+import pytest
 import numpy as np
-from sklearn.datasets import make_moons
+from sklearn.datasets import make_blobs
 from sklearn.linear_model import LogisticRegression
 
 from mislabeled.probe import Adjust, Confidence, Probabilities
 
 
-def test_means_per_class_when_adjusted_are_equals():
+@pytest.mark.parametrize("n_classes", [2, 3])
+def test_means_per_class_when_adjusted_are_equals(n_classes):
     logreg = LogisticRegression()
 
-    X, y = make_moons(n_samples=1000, noise=0.2)
-
+    X, y = make_blobs(
+        n_samples=1000,
+        centers=n_classes,
+        cluster_std=0.5,
+        random_state=1,
+    )
     logreg.fit(X, y)
 
-    confidence = Confidence(Adjust(Probabilities()))
-    c = confidence(logreg, X, y)
+    probe = Confidence(Adjust(Probabilities()))
+    c = probe(logreg, X, y)
 
     assert math.isclose(np.mean(c[y == 0]), np.mean(c[y == 1]))
+
+    probe = Confidence(Probabilities())
+    c = probe(logreg, X, y)
+
+    assert not math.isclose(np.mean(c[y == 0]), np.mean(c[y == 1]))
