@@ -49,17 +49,25 @@ class CookDistance(Minimize):
     def __call__(self, estimator, X, y):
         H = estimator.diag_hat_matrix(X, y)
         M = np.eye(estimator.out_dim)[None, :, :] - H
-        invM = np.linalg.inv(M)
         r = (
             np.sqrt(estimator.inverse_variance(estimator.predict_proba(X)))
             @ estimator.grad_y(X, y)[:, :, None]
         )
         P = estimator.dof[0]
+        # MinvHMinv = ((MinvHMiv)T)T = (MinvT (MinvH)T)T =(Minv (MinvH)T)T
 
         if self.bar:
-            return (r.transpose(0, 2, 1) @ invM @ H @ r).squeeze((1, 2)) / P
+            return (r.transpose(0, 2, 1) @ np.linalg.solve(M, H) @ r).squeeze(
+                (1, 2)
+            ) / P
         else:
-            return (r.transpose(0, 2, 1) @ invM @ H @ invM @ r).squeeze((1, 2)) / P
+            return (
+                r.transpose(0, 2, 1)
+                @ np.linalg.solve(
+                    M, np.linalg.solve(M, H).transpose(0, 2, 1)
+                ).transpose(0, 2, 1)
+                @ r
+            ).squeeze((1, 2)) / P
 
 
 class ApproximateLOO(Maximize):
@@ -67,16 +75,22 @@ class ApproximateLOO(Maximize):
     def __call__(self, estimator, X, y):
         H = estimator.diag_hat_matrix(X, y)
         M = np.eye(estimator.out_dim)[None, :, :] - H
-        invM = np.linalg.inv(M)
         r = (
             np.sqrt(estimator.inverse_variance(estimator.predict_proba(X)))
             @ estimator.grad_y(X, y)[:, :, None]
         )
-
+        MinvH = np.linalg.solve(M, H)
+        # HMinv = ((HMinv)T)T = (MinvT HT)T = (MTinv HT)T = (MinvH)T
         return -0.5 * (
-            r.transpose(0, 2, 1) @ invM @ H @ H @ invM @ r
-            + 2 * r.transpose(0, 2, 1) @ H @ invM @ r
+            r.transpose(0, 2, 1) @ MinvH @ MinvH.transpose(0, 2, 1) @ r
+            + 2 * r.transpose(0, 2, 1) @ MinvH.transpose(0, 2, 1) @ r
         ).squeeze((1, 2))
+
+
+class Leverage(Maximize):
+    @linear
+    def __call__(self, estimator, X, y):
+        return np.linalg.trace(estimator.diag_hat_matrix(X, y))
 
 
 class GradNorm2(Minimize):

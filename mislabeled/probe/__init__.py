@@ -19,6 +19,7 @@ from ._influence import (
     ApproximateLOO,
     CookDistance,
     GradNorm2,
+    Leverage,
     Representer,
     SelfInfluence,
 )
@@ -50,6 +51,7 @@ __all__ = [
     "SelfInfluence",
     "CookDistance",
     "ApproximateLOO",
+    "Leverage",
     "Representer",
     "GradNorm2",
     "GradSimilarity",
