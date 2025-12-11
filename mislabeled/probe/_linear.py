@@ -14,14 +14,6 @@ import scipy.sparse as sp
 from scipy.linalg import lu_factor, lu_solve
 from scipy.special import expit, log_expit, log_softmax, softmax
 from sklearn.base import is_classifier, is_regressor
-from sklearn.ensemble import (
-    ExtraTreesClassifier,
-    ExtraTreesRegressor,
-    GradientBoostingClassifier,
-    GradientBoostingRegressor,
-    RandomForestClassifier,
-    RandomForestRegressor,
-)
 from sklearn.linear_model import (
     LinearRegression,
     LogisticRegression,
@@ -34,12 +26,52 @@ from sklearn.linear_model import (
     SGDRegressor,
 )
 from sklearn.naive_bayes import LabelBinarizer
-from sklearn.neural_network import MLPClassifier, MLPRegressor
-from sklearn.neural_network._base import ACTIVATIONS
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
+
+from mislabeled.utils import flat_outer, sparse_flat_outer
+
+
+def binomial_variance(p):
+    return (p * (1.0 - p))[:, :, None]
+
+
+def binomial_inverse_variance(p):
+    eps = np.finfo(p.dtype).eps
+    # clipping for p=1 or p=0
+    p = np.clip(p, eps, 1 - eps)
+    # Element-wise inverse
+    return 1 / (p * (1.0 - p))[:, :, None]
+
+
+def multinomial_variance(p):
+    return p[:, :, None] * (
+        np.eye(p.shape[1], dtype=p.dtype)[None, :, :] - p[:, None, :]
+    )
+
+
+def multinomial_inverse_variance(p):
+    eps = np.finfo(p.dtype).eps
+    # clipping for p=1 or p=0
+    p = np.clip(p, eps, 1 - eps)
+    # See for multinomial: Tanabe, Kunio, and Masahiko Sagae.
+    # "An exact Cholesky decomposition and the generalized inverse
+    # of the variance–covariance matrix of the multinomial distribution,
+    # with applications.",
+    # Journal of the Royal Statistical Society: 1992.
+    return 1 / p[:, :, None] * np.eye(p.shape[1], dtype=p.dtype)[None, :, :]
+
+
+def gaussian_variance(p):
+    return np.broadcast_to(
+        np.eye(p.shape[1], dtype=p.dtype), (p.shape[0], p.shape[1], p.shape[1])
+    )
+
+
+def gaussian_inverse_variance(p):
+    return np.broadcast_to(
+        np.eye(p.shape[1], dtype=p.dtype), (p.shape[0], p.shape[1], p.shape[1])
+    )
 
 
 class LinearModel:
@@ -112,36 +144,15 @@ class LinearModel:
 
     def grad_p(self, X, y):
         # gradients w.r.t. the parameters (weight, intercept)
-        N = X.shape[0]
         K = self.dof[1]
         dl_dy = self.grad_y(X, y)[:, :K]
 
         if sp.issparse(X):
-            P = self.dof[0]
-
-            # TODO: refactor ?
-            X = X.tocoo()
-            data, row, col = X.data, X.row, X.col
-            data = data[:, None]
-            row = row.repeat(K)
-            col = (K * col[:, None] + np.arange(K)[None, :]).reshape(-1)
-
-            if self.intercept is not None:
-                row = np.concatenate([row, np.repeat(np.arange(N), K)])
-                col = np.concatenate([col, np.tile(np.arange(K * P - K, K * P), N)])
-
-            data = (data * dl_dy[X.row, :]).reshape(-1)
-
-            if self.intercept is not None:
-                data = np.concatenate([data, dl_dy.reshape(-1)])
-
-            dl_dp = sp.coo_array((data, (row, col)), shape=(N, P * K)).tocsr()
-
+            dl_dp = sparse_flat_outer(
+                X, dl_dy, format="csr", intercept=self.intercept is not None
+            )
         else:
-            # TODO: find something faster ?
-            if self.intercept is not None:
-                X = np.hstack([X, np.ones((N, 1), dtype=X.dtype)])
-            dl_dp = (dl_dy[:, None, :] * X[:, :, None]).reshape(N, -1)
+            dl_dp = flat_outer(X, dl_dy, intercept=self.intercept is not None)
 
         return dl_dp
 
@@ -153,38 +164,25 @@ class LinearModel:
 
     def variance(self, p):
         # variance of the GLM link function
-        N = p.shape[0]
-        C = self.out_dim
         if self.loss == "l2":
-            return np.eye(C)[None, :, :] * np.ones(N)[:, None, None]
+            return gaussian_variance(p)
         elif self.loss == "log_loss":
             if self.dof[1] == 1:
-                return (p * (1.0 - p))[:, :, None]
+                return binomial_variance(p)
             else:
-                return p[:, :, None] * (np.eye(C)[None, :, :] - p[:, None, :])
+                return multinomial_variance(p)
         else:
             raise NotImplementedError()
 
     def inverse_variance(self, p):
         # generalized inverse of the GLM link function
-        N = p.shape[0]
-        C = self.out_dim
         if self.loss == "l2":
-            return np.eye(C)[None, :, :] * np.ones(N)[:, None, None]
+            return gaussian_inverse_variance(p)
         elif self.loss == "log_loss":
-            eps = np.finfo(p.dtype).eps
-            # clipping for p=1 or p=0
-            p = np.clip(p, eps, 1 - eps)
             if self.dof[1] == 1:
-                # Element-wise inverse
-                return 1 / (p * (1.0 - p))[:, :, None]
+                return binomial_inverse_variance(p)
             else:
-                # See for multinomial: Tanabe, Kunio, and Masahiko Sagae.
-                # "An exact Cholesky decomposition and the generalized inverse
-                # of the variance–covariance matrix of the multinomial distribution,
-                # with applications.",
-                # Journal of the Royal Statistical Society: 1992.
-                return (1 / p)[:, :, None] * np.eye(C)[None, :, :]
+                return multinomial_inverse_variance(p)
         else:
             raise NotImplementedError()
 
@@ -198,8 +196,12 @@ class LinearModel:
         N = X.shape[0]
 
         if self.loss == "l2":
+            # can we factorize this code ?
+            J = []
+
             if sp.issparse(X):
-                X = X.tocoo()
+                X = X.tocoo(copy=False)
+
                 data = X.data
                 row, col = X.row, X.col
                 col = K * col
@@ -209,48 +211,35 @@ class LinearModel:
                     row = np.concatenate([row, np.arange(N)])
                     col = np.concatenate([col, ((P * K) - K) * np.ones(N, dtype=int)])
 
-                J = [
-                    sp.coo_array((data, (row, col + c)), shape=(N, P * K)).tocsr()
-                    for c in range(C)
-                ]
+                for c in range(C):
+                    j = sp.coo_array((data, (row, col + c)), shape=(N, P * K)).tocsr()
+                    J.append(j)
 
             else:
-                J = []
                 for c in range(C):
                     j = np.zeros((N, P * K))
                     j[:, c : D * K : K] = X
                     if self.intercept is not None:
                         j[:, -K + c] = 1
                     J.append(j)
+
         elif self.loss == "log_loss":
             p = self.predict_proba(X)
             V = self.variance(p)
             J = []
 
             if sp.issparse(X):
-                X = X.tocoo()
-                data, row, col = X.data, X.row, X.col
-                data = data[:, None]
-                row = row.repeat(K)
-                col = (K * col[:, None] + np.arange(K)[None, :]).reshape(-1)
-
-                if self.intercept is not None:
-                    row = np.concatenate([row, np.repeat(np.arange(N), K)])
-                    col = np.concatenate([col, np.tile(np.arange(K * P - K, K * P), N)])
-
                 for c in range(C):
-                    datak = (data * V[X.row, :K, c]).reshape(-1)
-                    if self.intercept is not None:
-                        datak = np.concatenate([datak, V[:, :K, c].reshape(-1)])
-
-                    j = sp.coo_array((datak, (row, col)), shape=(N, P * K)).tocsr()
+                    j = sparse_flat_outer(
+                        X,
+                        V[:, :K, c],
+                        format="csr",
+                        intercept=self.intercept is not None,
+                    )
                     J.append(j)
             else:
-                if self.intercept is not None and not sp.issparse(X):
-                    X = np.concatenate([X, np.ones((N, 1))], axis=1)
-
                 for c in range(C):
-                    j = (X[..., None] * V[:, :K, c][:, None, :]).reshape(N, -1)
+                    j = flat_outer(X, V[:, :K, c], intercept=self.intercept is not None)
                     J.append(j)
         else:
             raise NotImplementedError()
@@ -356,8 +345,10 @@ class LinearModel:
     @property
     def dof(self):
         in_dof = self.in_dim + (1 if self.intercept is not None else 0)
-        # take the last class as reference for multiclass log loss
-        out_dof = (K := self.out_dim) - (1 if self.loss == "log_loss" and K > 1 else 0)
+        # # take the last class as reference for multiclass log loss
+        # K = self.out_dim
+        # out_dof = K - (1 if self.loss == "log_loss" and K > 1 else 0)
+        out_dof = self.out_dim
         return (in_dof, out_dof)
 
 
@@ -470,79 +461,6 @@ def linearize_linear_model_logreg(estimator, X, y):
 
     linear = LinearModel(coef, intercept, loss="log_loss", regul=regul)
     return linear, X, y
-
-
-@linearize.register(GradientBoostingClassifier)
-@linearize.register(GradientBoostingRegressor)
-@linearize.register(RandomForestClassifier)
-@linearize.register(RandomForestRegressor)
-@linearize.register(ExtraTreesRegressor)
-@linearize.register(ExtraTreesClassifier)
-@linearize.register(DecisionTreeClassifier)
-@linearize.register(DecisionTreeRegressor)
-def linearize_trees(
-    estimator,
-    X,
-    y,
-    default_linear_model=dict(
-        classification=LogisticRegression(max_iter=1000),
-        regression=RidgeCV(),
-    ),
-):
-    leaves = OneHotEncoder().fit_transform(estimator.apply(X).reshape(X.shape[0], -1))
-    if is_classifier(estimator):
-        linear = default_linear_model["classification"]
-    else:
-        linear = default_linear_model["regression"]
-    linear.fit(leaves, y)
-    return linearize(linear, leaves, y)
-
-
-@linearize.register(MLPClassifier)
-@linearize.register(MLPRegressor)
-def linearize_mlp(estimator, X, y):
-    X, y = check_X_y(
-        X,
-        y,
-        multi_output=is_regressor(estimator),
-        accept_sparse=True,
-        dtype=[np.float64, np.float32],
-    )
-
-    # Get output of last hidden layer
-    activation = X
-    hidden_activation = ACTIVATIONS[estimator.activation]
-    for i in range(estimator.n_layers_ - 2):
-        activation = activation @ estimator.coefs_[i]
-        activation += estimator.intercepts_[i]
-        hidden_activation(activation)
-
-    # Get classification layer as a linear model
-    coef = estimator.coefs_[-1]
-    intercept = estimator.intercepts_[-1]
-
-    if is_classifier(estimator):
-        loss = "log_loss"
-    else:
-        loss = "l2"
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
-
-    if estimator.solver == "lbfgs":
-        batch_size = X.shape[0]
-    elif estimator.batch_size == "auto":
-        batch_size = min(200, X.shape[0])
-    else:
-        batch_size = estimator.batch_size
-
-    if not estimator.solver == "lbfgs":
-        regul = estimator.alpha * batch_size / X.shape[0]
-    else:
-        regul = estimator.alpha
-
-    linear = LinearModel(coef, intercept, loss=loss, regul=regul)
-
-    return linear, activation, y
 
 
 def linear(probe):

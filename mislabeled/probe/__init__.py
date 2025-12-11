@@ -19,13 +19,16 @@ from ._influence import (
     ApproximateLOO,
     CookDistance,
     GradNorm2,
+    Leverage,
     Representer,
     SelfInfluence,
 )
 from ._linear import LinearModel, linear, linearize
 from ._minmax import Maximize, Minimize
+from ._mlp import NeuralRandomFeatures, NeuralTangentFeatures, ntk
 from ._peer import CORE, Peer
 from ._sensitivity import FiniteDiffSensitivity, Sensitivity
+from ._tree import TreeProjections
 
 __all__ = [
     "Probabilities",
@@ -50,6 +53,7 @@ __all__ = [
     "SelfInfluence",
     "CookDistance",
     "ApproximateLOO",
+    "Leverage",
     "Representer",
     "GradNorm2",
     "GradSimilarity",
@@ -58,6 +62,10 @@ __all__ = [
     "linear",
     "linearize",
     "LinearModel",
+    "TreeProjections",
+    "ntk",
+    "NeuralTangentFeatures",
+    "NeuralRandomFeatures",
 ]
 
 
