@@ -12,7 +12,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin, MetaEstimatorMixin, clo
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.multiclass import check_classification_targets
-from sklearn.utils.validation import check_is_fitted, check_memory
+from sklearn.utils.validation import check_is_fitted, check_memory, validate_data
 
 
 def _estimator_has(attr):
@@ -82,7 +82,7 @@ class BaseHandleClassifier(
             Returns self.
         """
         # Check that X and y have correct shape
-        X, y = self._validate_data(X, y, accept_sparse=["csr", "csc", "lil"])
+        X, y = validate_data(self, X, y, accept_sparse=["csr", "csc", "lil"])
 
         check_classification_targets(y)
 

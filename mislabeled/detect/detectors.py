@@ -119,8 +119,9 @@ class RepresenterDetector(ModelProbingDetector):
 
     References
     ----------
-    .. [1] Jaeckel, Louis A. "Estimating regression coefficients by minimizing\
-        the dispersion of the residuals." The Annals of Mathematical Statistics (1972).
+    .. [1] Yeh, C. K., Kim, J., Yen, I. E. H. and Ravikumar, P. K.\
+        "Representer point selection for explaining deep neural networks".\
+        NeurIPS 2018.
     """
 
     def __init__(self, base_model):
