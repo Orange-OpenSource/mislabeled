@@ -94,7 +94,7 @@ def fetch_west_african_language_news(name, cache_folder=None, split="train"):
             known_hash=lexicon_known_hash,
             path=cache_folder,
         )
-        with open(lexicon_file_name) as lexicon_file:
+        with open(lexicon_file_name, encoding="utf-8") as lexicon_file:
             rules[lexicon_name] = lexicon_file.read().splitlines()
 
     blob = []
