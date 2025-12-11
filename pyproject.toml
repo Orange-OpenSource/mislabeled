@@ -58,7 +58,7 @@ dev=[
   "pytest-xdist",
   "pytest-benchmark",
   "scipy>=1.15.0",
-  "statsmodels",
+  "statsmodels>=0.14.6",
 ]
 
 [tool.coverage.run]

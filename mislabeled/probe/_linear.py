@@ -14,14 +14,6 @@ import scipy.sparse as sp
 from scipy.linalg import lu_factor, lu_solve
 from scipy.special import expit, log_expit, log_softmax, softmax
 from sklearn.base import is_classifier, is_regressor
-from sklearn.ensemble import (
-    ExtraTreesClassifier,
-    ExtraTreesRegressor,
-    GradientBoostingClassifier,
-    GradientBoostingRegressor,
-    RandomForestClassifier,
-    RandomForestRegressor,
-)
 from sklearn.linear_model import (
     LinearRegression,
     LogisticRegression,
@@ -34,11 +26,7 @@ from sklearn.linear_model import (
     SGDRegressor,
 )
 from sklearn.naive_bayes import LabelBinarizer
-from sklearn.neural_network import MLPClassifier, MLPRegressor
-from sklearn.neural_network._base import ACTIVATIONS
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.utils import check_X_y
 
 from mislabeled.utils import flat_outer, sparse_flat_outer
@@ -473,79 +461,6 @@ def linearize_linear_model_logreg(estimator, X, y):
 
     linear = LinearModel(coef, intercept, loss="log_loss", regul=regul)
     return linear, X, y
-
-
-@linearize.register(GradientBoostingClassifier)
-@linearize.register(GradientBoostingRegressor)
-@linearize.register(RandomForestClassifier)
-@linearize.register(RandomForestRegressor)
-@linearize.register(ExtraTreesRegressor)
-@linearize.register(ExtraTreesClassifier)
-@linearize.register(DecisionTreeClassifier)
-@linearize.register(DecisionTreeRegressor)
-def linearize_trees(
-    estimator,
-    X,
-    y,
-    default_linear_model=dict(
-        classification=LogisticRegression(max_iter=1000),
-        regression=RidgeCV(),
-    ),
-):
-    leaves = OneHotEncoder().fit_transform(estimator.apply(X).reshape(X.shape[0], -1))
-    if is_classifier(estimator):
-        linear = default_linear_model["classification"]
-    else:
-        linear = default_linear_model["regression"]
-    linear.fit(leaves, y)
-    return linearize(linear, leaves, y)
-
-
-@linearize.register(MLPClassifier)
-@linearize.register(MLPRegressor)
-def linearize_mlp(estimator, X, y):
-    X, y = check_X_y(
-        X,
-        y,
-        multi_output=is_regressor(estimator),
-        accept_sparse=True,
-        dtype=[np.float64, np.float32],
-    )
-
-    # Get output of last hidden layer
-    activation = X
-    hidden_activation = ACTIVATIONS[estimator.activation]
-    for i in range(estimator.n_layers_ - 2):
-        activation = activation @ estimator.coefs_[i]
-        activation += estimator.intercepts_[i]
-        hidden_activation(activation)
-
-    # Get classification layer as a linear model
-    coef = estimator.coefs_[-1]
-    intercept = estimator.intercepts_[-1]
-
-    if is_classifier(estimator):
-        loss = "log_loss"
-    else:
-        loss = "l2"
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
-
-    if estimator.solver == "lbfgs":
-        batch_size = X.shape[0]
-    elif estimator.batch_size == "auto":
-        batch_size = min(200, X.shape[0])
-    else:
-        batch_size = estimator.batch_size
-
-    if not estimator.solver == "lbfgs":
-        regul = estimator.alpha * batch_size / X.shape[0]
-    else:
-        regul = estimator.alpha
-
-    linear = LinearModel(coef, intercept, loss=loss, regul=regul)
-
-    return linear, activation, y
 
 
 def linear(probe):

@@ -1,8 +1,9 @@
+from copy import deepcopy
 from itertools import chain
 
 import numpy as np
-import scipy.sparse as sp
 import pytest
+import scipy.sparse as sp
 from scipy import differentiate
 from sklearn.base import is_classifier
 from sklearn.datasets import make_blobs, make_classification, make_regression
@@ -10,17 +11,18 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
 from mislabeled.probe import linearize
-from mislabeled.probe._fisher import (
+from mislabeled.probe._mlp import (
     MLP,
     MLPLinearModel,
     fisher,
     forward,
+    init_mlp,
     jacobian,
     linearize_mlp_fisher,
+    linearize_mlp_last_layer,
     ntk,
     num_params,
 )
-from mislabeled.probe._linear import linearize_mlp
 
 
 @pytest.mark.parametrize(
@@ -33,9 +35,7 @@ def test_ntk_Y_none(mlp):
     else:
         X, y = make_regression(n_features=10)
     X = StandardScaler().fit_transform(X)
-    mlp.set_params(
-        max_iter=1, solver="sgd", learning_rate="constant", learning_rate_init=1e-8
-    ).fit(X, y)
+    mlp = init_mlp(mlp, X, y)
     np.testing.assert_allclose(ntk(mlp, X, None), ntk(mlp, X, X))
 
 
@@ -51,9 +51,7 @@ def test_ntk_size(mlp, outputs):
         X, y = make_regression(n_features=20, n_targets=outputs)
     X = StandardScaler().fit_transform(X)
     Y = X[0:10]
-    mlp.set_params(
-        max_iter=1, solver="sgd", learning_rate="constant", learning_rate_init=1e-8
-    ).fit(X, y)
+    mlp = init_mlp(mlp, X, y)
     assert ntk(mlp, X, Y).shape == (X.shape[0], Y.shape[0])
 
 
@@ -102,7 +100,7 @@ def test_fisher_size(mlp: MLP, outputs):
     ],
 )
 @pytest.mark.parametrize("outputs", [1, 4])
-def test_fisher_linearization(mlp: MLP, outputs):
+def test_fisher_linearization_sizes(mlp: MLP, outputs):
     if is_classifier(mlp):
         X, y = make_blobs(centers=max(2, outputs))
     else:
@@ -116,7 +114,33 @@ def test_fisher_linearization(mlp: MLP, outputs):
     assert linearized.hessian(X_lin, y_lin).shape == (num_params(mlp), num_params(mlp))
     assert linearized.grad_y(X_lin, y_lin).shape == (X.shape[0], linearized.out_dim)
     assert linearized.grad_p(X_lin, y_lin).shape == (X.shape[0], num_params(mlp))
-    linearize.register(type(mlp), linearize_mlp)
+    linearize.register(type(mlp), linearize_mlp_last_layer)
+
+
+@pytest.mark.parametrize(
+    "mlp",
+    [
+        MLPRegressor(hidden_layer_sizes=(10,), alpha=1),
+        # MLPClassifier(hidden_layer_sizes=(1,)),
+    ],
+)
+@pytest.mark.parametrize("outputs", [1, 4])
+def test_fisher_linearization_batched(mlp: MLP, outputs):
+    if is_classifier(mlp):
+        X, y = make_blobs(n_samples=1000, centers=max(2, outputs))
+    else:
+        X, y = make_regression(n_samples=1000, n_features=2, n_targets=outputs)
+    X = StandardScaler().fit_transform(X)
+    mlp.fit(X, y)
+    mlp.set_params(batch_size=10)
+    linearize.register(type(mlp), linearize_mlp_fisher)
+    linearized_batched, X_lin, y_lin = linearize(mlp, X, y)
+    linearized = deepcopy(linearized_batched)
+    linearized.batch_size = X.shape[0]
+
+    np.testing.assert_allclose(
+        linearized.hessian(X_lin, y_lin), linearized_batched.hessian(X_lin, y_lin)
+    )
 
 
 @pytest.mark.parametrize(
@@ -136,7 +160,7 @@ def test_fisher_equals_hessian_last_layer_for_depth0(mlp: MLP, outputs):
         X, y = make_regression(n_features=20, n_targets=outputs)
     X = StandardScaler().fit_transform(X)
     mlp.fit(X, y)
-    linearize.register(type(mlp), linearize_mlp)
+    linearize.register(type(mlp), linearize_mlp_last_layer)
     elinearized, Xe, ye = linearize(mlp, X, y)
     linearize.register(type(mlp), linearize_mlp_fisher)
     flinearized, Xf, yf = linearize(mlp, X, y)
@@ -159,7 +183,7 @@ def test_fisher_equals_hessian_last_layer_for_depth0(mlp: MLP, outputs):
     np.testing.assert_allclose(
         elinearized.grad_y(Xe, ye), flinearized.grad_y(Xf, yf), strict=True
     )
-    linearize.register(type(mlp), linearize_mlp)
+    linearize.register(type(mlp), linearize_mlp_last_layer)
 
 
 @pytest.mark.parametrize(
@@ -186,13 +210,7 @@ def test_jacobian_finite_diff(mlp, init, outputs):
     if y.ndim == 0:
         y = y.reshape(1)
     if init:
-        mlp.set_params(
-            max_iter=1,
-            solver="sgd",
-            learning_rate="constant",
-            random_state=1,
-            learning_rate_init=1e-12,
-        ).fit(X, y)
+        mlp = init_mlp(mlp, X, y)
     else:
         mlp.set_params(random_state=1).fit(X, y)
 
@@ -245,8 +263,8 @@ def test_jacobian_finite_diff(mlp, init, outputs):
     np.testing.assert_allclose(
         empJ,
         J if J.ndim > 1 else J.reshape(1, -1),
-        rtol=1e-1,
-        atol=1e-1,
+        rtol=1e-2,
+        atol=1e-2,
         strict=True,
     )
 

@@ -7,27 +7,36 @@
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
 
-from itertools import batched, product
-from typing import Callable, Union
+import warnings
+from typing import Callable
 
-from joblib import Parallel, delayed
 import numpy as np
 import scipy.sparse as sp
-from scipy.linalg import lu_factor, lu_solve
-from scipy.special import softmax
-from sklearn.base import is_classifier
+from sklearn import clone
+from sklearn.base import (
+    BaseEstimator,
+    ClassNamePrefixFeaturesOutMixin,
+    MetaEstimatorMixin,
+    TransformerMixin,
+    is_classifier,
+)
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.neural_network._base import ACTIVATIONS
 from sklearn.neural_network._multilayer_perceptron import DERIVATIVES
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.utils import gen_batches
+from sklearn.utils.validation import validate_data
 
-from mislabeled.probe import LinearModel
 from mislabeled.utils import flat_outer, sparse_flat_outer
-from mislabeled.probe._linear import (
+
+from ._linear import (
+    LinearModel,
     binomial_inverse_variance,
     binomial_variance,
     gaussian_inverse_variance,
     gaussian_variance,
+    linearize,
     multinomial_inverse_variance,
     multinomial_variance,
 )
@@ -102,10 +111,8 @@ def jacobian(
 def loglikelihood(mlp):
     if mlp.out_activation_ == "logistic":
         f = binomial_inverse_variance
-
     elif mlp.out_activation_ == "softmax":
         f = multinomial_inverse_variance
-
     else:
         f = gaussian_inverse_variance
 
@@ -115,53 +122,37 @@ def loglikelihood(mlp):
     return sqrtf
 
 
-def fisher(mlp: MLP, X: np.ndarray) -> np.ndarray:
+def fisher(mlp: MLP, X: np.ndarray, F: np.ndarray | None = None) -> np.ndarray:
     J = jacobian(mlp, X, loglikelihood(mlp), lazy=True)
-    F = np.zeros((num_params(mlp), num_params(mlp)), dtype=X.dtype)
+    if F is None:
+        F = np.zeros((num_params(mlp), num_params(mlp)), dtype=X.dtype)
     for j in J:
         j = list(j)[::-1]
         s1 = 0
         for l1 in range(num_layers(mlp)):
-            s2 = 0
+            s2 = s1
             for l2 in range(l1, num_layers(mlp)):
                 e1, e2 = s1 + j[l1].shape[1], s2 + j[l2].shape[1]
-                F[s1:e1, s2:e2] += j[l1].T @ j[l2]
+                f = j[l1].T @ j[l2]
+                # print(l1, l2, s1, e1, s2, e2, f.shape, F[s1:e1, s2:e2].shape)
+                F[s1:e1, s2:e2] += f
                 if l1 != l2:
-                    F[s2:e2, s1:e1] += F[s1:e1, s2:e2].T
+                    F[s2:e2, s1:e1] += f.T
                 s2 = e2
             s1 = e1
     return F
 
-    # # block
-    # J = lazy_jacobian(mlp, X)
-    # p = num_params(mlp)
-    # F = np.zeros((p, p))
-    # for o in range(len(J)):
-    #     end = -1
-    #     for j in J[o]:
-    #         start = end - j.shape[-1]
-    #         F[start:end, start:end] += j.T @ j
-    #         end = start
-    # return F
 
-    # J = np.stack(jacobian(mlp, X, n_jobs=-1), axis=0)
-    # diagV = diag_var(mlp, X)
-    # F = np.einsum("ijk, ji, ijl -> kl", J, 1 / diagV, J, optimize=True)
-
-    # J = lazy_jacobian(mlp, X)
-    # diagV = diag_var(mlp, X)
-    # F = np.zeros((num_params(mlp), num_params(mlp)))
-    # bsizes = block_sizes(mlp)
-    # size = sum(bsizes)
-    # for (i, j1), (k, j2) in product(enumerate(J)):
-    #     F[bsizes[i]] = j1 @ j2
-
-
-# def block_fisher(mlp: MLP, X: np.ndarray) -> list[np.ndarray]:
-#     J = jacobian_layerwise(mlp, X)
-#     diagV = diag_var(mlp, X)
-#     F = [np.einsum("ijk, ij, ijl -> kl", j, 1 / diagV, j, optimize=True) for j in J]
-#     return F
+def block_fisher(
+    mlp: MLP, X: np.ndarray, F: list[np.ndarray] | None = None
+) -> list[np.ndarray]:
+    J = jacobian(mlp, X, loglikelihood(mlp), lazy=True)
+    if F is None:
+        F = [np.zeros((bsize, bsize), dtype=X.dtype) for bsize in layer_sizes(mlp)]
+    for j in J:
+        for l1, bj in enumerate(j, start=1):
+            F[-l1] += bj.T @ bj
+    return F
 
 
 def forward(mlp: MLP, X: np.ndarray, raw=True):
@@ -184,8 +175,8 @@ def num_layers(mlp: MLP) -> int:
     return len(mlp.coefs_)
 
 
-# def block_sizes(mlp: MLP):
-#     return [c.size + i.size for (c, i) in zip(mlp.coefs_, mlp.intercepts_)]
+def layer_sizes(mlp: MLP) -> list[int]:
+    return [c.size + i.size for (c, i) in zip(mlp.coefs_, mlp.intercepts_)]
 
 
 class MLPLinearModel(LinearModel):
@@ -202,31 +193,15 @@ class MLPLinearModel(LinearModel):
         return forward(self.mlp, X, raw=False)
 
     def hessian(self, X, y):
-        F = np.zeros((num_params(self.mlp), num_params(self.mlp)), dtype=X.dtype)
         batch_size = self.batch_size if self.batch_size is not None else X.shape[0]
+        F = np.zeros((num_params(self.mlp), num_params(self.mlp)), dtype=X.dtype)
         for batch in gen_batches(X.shape[0], batch_size):
-            F += fisher(self.mlp, X[batch])
+            F = fisher(self.mlp, X[batch], F)
         F[np.diag_indices_from(F)] += self.regul
         return F
 
     def jacobian(self, X, y):
         return jacobian(self.mlp, X)
-
-    # def diag_hat_matrix(self, X, y):
-    #     sqrtVinv = np.sqrt(self.inverse_variance(self.predict_proba(X)))
-    #     F = self.hessian(X, y)
-    #     F_LU = lu_factor(F)
-    #     hat_matrix = []
-    #     batch_size = self.batch_size if self.batch_size is not None else X.shape[0]
-    #     for batch in gen_batches(X.shape[0], batch_size):
-    #         J = np.stack(self.jacobian(X[batch], y[batch]), axis=0)
-    #         VinvJ = sqrtVinv[batch] @ J
-    #         hat_matrix.append(
-    #             VinvJ @ lu_solve(F_LU, VinvJ.transpose(2, 0, 1)).transpose(1, 0, 2)
-    #         )
-    #     return (
-    #         np.concatenate(hat_matrix, axis=0) if len(hat_matrix) > 1 else hat_matrix[0]
-    #     )
 
     def grad_p(self, X, y):
         def f(outputs):
@@ -272,9 +247,55 @@ def linearize_mlp_fisher(estimator, X, y):
     return MLPLinearModel(estimator, loss, regul, batch_size=batch_size), X, y
 
 
-def ntf(mlp: MLP, X: np.ndarray):
-    jac_X = jacobian(mlp, X)
-    return jac_X.reshape(X.shape[0], -1)
+class NeuralTangentFeatures(
+    TransformerMixin,
+    ClassNamePrefixFeaturesOutMixin,
+    MetaEstimatorMixin,
+    BaseEstimator,
+):
+    def __init__(self, estimator, *, init=True):
+        self.estimator = estimator
+        self.init = init
+
+    def fit(self, X, y):
+        if not isinstance(self.estimator, (MLPRegressor, MLPClassifier)):
+            raise ValueError(
+                f"""Neural Tangent Features can only be computed"""
+                f"""on MLP(Classifier|Regressor), got {self.estimator}"""
+            )
+
+        X, y = validate_data(self, X=X, y=y, reset=True)
+
+        if self.init:
+            self.estimator_ = init_mlp(self.estimator, X, y)
+        else:
+            self.estimator_ = clone(self.estimator)
+            self.estimator_.fit(X, y)
+        return self
+
+    def transform(self, X):
+        X = validate_data(self, X=X, reset=False)
+        J = jacobian(self.estimator_, X)
+        if sp.issparse(J[0]):
+            return sp.hstack(J)
+        else:
+            return np.hstack(J)
+
+
+def init_mlp(mlp: MLP, X: np.ndarray, y: np.ndarray) -> MLP:
+    mlp = clone(mlp)
+    mlp = mlp.set_params(
+        solver="sgd",
+        learning_rate="constant",
+        learning_rate_init=np.finfo(np.float32).eps,
+        max_iter=1,
+        batch_size=X.shape[0],
+        alpha=0,
+    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        mlp.fit(X, y)
+    return mlp
 
 
 def ntk(mlp: MLP, X: np.ndarray, Y: np.ndarray | None = None):
@@ -282,3 +303,80 @@ def ntk(mlp: MLP, X: np.ndarray, Y: np.ndarray | None = None):
     jac_Y = jac_X if Y is None else jacobian(mlp, Y)
 
     return np.einsum("ijk, ilk->jl", jac_X, jac_Y, optimize=True)
+
+
+def embeddings(mlp: MLP, X: np.ndarray):
+    # Get output of last hidden layer
+    activation = X
+    hidden_activation = ACTIVATIONS[mlp.activation]
+    for i in range(mlp.n_layers_ - 2):
+        activation = activation @ mlp.coefs_[i]
+        activation += mlp.intercepts_[i]
+        hidden_activation(activation)
+
+    return activation
+
+
+class NeuralRandomFeatures(
+    TransformerMixin,
+    ClassNamePrefixFeaturesOutMixin,
+    MetaEstimatorMixin,
+    BaseEstimator,
+):
+    def __init__(self, estimator, *, init=True):
+        self.estimator = estimator
+        self.init = init
+
+    def fit(self, X, y):
+        if not isinstance(self.estimator, (MLPRegressor, MLPClassifier)):
+            raise ValueError(
+                f"""Neural Random Features can only be computed"""
+                f"""on MLP(Classifier|Regressor), got {self.estimator}"""
+            )
+
+        X, y = validate_data(self, X=X, y=y, reset=True)
+
+        if self.init:
+            self.estimator_ = init_mlp(self.estimator, X, y)
+        else:
+            self.estimator_ = clone(self.estimator)
+            self.estimator_.fit(X, y)
+        return self
+
+    def transform(self, X):
+        X = validate_data(self, X=X, reset=False)
+        return embeddings(self.estimator_, X)
+
+
+@linearize.register(MLPClassifier)
+@linearize.register(MLPRegressor)
+def linearize_mlp_last_layer(estimator, X, y):
+    # Get embeddings as linearized inputs
+    E = embeddings(estimator, X)
+
+    # Get classification layer as a linear model
+    coef = estimator.coefs_[-1]
+    intercept = estimator.intercepts_[-1]
+
+    if is_classifier(estimator):
+        loss = "log_loss"
+    else:
+        loss = "l2"
+        if y.ndim == 1:
+            y = y.reshape(-1, 1)
+
+    if estimator.solver == "lbfgs":
+        batch_size = X.shape[0]
+    elif estimator.batch_size == "auto":
+        batch_size = min(200, X.shape[0])
+    else:
+        batch_size = estimator.batch_size
+
+    if not estimator.solver == "lbfgs":
+        regul = estimator.alpha * batch_size / X.shape[0]
+    else:
+        regul = estimator.alpha
+
+    linear = LinearModel(coef, intercept, loss=loss, regul=regul)
+
+    return linear, E, y
