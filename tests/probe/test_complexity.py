@@ -6,7 +6,7 @@
 # see the "LICENSE.md" file for more details
 # or https://github.com/Orange-OpenSource/mislabeled/blob/master/LICENSE.md
 
-from sklearn.datasets import make_moons
+from sklearn.datasets import make_classification
 from sklearn.ensemble import AdaBoostClassifier, BaggingClassifier
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import LogisticRegression
@@ -16,7 +16,7 @@ from mislabeled.probe import ParameterCount
 
 
 def test_param_count_linear_model():
-    X, y = make_moons(n_samples=1000, noise=0.3, random_state=1)
+    X, y = make_classification(n_examples=1000, random_state=1)
     param_count = ParameterCount()
 
     logreg = LogisticRegression().fit(X, y)
