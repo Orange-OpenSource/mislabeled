@@ -14,7 +14,7 @@ from sklearn.utils import check_random_state
 from sklearn.utils import shuffle as util_shuffle
 
 
-def blobs(
+def make_blobs(
     n_examples=100,
     n_blobs=2,
     *,
@@ -47,7 +47,7 @@ def blobs(
     return X, y
 
 
-def spirals(
+def make_spirals(
     n_examples=100,
     n_spirals=2,
     *,
@@ -92,7 +92,7 @@ def spirals(
     return X, y
 
 
-def circles(
+def make_circles(
     n_examples=100,
     n_circles=2,
     *,
@@ -122,7 +122,7 @@ def circles(
     return X, y
 
 
-def xor_camembert(
+def make_xor(
     n_examples=100,
     n_slices=2,
     *,
@@ -155,7 +155,7 @@ def xor_camembert(
     return X, y
 
 
-def moons(
+def make_moons(
     n_examples=100,
     *,
     shuffle=True,
