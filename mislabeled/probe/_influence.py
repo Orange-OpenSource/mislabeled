@@ -125,21 +125,17 @@ class Representer(Maximize):
         grad = estimator.grad_y(X, y)
         # grad observed
         if estimator.loss == "l2":
-            # print(y)
             grad_observed = -(grad*np.sign(grad)).sum(axis=1)
 
         elif estimator.loss == "log_loss":
             if estimator._is_binary():
                 grad_observed = grad[:, 0] * (2 * y - 1)
             else:
-                # logits = estimator.decision_function(X)
-                # mask = np.zeros(logits.shape, dtype=bool)
-                # mask[np.arange(X.shape[0]), y]=1
-                # max_grad_except_y = np.min(np.ma.array(grad,mask=mask), axis=1)
-                # print(max_grad_except_y.shape, grad.shape)
-                # print(max_grad_except_y[:20], grad[np.arange(X.shape[0]), y][:20])
-                # ccc
-                grad_observed = grad[np.arange(X.shape[0]), y]
+                logits = estimator.decision_function(X)
+                mask = np.zeros(logits.shape, dtype=bool)
+                mask[np.arange(X.shape[0]), y]=1
+                max_grad_except_y = np.min(np.ma.array(grad,mask=mask), axis=1)
+                grad_observed = grad[np.arange(X.shape[0]), y] + max_grad_except_y
         else:
             raise NotImplementedError()
 
