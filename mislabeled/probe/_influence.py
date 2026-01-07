@@ -131,11 +131,7 @@ class Representer(Maximize):
             if estimator._is_binary():
                 grad_observed = grad[:, 0] * (2 * y - 1)
             else:
-                logits = estimator.decision_function(X)
-                mask = np.zeros(logits.shape, dtype=bool)
-                mask[np.arange(X.shape[0]), y]=1
-                max_grad_except_y = np.min(np.ma.array(grad,mask=mask), axis=1)
-                grad_observed = grad[np.arange(X.shape[0]), y] + max_grad_except_y
+                grad_observed = grad[np.arange(X.shape[0]), y]
         else:
             raise NotImplementedError()
 
