@@ -97,7 +97,7 @@ class LinearModel:
         N = X.shape[0]
         p = self.predict_proba(X)
         if self.loss == "l2":
-            dl_dy = p-y
+            dl_dy = p - y
 
         elif self.loss == "log_loss":
             if self._is_binary():
