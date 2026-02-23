@@ -31,7 +31,7 @@ representer_values = probe(mlp, X, y)
 ### 3. Inspect your training data
 
 ```python
-supicious = np.argsort(-representer_values)[0:top_k]
+suspicious = np.argsort(-representer_values)[0:top_k]
 for i in suspicious:
   plt.imshow(X[i].reshape(28, 28))
 ```
