@@ -1,5 +1,6 @@
 from sklearn.base import is_classifier
 from sklearn.calibration import CalibratedClassifierCV, check_cv
+from sklearn.frozen import FrozenEstimator
 
 from mislabeled.ensemble import AbstractEnsemble
 
@@ -20,7 +21,7 @@ class CalibratedEnsemble(AbstractEnsemble):
 
         def calibrated_probe(estimator, X, y):
             calibrator = CalibratedClassifierCV(
-                estimator, cv="prefit", method=self.calibration
+                FrozenEstimator(estimator), method=self.calibration
             )
             calibrator.fit(X_calibration, y_calibration)
             return probe(calibrator, X, y)
