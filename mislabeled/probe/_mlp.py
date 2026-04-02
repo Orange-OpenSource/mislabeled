@@ -21,6 +21,7 @@ from sklearn.base import (
     is_classifier,
 )
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.frozen import FrozenEstimator
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.neural_network._base import ACTIVATIONS
 from sklearn.neural_network._multilayer_perceptron import DERIVATIVES
@@ -247,6 +248,12 @@ def linearize_mlp_fisher(estimator, X, y):
     return MLPLinearModel(estimator, loss, regul, batch_size=batch_size), X, y
 
 
+def is_mlp(estimator):
+    return isinstance(estimator, (MLPRegressor, MLPClassifier)) or (
+        isinstance(estimator, FrozenEstimator) and is_mlp(estimator.estimator)
+    )
+
+
 class NeuralTangentFeatures(
     TransformerMixin,
     ClassNamePrefixFeaturesOutMixin,
@@ -258,7 +265,7 @@ class NeuralTangentFeatures(
         self.init = init
 
     def fit(self, X, y):
-        if not isinstance(self.estimator, (MLPRegressor, MLPClassifier)):
+        if not is_mlp(self.estimator):
             raise ValueError(
                 f"""Neural Tangent Features can only be computed"""
                 f"""on MLP(Classifier|Regressor), got {self.estimator}"""
@@ -328,7 +335,7 @@ class NeuralRandomFeatures(
         self.init = init
 
     def fit(self, X, y):
-        if not isinstance(self.estimator, (MLPRegressor, MLPClassifier)):
+        if not is_mlp(self.estimator):
             raise ValueError(
                 f"""Neural Random Features can only be computed"""
                 f"""on MLP(Classifier|Regressor), got {self.estimator}"""
