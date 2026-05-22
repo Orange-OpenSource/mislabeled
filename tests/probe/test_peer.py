@@ -8,7 +8,7 @@
 
 import numpy as np
 import pytest
-from sklearn.datasets import make_moons
+from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
 
 from mislabeled.probe import CORE, Accuracy, Peer, Predictions
@@ -18,7 +18,7 @@ from mislabeled.probe import CORE, Accuracy, Peer, Predictions
 def test_peer_probe_core_with_null_alpha_equals_probe(probe):
     logreg = LogisticRegression()
 
-    X, y = make_moons(n_samples=1000, noise=0.2)
+    X, y = make_classification(n_samples=1000, random_state=1)
 
     logreg.fit(X, y)
 
