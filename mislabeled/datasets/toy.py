@@ -158,11 +158,11 @@ def make_xor(
 def make_moons(
     n_examples=100,
     *,
-    shuffle=True,
-    spread=None,
     bias="none",
     bias_strenght=2,
     class_imbalance=1,
+    spread=None,
+    shuffle=True,
     random_state=None,
 ):
     """Make two interleaving half circles.
@@ -321,9 +321,14 @@ def ground_truth_pyx(
     except FileNotFoundError:
         gt_clf, _ = generate_ground_truth(dataset, dataset_cache_path, **dataset_kwargs)
 
+    y_prob = gt_clf.predict_proba(X)
+
     # p(y=1|x)
     # where classes = {0, 1}
-    return gt_clf.predict_proba(X)[:, 1]
+    if y_prob.shape[1] <= 2:
+        return y_prob[:, 1]
+    else:
+        return y_prob
 
 
 def ground_truth_px(
