@@ -131,21 +131,22 @@ class GradNorm2(Minimize):
         return norm2(grad_log_loss) * norm2(X)
 
 
-class Representer(Minimize):
+class Representer(Maximize):
     """Representer values"""
 
     @linear
     def __call__(self, estimator, X, y):
         grad = estimator.grad_y(X, y)
         # grad observed
-        if estimator._is_binary():
-            grad_observed = np.abs(grad[:, 0])
-        else:
-            if estimator.loss == "log_loss":
-                grad_observed = np.abs(grad[np.arange(X.shape[0]), y])
-            elif estimator.loss == "l2":
-                grad_observed = np.abs(grad).sum(axis=1)
+        if estimator.loss == "l2":
+            grad_observed = -(grad*np.sign(grad)).sum(axis=1)
+
+        elif estimator.loss == "log_loss":
+            if estimator._is_binary():
+                grad_observed = grad[:, 0] * (2 * y - 1)
             else:
-                raise NotImplementedError()
+                grad_observed = grad[np.arange(X.shape[0]), y]
+        else:
+            raise NotImplementedError()
 
         return grad_observed * norm2(X)
